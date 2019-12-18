@@ -12,7 +12,7 @@
 	<artifactId>hasuraconf</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>hasuraconf</name>
-	<description>Hasura Configuration JSOn Generation Based on JPA and Hasura Specific Annotations</description>
+	<description>Hasura Configuration JSON Generation Based on JPA and Hasura Specific Annotations</description>
 
 	<properties>
 		<java.version>1.8</java.version>

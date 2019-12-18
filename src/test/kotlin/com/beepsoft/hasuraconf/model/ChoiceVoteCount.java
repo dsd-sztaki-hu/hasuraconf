@@ -1,4 +1,4 @@
-package hu.beepshow.hasuraconf.model;
+package com.beepsoft.hasuraconf.model;
 
 public class ChoiceVoteCount {
     private Long choiceId;

@@ -1,4 +1,4 @@
-package hu.beepshow.hasuraconf
+package com.beepsoft.hasuraconf
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication

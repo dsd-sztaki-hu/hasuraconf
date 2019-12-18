@@ -1,6 +1,6 @@
-package hu.beepshow.hasuraconf.model;
+package com.beepsoft.hasuraconf.model;
 
-import hu.beepshow.hasuraconf.model.audit.UserDateAudit;
+import com.beepsoft.hasuraconf.model.audit.UserDateAudit;
 import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;

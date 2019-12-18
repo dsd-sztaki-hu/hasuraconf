@@ -1,4 +1,4 @@
-package hu.beepshow.hasuraconf.model.audit;
+package com.beepsoft.hasuraconf.model.audit;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.springframework.data.annotation.CreatedDate;

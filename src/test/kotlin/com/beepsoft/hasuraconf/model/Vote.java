@@ -1,6 +1,6 @@
-package hu.beepshow.hasuraconf.model;
+package com.beepsoft.hasuraconf.model;
 
-import hu.beepshow.hasuraconf.model.audit.DateAudit;
+import com.beepsoft.hasuraconf.model.audit.DateAudit;
 
 import javax.persistence.*;
 

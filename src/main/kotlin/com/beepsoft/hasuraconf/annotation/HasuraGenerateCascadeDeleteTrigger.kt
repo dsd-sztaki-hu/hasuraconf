@@ -1,4 +1,4 @@
-package hu.beepshow.hasuraconf.annotation
+package com.beepsoft.hasuraconf.annotation
 
 import java.lang.annotation.Retention
 import java.lang.annotation.RetentionPolicy

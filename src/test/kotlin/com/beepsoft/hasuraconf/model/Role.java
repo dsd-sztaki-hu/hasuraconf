@@ -1,6 +1,6 @@
-package hu.beepshow.hasuraconf.model;
+package com.beepsoft.hasuraconf.model;
 
-import hu.beepshow.hasuraconf.annotation.HasuraEnum;
+import com.beepsoft.hasuraconf.annotation.HasuraEnum;
 
 import javax.persistence.*;
 

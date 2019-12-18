@@ -1,4 +1,4 @@
-package hu.beepshow.hasuraconf
+package com.beepsoft.hasuraconf
 
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory

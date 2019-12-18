@@ -1,4 +1,4 @@
-package hu.beepshow.hasuraconf.model;
+package com.beepsoft.hasuraconf.model;
 
 import javax.persistence.*;
 import javax.validation.constraints.NotBlank;

@@ -1,10 +1,10 @@
-package hu.beepshow.hasuraconf
+package com.beepsoft.hasuraconf
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.google.common.net.HttpHeaders
-import hu.beepshow.hasuraconf.annotation.HasuraEnum
-import hu.beepshow.hasuraconf.annotation.HasuraGenerateCascadeDeleteTrigger
+import com.beepsoft.hasuraconf.annotation.HasuraEnum
+import com.beepsoft.hasuraconf.annotation.HasuraGenerateCascadeDeleteTrigger
 import org.apache.commons.text.CaseUtils
 import org.atteo.evo.inflector.English
 import org.hibernate.SessionFactory
@@ -130,7 +130,7 @@ class HasuraConfigurator(
     private lateinit var metaModel: MetamodelImplementor
     val tableNames: MutableSet<String> = mutableSetOf<String>()
     val enumTables: MutableSet<String> = mutableSetOf<String>()
-    val cascadeDeleteFields: MutableSet<CascadeDeleteFields> = mutableSetOf< CascadeDeleteFields>()
+    val cascadeDeleteFields: MutableSet<CascadeDeleteFields> = mutableSetOf<CascadeDeleteFields>()
 
     @Autowired
     fun setEntityManagerFactory(entityManagerFactory: EntityManagerFactory) {
