@@ -1,5 +1,6 @@
 package com.beepsoft.hasuraconf
 
+import org.apache.commons.lang3.SystemUtils
 import org.junit.Assert
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -48,6 +49,9 @@ class HasuraConfiguratorIntegrationTests {
 		lateinit var hasuraContainer: GenericContainer<*>
 
 		init {
+			var host = if (SystemUtils.IS_OS_MAC_OSX || SystemUtils.IS_OS_WINDOWS) "host.docker.internal" else "127.0.0.1"
+
+			println("Hasura connecting to host ${host}")
 			val logConsumer = Slf4jLogConsumer(LOG);
 			postgresqlContainer = PostgreSQLContainer<Nothing>("postgres:11.5-alpine").
 				apply {
@@ -61,7 +65,7 @@ class HasuraConfiguratorIntegrationTests {
 			hasuraContainer = GenericContainer<Nothing>("hasura/graphql-engine:v1.0.0")
 				.apply {
 					//dependsOn(postgresqlContainer)
-					val postgresUrl = "postgres://hasuraconf:hasuraconf@host.docker.internal:${postgresqlContainer.getMappedPort(PostgreSQLContainer.POSTGRESQL_PORT)}/hasuraconf";
+					val postgresUrl = "postgres://hasuraconf:hasuraconf@${host}:${postgresqlContainer.getMappedPort(PostgreSQLContainer.POSTGRESQL_PORT)}/hasuraconf";
 					val jdbc = postgresqlContainer.getJdbcUrl();
 					println("jdbc ${jdbc}");
 					println("postgresUrl ${postgresUrl}");
