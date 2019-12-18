@@ -49,7 +49,7 @@ class HasuraConfiguratorIntegrationTests {
 		lateinit var hasuraContainer: GenericContainer<*>
 
 		init {
-			var host = if (SystemUtils.IS_OS_MAC_OSX || SystemUtils.IS_OS_WINDOWS) "host.docker.internal" else "127.0.0.1"
+			var host = if (SystemUtils.IS_OS_MAC_OSX || SystemUtils.IS_OS_WINDOWS) "host.docker.internal" else "172.17.0.1"
 
 			println("Hasura connecting to host ${host}")
 			val logConsumer = Slf4jLogConsumer(LOG);
