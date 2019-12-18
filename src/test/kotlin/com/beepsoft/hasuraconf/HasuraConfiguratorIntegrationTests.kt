@@ -14,6 +14,7 @@ import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.PostgreSQLContainer
+import org.testcontainers.containers.output.Slf4jLogConsumer
 import org.testcontainers.junit.jupiter.Testcontainers
 
 /**
@@ -35,15 +36,19 @@ import org.testcontainers.junit.jupiter.Testcontainers
 @ExtendWith(SpringExtension::class)
 class HasuraConfiguratorIntegrationTests {
 
+
 	// https://stackoverflow.com/questions/53854572/how-to-override-spring-application-properties-in-test-classes-spring-s-context
 	//https://www.baeldung.com/spring-boot-testcontainers-integration-test
 	// https://www.baeldung.com/spring-boot-testcontainers-integration-test
 	companion object {
 
+		private val LOG = getLogger(javaClass.enclosingClass)
+
 		lateinit var postgresqlContainer: PostgreSQLContainer<*>
 		lateinit var hasuraContainer: GenericContainer<*>
 
 		init {
+			val logConsumer = Slf4jLogConsumer(LOG);
 			postgresqlContainer = PostgreSQLContainer<Nothing>("postgres:11.5-alpine").
 				apply {
 					withUsername("hasuraconf")
@@ -51,6 +56,7 @@ class HasuraConfiguratorIntegrationTests {
 					withDatabaseName("hasuraconf")
 				}
 			postgresqlContainer.start()
+			postgresqlContainer.followOutput(logConsumer);
 
 			hasuraContainer = GenericContainer<Nothing>("hasura/graphql-engine:v1.0.0")
 				.apply {
@@ -67,6 +73,7 @@ class HasuraConfiguratorIntegrationTests {
 					))
 				}
 			hasuraContainer.start();
+			hasuraContainer.followOutput(logConsumer);
 		}
 
 		// This would be the default use of the container, however it doesn't account for dependencies among them
