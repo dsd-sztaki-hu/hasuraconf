@@ -1,3 +1,5 @@
+[![CircleCI](https://circleci.com/gh/beepsoft/hasuraconf.svg?style=svg)](https://circleci.com/gh/beepsoft/hasuraconf)
+
 # Hasura Configuration Based on JPA Annotations
 
 `HasuraConfigurator` can be used to generate a [JSON file](https://docs.hasura.io/1.0/graphql/manual/api-reference/index.html) that can be loaded into [Hasura](https://hasura.io/) to configure it. 
