@@ -40,13 +40,14 @@ TODO:
 
 # Usage
 
-In theory it could be used in a Maven project using jitpack
+The easiest way to use it in a Maven project is via jitpack
 
 ```
 <repository>
     <id>jitpack.io</id>
     <url>https://jitpack.io</url>
 </repository>
+...
 <dependency>
     <groupId>com.github.beepshow</groupId>
     <artifactId>hasuraconf</artifactId>
@@ -63,8 +64,6 @@ String json = hasuraConf.configure();
 ```
 
 ## Configuration properties (application.properties values)
- 
-* `hasuraconfig.enabled`: if true `HasuraConfigurator#configure()` will generate the configuration, otherwise it won't. Default: false
 
 * `hasuraconfig.confFile`: configuration JSON will be saved here. Default: hasura-conf.json
 
