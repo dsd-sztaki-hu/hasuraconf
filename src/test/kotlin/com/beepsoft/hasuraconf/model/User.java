@@ -1,5 +1,6 @@
 package com.beepsoft.hasuraconf.model;
 
+import com.beepsoft.hasuraconf.annotation.HasuraEnum;
 import com.beepsoft.hasuraconf.model.audit.DateAudit;
 import org.hibernate.annotations.NaturalId;
 import javax.persistence.*;
@@ -24,6 +25,29 @@ import java.util.Set;
 })
 public class User extends DateAudit
 {
+    // Enum type conforming to Hasura's expected enum type table definition
+    // https://docs.hasura.io/1.0/graphql/manual/schema/enums.html
+    @Entity
+    @Table(name = "user_role_type")
+    @HasuraEnum
+    public enum Role {
+        ROLE_USER("A normal user"),
+        ROLE_ORGANIZER("An organizer"),
+        ROLE_ADMIN("An admin user");
+
+        @Id
+        @Column(columnDefinition = "TEXT")
+        public String value = toString();
+
+        @Column(columnDefinition = "TEXT")
+        public String description;
+
+        Role(String description)
+        {
+            this.description = description;
+        }
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

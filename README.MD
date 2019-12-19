@@ -50,7 +50,7 @@ In theory it could be used in a Maven project using jitpack
 <dependency>
     <groupId>com.github.beepshow</groupId>
     <artifactId>hasuraconf</artifactId>
-    <version>Release tag</version>
+    <version>0.0.1</version>
 </dependency>
 ```
 

@@ -1,254 +1,271 @@
 {
-  "type": "bulk",
-  "args": [
-    {"type":"clear_metadata","args":{}},
-    {
-      "type": "track_table",
-      "args": {
-        "name": "polls",
-        "schema": "public"
+  "type" : "bulk",
+  "args" : [ {
+    "type" : "clear_metadata",
+    "args" : { }
+  }, {
+    "type" : "track_table",
+    "args" : {
+      "schema" : "public",
+      "name" : "votes"
+    }
+  }, {
+    "type" : "track_table",
+    "args" : {
+      "schema" : "public",
+      "name" : "choices"
+    }
+  }, {
+    "type" : "track_table",
+    "args" : {
+      "schema" : "public",
+      "name" : "polls"
+    }
+  }, {
+    "type" : "track_table",
+    "args" : {
+      "schema" : "public",
+      "name" : "users"
+    }
+  }, {
+    "type" : "track_table",
+    "args" : {
+      "schema" : "public",
+      "name" : "user_roles"
+    }
+  }, {
+    "type" : "track_table",
+    "args" : {
+      "schema" : "public",
+      "name" : "user_role_type"
+    }
+  }, {
+    "type" : "set_table_is_enum",
+    "args" : {
+      "table" : {
+        "schema" : "public",
+        "name" : "user_role_type"
+      },
+      "is_enum" : true
+    }
+  }, {
+    "type" : "set_table_custom_fields",
+    "version" : 2,
+    "args" : {
+      "table" : "votes",
+      "schema" : "public",
+      "custom_root_fields" : {
+        "select" : "votes",
+        "select_by_pk" : "vote",
+        "select_aggregate" : "voteAggregate",
+        "insert" : "createVotes",
+        "update" : "updateVotes",
+        "delete" : "deleteVotes"
+      },
+      "custom_column_names" : {
+        "created_at" : "createdAt",
+        "updated_at" : "updatedAt",
+        "choice_id" : "choiceId",
+        "poll_id" : "pollId",
+        "user_id" : "userId"
       }
-    },
-    {
-      "type": "track_table",
-      "args": {
-        "name": "choices",
-        "schema": "public"
+    }
+  }, {
+    "type" : "create_object_relationship",
+    "args" : {
+      "name" : "choice",
+      "table" : {
+        "name" : "votes",
+        "schema" : "public"
+      },
+      "using" : {
+        "foreign_key_constraint_on" : "choice_id"
       }
-    },
-    {
-      "type": "track_table",
-      "args": {
-        "name": "users",
-        "schema": "public"
+    }
+  }, {
+    "type" : "create_object_relationship",
+    "args" : {
+      "name" : "poll",
+      "table" : {
+        "name" : "votes",
+        "schema" : "public"
+      },
+      "using" : {
+        "foreign_key_constraint_on" : "poll_id"
       }
-    },
-    {
-      "type": "track_table",
-      "args": {
-        "name": "user_roles",
-        "schema": "public"
+    }
+  }, {
+    "type" : "create_object_relationship",
+    "args" : {
+      "name" : "user",
+      "table" : {
+        "name" : "votes",
+        "schema" : "public"
+      },
+      "using" : {
+        "foreign_key_constraint_on" : "user_id"
       }
-    },
-    {
-      "type": "track_table",
-      "args": {
-        "name": "user_role_type",
-        "schema": "public"
+    }
+  }, {
+    "type" : "set_table_custom_fields",
+    "version" : 2,
+    "args" : {
+      "table" : "choices",
+      "schema" : "public",
+      "custom_root_fields" : {
+        "select" : "choices",
+        "select_by_pk" : "choice",
+        "select_aggregate" : "choiceAggregate",
+        "insert" : "createChoices",
+        "update" : "updateChoices",
+        "delete" : "deleteChoices"
+      },
+      "custom_column_names" : {
+        "poll_id" : "pollId"
       }
-    },
-    {
-      "type": "set_table_is_enum",
-      "args": {
-        "table": {
-          "schema": "public",
-          "name": "user_role_type"
-        },
-        "is_enum": true
+    }
+  }, {
+    "type" : "create_object_relationship",
+    "args" : {
+      "name" : "poll",
+      "table" : {
+        "name" : "choices",
+        "schema" : "public"
+      },
+      "using" : {
+        "foreign_key_constraint_on" : "poll_id"
       }
-    },
-    {
-      "type": "track_table",
-      "args": {
-        "name": "votes",
-        "schema": "public"
+    }
+  }, {
+    "type" : "set_table_custom_fields",
+    "version" : 2,
+    "args" : {
+      "table" : "polls",
+      "schema" : "public",
+      "custom_root_fields" : {
+        "select" : "polls",
+        "select_by_pk" : "poll",
+        "select_aggregate" : "pollAggregate",
+        "insert" : "createPolls",
+        "update" : "updatePolls",
+        "delete" : "deletePolls"
+      },
+      "custom_column_names" : {
+        "created_at" : "createdAt",
+        "updated_at" : "updatedAt",
+        "created_by" : "createdBy",
+        "updated_by" : "updatedBy",
+        "expiration_date_time" : "expirationDateTime",
+        "next_version_id" : "nextVersionId",
+        "previous_version_id" : "previousVersionId"
       }
-    },
-    {
-      "type": "set_table_custom_fields",
-      "version": 2,
-      "args": {
-        "table": "polls",
-        "schema": "public",
-        "custom_root_fields": {
-          "select": "polls",
-          "select_by_pk": "poll",
-          "select_aggregate": "pollAggregate",
-          "insert": "createPolls",
-          "update": "updatePolls",
-          "delete": "deletePolls"
-        },
-        "custom_column_names": {
-          "created_at": "createdAt",
-          "updated_at": "updatedAt",
-          "created_by": "createdBy",
-          "updated_by": "updatedBy",
-          "expiration_date_time": "expirationDateTime"
-        }
-      }
-    },
-    {
-      "type": "create_array_relationship",
-      "args": {
-        "name": "choices",
-        "table": {
-          "name": "polls",
-          "schema": "public"
-        },
-        "using": {
-          "foreign_key_constraint_on": {
-            "table": {
-              "name": "choices",
-              "schema": "public"
-            },
-            "column": "poll_id"
-          }
-        }
-      }
-    },
-    {
-      "type": "set_table_custom_fields",
-      "version": 2,
-      "args": {
-        "table": "choices",
-        "schema": "public",
-        "custom_root_fields": {
-          "select": "choices",
-          "select_by_pk": "choice",
-          "select_aggregate": "choiceAggregate",
-          "insert": "createChoices",
-          "update": "updateChoices",
-          "delete": "deleteChoices"
-        },
-        "custom_column_names": {
-          "poll_id": "pollId"
-        }
-      }
-    },
-    {
-      "type": "create_object_relationship",
-      "args": {
-        "name": "poll",
-        "table": {
-          "name": "choices",
-          "schema": "public"
-        },
-        "using": {
-          "foreign_key_constraint_on": "poll_id"
-        }
-      }
-    },
-    {
-      "type": "set_table_custom_fields",
-      "version": 2,
-      "args": {
-        "table": "users",
-        "schema": "public",
-        "custom_root_fields": {
-          "select": "users",
-          "select_by_pk": "user",
-          "select_aggregate": "userAggregate",
-          "insert": "createUsers",
-          "update": "updateUsers",
-          "delete": "deleteUsers"
-        },
-        "custom_column_names": {
-          "created_at": "createdAt",
-          "updated_at": "updatedAt",
-          "another_not_really_useful_property": "anotherNotReallyUsefulProperty",
-          "unnecessarily_long_property_name": "unnecessarilyLongPropertyName"
-        }
-      }
-    },
-    {
-      "type": "create_array_relationship",
-      "args": {
-        "name": "roles",
-        "table": {
-          "name": "users",
-          "schema": "public"
-        },
-        "using": {
-          "foreign_key_constraint_on": {
-            "table": {
-              "name": "user_roles",
-              "schema": "public"
-            },
-            "column": "user_id"
-          }
-        }
-      }
-    },
-    {
-      "type": "set_table_custom_fields",
-      "version": 2,
-      "args": {
-        "table": "user_role_type",
-        "schema": "public",
-        "custom_root_fields": {
-          "select": "roles",
-          "select_by_pk": "role",
-          "select_aggregate": "roleAggregate",
-          "insert": "createRoles",
-          "update": "updateRoles",
-          "delete": "deleteRoles"
-        },
-        "custom_column_names": {
-
-        }
-      }
-    },
-    {
-      "type": "create_object_relationship",
-      "args": {
-        "name": "choice",
-        "table": {
-          "name": "votes",
-          "schema": "public"
-        },
-        "using": {
-          "foreign_key_constraint_on": "choice_id"
-        }
-      }
-    },
-    {
-      "type": "create_object_relationship",
-      "args": {
-        "name": "poll",
-        "table": {
-          "name": "votes",
-          "schema": "public"
-        },
-        "using": {
-          "foreign_key_constraint_on": "poll_id"
-        }
-      }
-    },
-    {
-      "type": "create_object_relationship",
-      "args": {
-        "name": "user",
-        "table": {
-          "name": "votes",
-          "schema": "public"
-        },
-        "using": {
-          "foreign_key_constraint_on": "user_id"
-        }
-      }
-    },
-    {
-      "type": "set_table_custom_fields",
-      "version": 2,
-      "args": {
-        "table": "votes",
-        "schema": "public",
-        "custom_root_fields": {
-          "select": "votes",
-          "select_by_pk": "vote",
-          "select_aggregate": "voteAggregate",
-          "insert": "createVotes",
-          "update": "updateVotes",
-          "delete": "deleteVotes"
-        },
-        "custom_column_names": {
-          "created_at": "createdAt",
-          "updated_at": "updatedAt",
-          "choice_id": "choiceId",
-          "poll_id": "pollId",
-          "user_id": "userId"
+    }
+  }, {
+    "type" : "create_array_relationship",
+    "args" : {
+      "name" : "choices",
+      "table" : {
+        "name" : "polls",
+        "schema" : "public"
+      },
+      "using" : {
+        "foreign_key_constraint_on" : {
+          "table" : {
+            "name" : "choices",
+            "schema" : "public"
+          },
+          "column" : "poll_id"
         }
       }
     }
-  ]
+  }, {
+    "type" : "create_object_relationship",
+    "args" : {
+      "name" : "nextVersion",
+      "table" : {
+        "name" : "polls",
+        "schema" : "public"
+      },
+      "using" : {
+        "foreign_key_constraint_on" : "next_version_id"
+      }
+    }
+  }, {
+    "type" : "create_object_relationship",
+    "args" : {
+      "name" : "previousVersion",
+      "table" : {
+        "name" : "polls",
+        "schema" : "public"
+      },
+      "using" : {
+        "foreign_key_constraint_on" : "previous_version_id"
+      }
+    }
+  }, {
+    "type" : "set_table_custom_fields",
+    "version" : 2,
+    "args" : {
+      "table" : "users",
+      "schema" : "public",
+      "custom_root_fields" : {
+        "select" : "users",
+        "select_by_pk" : "user",
+        "select_aggregate" : "userAggregate",
+        "insert" : "createUsers",
+        "update" : "updateUsers",
+        "delete" : "deleteUsers"
+      },
+      "custom_column_names" : {
+        "created_at" : "createdAt",
+        "updated_at" : "updatedAt",
+        "another_not_really_useful_property" : "anotherNotReallyUsefulProperty",
+        "unnecessarily_long_property_name" : "unnecessarilyLongPropertyName"
+      }
+    }
+  }, {
+    "type" : "create_array_relationship",
+    "args" : {
+      "name" : "roles",
+      "table" : {
+        "name" : "users",
+        "schema" : "public"
+      },
+      "using" : {
+        "foreign_key_constraint_on" : {
+          "table" : {
+            "name" : "user_roles",
+            "schema" : "public"
+          },
+          "column" : "user_id"
+        }
+      }
+    }
+  }, {
+    "type" : "set_table_custom_fields",
+    "version" : 2,
+    "args" : {
+      "table" : "user_role_type",
+      "schema" : "public",
+      "custom_root_fields" : {
+        "select" : "userRoles",
+        "select_by_pk" : "userRole",
+        "select_aggregate" : "userRoleAggregate",
+        "insert" : "createUserRoles",
+        "update" : "updateUserRoles",
+        "delete" : "deleteUserRoles"
+      },
+      "custom_column_names" : { }
+    }
+  }, {
+    "type" : "run_sql",
+    "args" : {
+      "sql" : "DROP TRIGGER IF EXISTS polls_next_version_id_cascade_delete_trigger ON polls;; DROP FUNCTION  IF EXISTS polls_next_version_id_cascade_delete(); CREATE FUNCTION polls_next_version_id_cascade_delete() RETURNS trigger AS $body$ BEGIN     IF TG_WHEN <> 'AFTER' OR TG_OP <> 'DELETE' THEN         RAISE EXCEPTION 'polls_next_version_id_cascade_delete may only run as a AFTER DELETE trigger';     END IF;      DELETE FROM polls where id=OLD.next_version_id;     RETURN OLD; END; $body$ LANGUAGE plpgsql;; CREATE TRIGGER polls_next_version_id_cascade_delete_trigger AFTER DELETE ON polls     FOR EACH ROW EXECUTE PROCEDURE polls_next_version_id_cascade_delete();;                       "
+    }
+  }, {
+    "type" : "run_sql",
+    "args" : {
+      "sql" : "DROP TRIGGER IF EXISTS polls_previous_version_id_cascade_delete_trigger ON polls;; DROP FUNCTION  IF EXISTS polls_previous_version_id_cascade_delete(); CREATE FUNCTION polls_previous_version_id_cascade_delete() RETURNS trigger AS $body$ BEGIN     IF TG_WHEN <> 'AFTER' OR TG_OP <> 'DELETE' THEN         RAISE EXCEPTION 'polls_previous_version_id_cascade_delete may only run as a AFTER DELETE trigger';     END IF;      DELETE FROM polls where id=OLD.previous_version_id;     RETURN OLD; END; $body$ LANGUAGE plpgsql;; CREATE TRIGGER polls_previous_version_id_cascade_delete_trigger AFTER DELETE ON polls     FOR EACH ROW EXECUTE PROCEDURE polls_previous_version_id_cascade_delete();;                       "
+    }
+  } ]
 }

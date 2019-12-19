@@ -1,5 +1,6 @@
 package com.beepsoft.hasuraconf.model;
 
+import com.beepsoft.hasuraconf.annotation.HasuraGenerateCascadeDeleteTrigger;
 import com.beepsoft.hasuraconf.model.audit.UserDateAudit;
 import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.Fetch;
@@ -38,6 +39,16 @@ public class Poll extends UserDateAudit
     @BatchSize(size = 30)
     private List<Choice> choices = new ArrayList<>();
 
+    /** Previous version.  */
+    @OneToOne
+    @HasuraGenerateCascadeDeleteTrigger
+    private Poll previousVersion;
+
+    /** Next version.  */
+    @OneToOne
+    @HasuraGenerateCascadeDeleteTrigger
+    private Poll nextVersion;
+
     @NotNull
     private Instant expirationDateTime;
 
@@ -71,6 +82,26 @@ public class Poll extends UserDateAudit
 
     public void setExpirationDateTime(Instant expirationDateTime) {
         this.expirationDateTime = expirationDateTime;
+    }
+
+    public Poll getPreviousVersion()
+    {
+        return previousVersion;
+    }
+
+    public void setPreviousVersion(Poll previousVersion)
+    {
+        this.previousVersion = previousVersion;
+    }
+
+    public Poll getNextVersion()
+    {
+        return nextVersion;
+    }
+
+    public void setNextVersion(Poll nextVersion)
+    {
+        this.nextVersion = nextVersion;
     }
 
     public void addChoice(Choice choice) {
