@@ -111,14 +111,12 @@ import javax.persistence.metamodel.EntityType
  * <pre>
 </pre> *
  */
-@Service
 class HasuraConfigurator(
-        @Value("\${hasuraconfig.enabled:false}") var enabled: Boolean,
-        @Value("\${hasuraconfig.confFile:hasura-conf.json}") var confFile: String?,
-        @Value("\${hasuraconfig.schemaName:public}") var schemaName: String,
-        @Value("\${hasuraconfig.loadConf:false}") var loadConf: Boolean,
-        @Value("\${hasuraconfig.hasuraEndpoint:http://localhost:8080/v1/query}") var hasuraEndpoint: String,
-        @Value("\${hasuraconfig.hasuraAdminSecret:#{null}}") var hasuraAdminSecret: String?
+        var confFile: String?,
+        var schemaName: String,
+        var loadConf: Boolean,
+        var hasuraEndpoint: String,
+        var hasuraAdminSecret: String?
 ) {
     inner class CascadeDeleteFields(var table: String, var field: String, var joinedTable: String)
 
@@ -146,9 +144,6 @@ class HasuraConfigurator(
     fun configure() {
         confJson = null;
 
-        if (!enabled) {
-            return
-        }
         val entities = metaModel.entities
         // Add custom field and relationship names for each table
         val customColumNamesRelationships = StringBuilder()

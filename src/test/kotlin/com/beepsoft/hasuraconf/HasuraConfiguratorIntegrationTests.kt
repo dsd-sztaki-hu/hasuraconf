@@ -121,18 +121,9 @@ class HasuraConfiguratorIntegrationTests {
 
 	@Autowired lateinit var conf: HasuraConfigurator
 
-	@DisplayName("Test whether disabling works")
-	@Test
-	fun testDisabling() {
-		conf.enabled = false
-		conf.configure();
-		Assert.assertNull(conf.confJson)
-	}
-
 	@DisplayName("Test generated hasura conf JSON validity with snapshot")
 	@Test
 	fun testJsonWithSnapshot() {
-		conf.enabled = true
 		conf.loadConf = false
 		conf.configure();
 		println(conf.confJson);
@@ -143,7 +134,6 @@ class HasuraConfiguratorIntegrationTests {
 	@DisplayName("Test generated hasura conf JSON by loading into Hasura")
 	@Test
 	fun testLoadingIntoHasura() {
-		conf.enabled = true
 		conf.loadConf = true
 		conf.hasuraEndpoint = "http://localhost:${hasuraContainer.getMappedPort(8080)}/v1/query"
 		conf.hasuraAdminSecret = "hasuraconf"
