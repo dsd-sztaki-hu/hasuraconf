@@ -229,11 +229,7 @@ class HasuraConfigurator(
         confJson = objectMapper.writeValueAsString(tree);
 
         if (confFile != null) {
-            try {
-                PrintWriter(confFile).use { out -> out.println(confJson) }
-            } catch (e: FileNotFoundException) {
-                e.printStackTrace()
-            }
+            PrintWriter(confFile).use { out -> out.println(confJson) }
             if (loadConf) {
                 loadConfScriptIntoHasura()
             }
@@ -260,7 +256,7 @@ class HasuraConfigurator(
             val template =
                     """
                         DROP TRIGGER IF EXISTS ${cdf.table}_${cdf.field}_cascade_delete_trigger ON ${cdf.table};;
-                        DROP FUNCTION  IF EXISTS ${cdf.table}_${cdf.field}cascade_delete();
+                        DROP FUNCTION  IF EXISTS ${cdf.table}_${cdf.field}_cascade_delete();
                         CREATE FUNCTION ${cdf.table}_${cdf.field}_cascade_delete() RETURNS trigger AS
                         ${'$'}body${'$'}
                         BEGIN
@@ -284,7 +280,7 @@ class HasuraConfigurator(
                 """
                     {
                         "type": "run_sql",
-                        "args": {"
+                        "args": {
                             "sql": "${trigger}"
                         }
                     } 
@@ -502,7 +498,7 @@ class HasuraConfigurator(
     /**
      *
      */
-    fun loadConfScriptIntoHasura() {
+    private fun loadConfScriptIntoHasura() {
         LOG.info("Executing Hasura initialization JSON from {}. This may take a while ...", confFile)
         val client = WebClient
                 .builder()
@@ -522,6 +518,7 @@ class HasuraConfigurator(
         } catch (ex: WebClientResponseException) {
             LOG.error("Hasura initialization failed", ex)
             LOG.error("Response text: {}", ex.responseBodyAsString)
+            throw ex
         }
         //        result.subscribe(
 //                value -> System.out.println(value),
