@@ -42,16 +42,16 @@ class HasuraConfiguratorIntegrationTests {
 	// https://www.baeldung.com/spring-boot-testcontainers-integration-test
 	companion object {
 
-		private val LOG = getLogger(javaClass.enclosingClass)
+		private val LOG = getLogger(this::class.java.enclosingClass)
 
-		lateinit var postgresqlContainer: PostgreSQLContainer<*>
-		lateinit var hasuraContainer: GenericContainer<*>
+		var postgresqlContainer: PostgreSQLContainer<*>
+		var hasuraContainer: GenericContainer<*>
 
 		init {
-			var host = if (SystemUtils.IS_OS_MAC_OSX || SystemUtils.IS_OS_WINDOWS) "host.docker.internal" else "172.17.0.1"
+			val host = if (SystemUtils.IS_OS_MAC_OSX || SystemUtils.IS_OS_WINDOWS) "host.docker.internal" else "172.17.0.1"
 
-			println("Hasura connecting to host ${host}")
-			val logConsumer = Slf4jLogConsumer(LOG);
+			println("Hasura connecting to host $host")
+			val logConsumer = Slf4jLogConsumer(LOG)
 			postgresqlContainer = PostgreSQLContainer<Nothing>("postgres:11.5-alpine").
 				apply {
 					withUsername("hasuraconf")
@@ -59,15 +59,15 @@ class HasuraConfiguratorIntegrationTests {
 					withDatabaseName("hasuraconf")
 				}
 			postgresqlContainer.start()
-			postgresqlContainer.followOutput(logConsumer);
+			postgresqlContainer.followOutput(logConsumer)
 
 			hasuraContainer = GenericContainer<Nothing>("hasura/graphql-engine:v1.0.0")
 				.apply {
 					//dependsOn(postgresqlContainer)
-					val postgresUrl = "postgres://hasuraconf:hasuraconf@${host}:${postgresqlContainer.getMappedPort(PostgreSQLContainer.POSTGRESQL_PORT)}/hasuraconf";
-					val jdbc = postgresqlContainer.getJdbcUrl();
-					println("jdbc ${jdbc}");
-					println("postgresUrl ${postgresUrl}");
+					val postgresUrl = "postgres://hasuraconf:hasuraconf@${host}:${postgresqlContainer.getMappedPort(PostgreSQLContainer.POSTGRESQL_PORT)}/hasuraconf"
+					val jdbc = postgresqlContainer.getJdbcUrl()
+					println("jdbc $jdbc")
+					println("postgresUrl $postgresUrl")
 					withExposedPorts(8080)
 					withEnv(mapOf(
 							"HASURA_GRAPHQL_DATABASE_URL" to postgresUrl,
@@ -75,8 +75,8 @@ class HasuraConfiguratorIntegrationTests {
 							"HASURA_GRAPHQL_STRINGIFY_NUMERIC_TYPES" to "true"
 					))
 				}
-			hasuraContainer.start();
-			hasuraContainer.followOutput(logConsumer);
+			hasuraContainer.start()
+			hasuraContainer.followOutput(logConsumer)
 		}
 
 		// This would be the default use of the container, however it doesn't account for dependencies among them
@@ -113,7 +113,7 @@ class HasuraConfiguratorIntegrationTests {
 						"spring.datasource.url=" + postgresqlContainer.getJdbcUrl(),
 						"spring.datasource.username=" + postgresqlContainer.getUsername(),
 						"spring.datasource.password=" + postgresqlContainer.getPassword()
-				).applyTo(configurableApplicationContext.environment);
+				).applyTo(configurableApplicationContext.environment)
 			}
 		}
 	}
@@ -124,10 +124,10 @@ class HasuraConfiguratorIntegrationTests {
 	@Test
 	fun testJsonWithSnapshot() {
 		conf.loadConf = false
-		conf.configure();
-		println(conf.confJson);
-		val snapshot = readFileUsingGetResource("/hasura_config_snapshot1.json");
-		JSONAssert.assertEquals(conf.confJson,snapshot, false);
+		conf.configure()
+		println(conf.confJson)
+		val snapshot = readFileUsingGetResource("/hasura_config_snapshot1.json")
+		JSONAssert.assertEquals(conf.confJson,snapshot, false)
 	}
 
 	@DisplayName("Test generated hasura conf JSON by loading into Hasura")
@@ -136,6 +136,6 @@ class HasuraConfiguratorIntegrationTests {
 		conf.loadConf = true
 		conf.hasuraEndpoint = "http://localhost:${hasuraContainer.getMappedPort(8080)}/v1/query"
 		conf.hasuraAdminSecret = "hasuraconf"
-		conf.configure();
+		conf.configure()
 	}
 }

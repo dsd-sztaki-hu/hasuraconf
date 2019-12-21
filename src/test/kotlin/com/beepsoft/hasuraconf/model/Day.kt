@@ -17,15 +17,7 @@ import javax.persistence.*
         Index(columnList = "updatedAt"),
         Index(columnList = "id"))
 )
-@HasuraPermissions(
-    [
-        HasuraPermission(
-                role = "USER",
-                operation = HasuraOperation.SELECT,
-                jsonFile = "/permissions/via_cal_read_permission_fragment.json"
-        )
-    ]
-)
+@CalendarBasedPermissions
 class Day : BaseObject() {
 
     /** The calendar it belongs to  */

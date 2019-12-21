@@ -32,7 +32,7 @@ abstract class BaseObject {
 
 
     fun getSummary(lang: String?): String {
-        return javaClass.simpleName + "-" + id
+        return lang+": "+javaClass.simpleName + "-" + id
     }
 
     @JsonIgnore
