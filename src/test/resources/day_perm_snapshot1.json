@@ -1,0 +1,9 @@
+{
+  "calendar": {
+    "roles": {
+      "user_id": {
+        "_eq": "X-Hasura-User-Id"
+      }
+    }
+  }
+}

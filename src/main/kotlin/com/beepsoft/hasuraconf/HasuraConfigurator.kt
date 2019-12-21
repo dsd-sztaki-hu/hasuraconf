@@ -1,10 +1,7 @@
 package com.beepsoft.hasuraconf
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.SerializationFeature
+import com.beepsoft.hasuraconf.annotation.*
 import com.google.common.net.HttpHeaders
-import com.beepsoft.hasuraconf.annotation.HasuraEnum
-import com.beepsoft.hasuraconf.annotation.HasuraGenerateCascadeDeleteTrigger
 import org.apache.commons.text.CaseUtils
 import org.atteo.evo.inflector.English
 import org.hibernate.SessionFactory
@@ -15,13 +12,10 @@ import org.hibernate.type.AssociationType
 import org.hibernate.type.CollectionType
 import org.hibernate.type.ForeignKeyDirection
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.MediaType
-import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.WebClientResponseException
 import reactor.core.publisher.Mono
-import java.io.FileNotFoundException
 import java.io.PrintWriter
 import javax.persistence.EntityManagerFactory
 import javax.persistence.metamodel.EntityType
@@ -118,6 +112,13 @@ class HasuraConfigurator(
         var hasuraEndpoint: String,
         var hasuraAdminSecret: String?
 ) {
+
+    companion object {
+        // @Suppress("JAVA_CLASS_ON_COMPANION")
+        // @JvmStatic
+        private val LOG = getLogger(javaClass.enclosingClass)
+    }
+
     inner class CascadeDeleteFields(var table: String, var field: String, var joinedTable: String)
 
     private lateinit var entityManagerFactory: EntityManagerFactory
@@ -126,27 +127,35 @@ class HasuraConfigurator(
 
     private lateinit var sessionFactoryImpl: SessionFactory
     private lateinit var metaModel: MetamodelImplementor
-    val tableNames: MutableSet<String> = mutableSetOf<String>()
-    val enumTables: MutableSet<String> = mutableSetOf<String>()
-    val cascadeDeleteFields: MutableSet<CascadeDeleteFields> = mutableSetOf<CascadeDeleteFields>()
+    private lateinit var tableNames: MutableSet<String>
+    private lateinit var enumTables: MutableSet<String>
+    private lateinit var cascadeDeleteFields: MutableSet<CascadeDeleteFields>
+
+    private lateinit var permissionAnnotationProcessor: PermissionAnnotationProcessor
 
     @Autowired
     fun setEntityManagerFactory(entityManagerFactory: EntityManagerFactory) {
         this.entityManagerFactory = entityManagerFactory
         sessionFactoryImpl = entityManagerFactory.unwrap(SessionFactory::class.java) as SessionFactoryImpl
         metaModel = sessionFactoryImpl.metamodel as MetamodelImplementor
+        permissionAnnotationProcessor = PermissionAnnotationProcessor(entityManagerFactory)
     }
 
     /**
      * Creates hasura-conf.json containing table tracking and field/relationship name customizations
      * at bean creation time automatically.
      */
+    @Throws(HasuraConfiguratorException::class)
     fun configure() {
         confJson = null;
+        tableNames = mutableSetOf<String>()
+        enumTables = mutableSetOf<String>()
+        cascadeDeleteFields = mutableSetOf<CascadeDeleteFields>()
 
         val entities = metaModel.entities
         // Add custom field and relationship names for each table
         val customColumNamesRelationships = StringBuilder()
+        val permissions = StringBuilder()
         var added = false
         for (entity in entities) {
             val customFieldNameJSONBuilder = StringBuilder()
@@ -165,6 +174,11 @@ class HasuraConfigurator(
                 enumTables.add(tableName)
             }
             collectCascadeDeleteCandidates(entity)
+            var perms = generatePermissions(entity);
+            if (perms.length != 0 && permissions.length != 0) {
+                permissions.append(",");
+            }
+            permissions.append(perms);
         }
         // Add tracking for all tables collected, and make these the first calls in the bulk JSON
         // Note: we have to do this in the end since we had to collect all entities and join tables
@@ -212,8 +226,14 @@ class HasuraConfigurator(
                 bulk.append(tabelIsEnumJSON)
             }
         }
-        bulk.append(",\n")
-        bulk.append(customColumNamesRelationships)
+        if (customColumNamesRelationships.length != 0) {
+            bulk.append(",\n")
+            bulk.append(customColumNamesRelationships)
+        }
+        if (permissions.length != 0) {
+            bulk.append(",\n")
+            bulk.append(permissions)
+        }
         val triggers = generateCascadeDeleteTriggers()
         if (triggers.length != 0) {
             bulk.append(",\n")
@@ -221,12 +241,7 @@ class HasuraConfigurator(
         }
         bulk.append("\n\t]\n")
         bulk.append("}\n")
-        confJson = bulk.toString()
-        // Reformat json
-        val objectMapper = ObjectMapper();
-        objectMapper.configure(SerializationFeature.INDENT_OUTPUT, true);
-        val tree = objectMapper.readTree(confJson);
-        confJson = objectMapper.writeValueAsString(tree);
+        confJson = bulk.toString().reformatJson()
 
         if (confFile != null) {
             PrintWriter(confFile).use { out -> out.println(confJson) }
@@ -288,6 +303,20 @@ class HasuraConfigurator(
             )
         }
         return sb.toString()
+    }
+
+    private fun generatePermissions(entity: EntityType<*>): String
+    {
+        val permissions = permissionAnnotationProcessor.process(entity)
+
+        val permissionJSONBuilder = StringBuilder()
+        permissions.forEachIndexed { index, permissionData ->
+            if (index > 0) {
+                permissionJSONBuilder.append(",");
+            }
+            permissionJSONBuilder.append(permissionData.toHasuraJson(schemaName))
+        }
+        return permissionJSONBuilder.toString();
     }
 
     /**
@@ -527,9 +556,4 @@ class HasuraConfigurator(
 //        );
     }
 
-    companion object {
-//        @Suppress("JAVA_CLASS_ON_COMPANION")
-//        @JvmStatic
-        private val LOG = getLogger(javaClass.enclosingClass)
-    }
 }

@@ -25,16 +25,18 @@ Configurations this tool handles:
 
 * Mapping Java enums to Hasura enums using the `@HasuraEnum` annotations. For this to work the Java enum must be defined as a `@Entity` and it must follow the [Hasura enum table format](https://docs.hasura.io/1.0/graphql/manual/schema/enums.html#creating-an-enum-compatible-table ) 
 
+* Generation of select/insert/update/delete permission rules using `@HasuraPermissions` and `@HasuraPermission` annotations. With `@HasuraPermission` the same JSON can be provided, which can also be constructed in the "With custom checks" permission settings. `HasuraConfigurator` uses a relaxed JSON syntax (JSON5) in the annotations, and also support includion of permission JSON from files (classpath) as well inclusion in one file from another thus providing flexibility in composing permission rules.
+
 * Generation of cascading delete triggers via `@HasuraGenerateCascadeDeleteTrigger` in cases where `@OnDelete(action=OnDeleteAction.CASCADE)` cannot be used because the parent is referencing the child and not the child the parent
 
+
+
 TODO:
-* More documentation on use of `HasuraConfigurator`.
+* More documentation on use of `HasuraConfigurator` especially `@HasuraPermission`.
 
 * Make root field customization customizable via annotation
 
 * Annotation for generating trigger that sets default value for fields if a value is not already set. `@HasuraDefaultValueTrigger(value="defaultValue")`
-
-* Annotation for generating permissions in hasura-conf.json
 
 * Annotation for generating "Check Constraints" in hasura-conf.json (Later: a way to generate directives based on the constrains into the graphql schema? This way the clients of Hasura could not what validations to perform on data before sending to Hasura)
 
@@ -51,7 +53,7 @@ The easiest way to use it in a Maven project is via jitpack
 <dependency>
     <groupId>com.github.beepshow</groupId>
     <artifactId>hasuraconf</artifactId>
-    <version>0.0.2</version>
+    <version>0.0.3</version>
 </dependency>
 ```
 

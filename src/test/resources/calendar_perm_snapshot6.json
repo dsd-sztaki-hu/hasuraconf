@@ -1,0 +1,30 @@
+{
+  "type" : "create_delete_permission",
+  "args" : {
+    "table" : {
+      "name" : "calendar",
+      "schema" : "public"
+    },
+    "role" : "USER",
+    "permission" : {
+      "set" : { },
+      "columns" : [ "created_at", "updated_at", "availability_value", "id", "description", "locale_country", "next_version_id", "published", "id", "theme_id", "theme_config", "title", "version" ],
+      "allow_aggregations" : true,
+      "filter" : {
+        "_and" : [ {
+          "roles" : {
+            "user_id" : {
+              "_eq" : "X-Hasura-User-Id"
+            }
+          }
+        }, {
+          "roles" : {
+            "role_value" : {
+              "_in" : [ "OWNER", "EDITOR" ]
+            }
+          }
+        } ]
+      }
+    }
+  }
+}

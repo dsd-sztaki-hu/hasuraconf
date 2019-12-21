@@ -1,0 +1,21 @@
+{
+  "_and": [
+    {
+      "roles": {
+        "user_id": {
+          "_eq": "X-Hasura-User-Id"
+        }
+      }
+    },
+    {
+      "roles": {
+        "role_value": {
+          "_in": [
+            "OWNER",
+            "EDITOR"
+          ]
+        }
+      }
+    }
+  ]
+}

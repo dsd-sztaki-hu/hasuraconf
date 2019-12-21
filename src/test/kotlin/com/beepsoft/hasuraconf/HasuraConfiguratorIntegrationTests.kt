@@ -1,7 +1,6 @@
 package com.beepsoft.hasuraconf
 
 import org.apache.commons.lang3.SystemUtils
-import org.junit.Assert
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -26,7 +25,7 @@ import org.testcontainers.junit.jupiter.Testcontainers
 		properties = [
 			"spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQL94Dialect",
 			"spring.datasource.initialization-mode=always",
-			"spring.datasource.data=classpath:/sql/postgresql/data_import_enum_values.sql",
+			"spring.datasource.data=classpath:/sql/postgresql/data_import_values.sql",
 			"spring.jpa.hibernate.ddl-auto=update"
 		//	"logging.level.org.hibernate=DEBUG"
 		],
@@ -127,7 +126,7 @@ class HasuraConfiguratorIntegrationTests {
 		conf.loadConf = false
 		conf.configure();
 		println(conf.confJson);
-		val snapshot = readFileUsingGetResource("/snapshot1.json");
+		val snapshot = readFileUsingGetResource("/hasura_config_snapshot1.json");
 		JSONAssert.assertEquals(conf.confJson,snapshot, false);
 	}
 
@@ -139,7 +138,4 @@ class HasuraConfiguratorIntegrationTests {
 		conf.hasuraAdminSecret = "hasuraconf"
 		conf.configure();
 	}
-
-	fun readFileUsingGetResource(fileName: String)
-			= this::class.java.getResource(fileName).readText(Charsets.UTF_8)
 }

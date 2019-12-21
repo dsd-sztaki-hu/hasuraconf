@@ -1,0 +1,16 @@
+{
+  "type" : "create_insert_permission",
+  "args" : {
+    "table" : {
+      "name" : "calendar",
+      "schema" : "public"
+    },
+    "role" : "USER",
+    "permission" : {
+      "set" : { },
+      "columns" : "*",
+      "allow_aggregations" : true,
+      "check" : { }
+    }
+  }
+}

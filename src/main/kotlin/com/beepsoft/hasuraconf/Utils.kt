@@ -4,6 +4,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.lang.reflect.Field
 import java.util.*
+import kotlin.reflect.KCallable
 
 fun getLogger(forClass: Class<*>): Logger =
         LoggerFactory.getLogger(forClass)
