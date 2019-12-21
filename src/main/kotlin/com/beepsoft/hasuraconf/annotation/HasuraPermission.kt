@@ -12,26 +12,57 @@ import java.lang.annotation.RetentionPolicy
  * use {@code excludeFields} together with an empty {@code field}. In this case the fields listed in
  * {@code excludeFields} will not be accessible by this permission.
  * <p></p>
- * In some cases it would be tedious to repeat the same {@code @HasuraPermission} definition on many entities. Instead one
- * can define a new annotation and annotate it with {@code @HasuraPermission}. The following defines a
- * {@code @UserPermission} annotation, which can be used on all classes where we want to allow insert permission for
- * User role.
+ * In some cases the permission definitions maybe too long or could be reused on more than one entity.
+ * In this case a new annotation can be created and {@code @HasuraPermissions/@HasuraPermission} can be applied to it
+ * as a meta annotation. For example the following {@code @CalendarBasedPermissions} can be used on any entity
+ * which has a reference to 'calendar' and permissions are defined in relation to the calendar
  * <pre>
- *  @Retention(RetentionPolicy.RUNTIME)
- *   @Target(AnnotationTarget.ANNOTATION_CLASS, AnnotationTarget.CLASS)
- *   @HasuraPermission
- *   annotation class UserInsertPermission (
- *       val operation: HasuraPermissionOperation = HasuraPermissionOperation.INSERT,
- *       val json: String = "{\"roles\": {\"userId\": {\"_eq\": \"X-Hasura-User-Id\"}}}",
- *       val fields: Array<String> = [],
- *       val fields: Array<String> = [],
- *       val excludeFields: Array<String> = ["desscription", "alternativeName"]
- *   )
+ *     @HasuraPermissions(
+ *          [
+ *              HasuraPermission(
+ *                  operation = HasuraOperation.INSERT,
+ *                  role="user"),
+ *              HasuraPermission(
+ *                  operation = HasuraOperation.SELECT,
+ *                  role="user",
+ *                  json="{calendar: '@include(/permissions/read_permission_fragment.json)'}"),
+ *              HasuraPermission(
+ *                  operation = HasuraOperation.UPDATE,
+ *                  role="user",
+ *                  json="{calendar: '@include(/permissions/update_permission_fragment.json)'}"),
+ *              HasuraPermission(
+ *                  operation = HasuraOperation.DELETE,
+ *                  role="user",
+ *                  json="{calendar: '@include(/permissions/delete_permission_fragment.json)'}")
+ *          ]
+ *     )
+ *     annotation class CalendarBasedPermissions
+ * </pre>
+ *
+ * This could be used on entities like this:
+ *
+ * <pre>
+ * @Entity
+ * @CalendarBasedPermissions
+ * class Event {
+ *       /** The Calendar it belongs to.  */
+ *      @ManyToOne(optional = false)
+ *      var calendar: Calendar? = null
+ *      ...
+ * }
+ *
+ * @Entity
+ * @CalendarBasedPermissions
+ * class Day {
+ *       /** The Calendar it belongs to.  */
+ *      @ManyToOne(optional = false)
+ *      var calendar: Calendar? = null
+ *      ...
+ * }
  * </pre>
  *
  */
 @Repeatable
-@Retention(RetentionPolicy.RUNTIME)
 @Target(AnnotationTarget.ANNOTATION_CLASS, AnnotationTarget.CLASS)
 annotation class HasuraPermission (
         val operation: HasuraOperation = HasuraOperation.SELECT,
@@ -42,6 +73,7 @@ annotation class HasuraPermission (
         val excludeFields: Array<String> = []
 )
 
+@Target(AnnotationTarget.ANNOTATION_CLASS, AnnotationTarget.CLASS)
 annotation class HasuraPermissions (
         val value: Array<HasuraPermission>
 )

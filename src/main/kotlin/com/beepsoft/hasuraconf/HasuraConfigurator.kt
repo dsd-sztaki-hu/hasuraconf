@@ -106,6 +106,7 @@ import javax.persistence.metamodel.EntityType
 </pre> *
  */
 class HasuraConfigurator(
+        var entityManagerFactory: EntityManagerFactory,
         var confFile: String?,
         var schemaName: String,
         var loadConf: Boolean,
@@ -116,30 +117,35 @@ class HasuraConfigurator(
     companion object {
         // @Suppress("JAVA_CLASS_ON_COMPANION")
         // @JvmStatic
-        private val LOG = getLogger(javaClass.enclosingClass)
+        private val LOG = getLogger(this::class.java.enclosingClass)
     }
 
     inner class CascadeDeleteFields(var table: String, var field: String, var joinedTable: String)
 
-    private lateinit var entityManagerFactory: EntityManagerFactory
-    final var confJson: String? = null
+    var confJson: String? = null
         private set // the setter is private and has the default implementation
 
-    private lateinit var sessionFactoryImpl: SessionFactory
-    private lateinit var metaModel: MetamodelImplementor
+    private var sessionFactoryImpl: SessionFactory
+    private var metaModel: MetamodelImplementor
+    private var permissionAnnotationProcessor: PermissionAnnotationProcessor
+
     private lateinit var tableNames: MutableSet<String>
     private lateinit var enumTables: MutableSet<String>
     private lateinit var cascadeDeleteFields: MutableSet<CascadeDeleteFields>
 
-    private lateinit var permissionAnnotationProcessor: PermissionAnnotationProcessor
 
-    @Autowired
-    fun setEntityManagerFactory(entityManagerFactory: EntityManagerFactory) {
-        this.entityManagerFactory = entityManagerFactory
+    init {
         sessionFactoryImpl = entityManagerFactory.unwrap(SessionFactory::class.java) as SessionFactoryImpl
         metaModel = sessionFactoryImpl.metamodel as MetamodelImplementor
         permissionAnnotationProcessor = PermissionAnnotationProcessor(entityManagerFactory)
     }
+//    @Autowired
+//    fun setEntityManagerFactory(entityManagerFactory: EntityManagerFactory) {
+//        this.entityManagerFactory = entityManagerFactory
+//        sessionFactoryImpl = entityManagerFactory.unwrap(SessionFactory::class.java) as SessionFactoryImpl
+//        metaModel = sessionFactoryImpl.metamodel as MetamodelImplementor
+//        permissionAnnotationProcessor = PermissionAnnotationProcessor(entityManagerFactory)
+//    }
 
     /**
      * Creates hasura-conf.json containing table tracking and field/relationship name customizations
@@ -147,7 +153,7 @@ class HasuraConfigurator(
      */
     @Throws(HasuraConfiguratorException::class)
     fun configure() {
-        confJson = null;
+        confJson = null
         tableNames = mutableSetOf<String>()
         enumTables = mutableSetOf<String>()
         cascadeDeleteFields = mutableSetOf<CascadeDeleteFields>()
@@ -174,11 +180,11 @@ class HasuraConfigurator(
                 enumTables.add(tableName)
             }
             collectCascadeDeleteCandidates(entity)
-            var perms = generatePermissions(entity);
+            val perms = generatePermissions(entity)
             if (perms.length != 0 && permissions.length != 0) {
-                permissions.append(",");
+                permissions.append(",")
             }
-            permissions.append(perms);
+            permissions.append(perms)
         }
         // Add tracking for all tables collected, and make these the first calls in the bulk JSON
         // Note: we have to do this in the end since we had to collect all entities and join tables
@@ -244,7 +250,7 @@ class HasuraConfigurator(
         confJson = bulk.toString().reformatJson()
 
         if (confFile != null) {
-            PrintWriter(confFile).use { out -> out.println(confJson) }
+            PrintWriter(confFile!!).use { out -> out.println(confJson) }
             if (loadConf) {
                 loadConfScriptIntoHasura()
             }
@@ -312,11 +318,11 @@ class HasuraConfigurator(
         val permissionJSONBuilder = StringBuilder()
         permissions.forEachIndexed { index, permissionData ->
             if (index > 0) {
-                permissionJSONBuilder.append(",");
+                permissionJSONBuilder.append(",")
             }
             permissionJSONBuilder.append(permissionData.toHasuraJson(schemaName))
         }
-        return permissionJSONBuilder.toString();
+        return permissionJSONBuilder.toString()
     }
 
     /**

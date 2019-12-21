@@ -23,10 +23,10 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
     companion object {
         // @Suppress("JAVA_CLASS_ON_COMPANION")
         // @JvmStatic
-        private val LOG = getLogger(javaClass.enclosingClass)
+        private val LOG = getLogger(this::class.java.enclosingClass)
     }
 
-    private lateinit var metaModel: MetamodelImplementor
+    private var metaModel: MetamodelImplementor
 
     init {
         val sessionFactoryImpl = entityManagerFactory.unwrap(SessionFactory::class.java) as SessionFactoryImpl
@@ -66,14 +66,13 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
     {
         // If no include/exlude given, then we will allow all fields
         if (fields.size == 0 && excludeFields.size == 0) {
-            return mutableListOf<String>();
+            return mutableListOf<String>()
         }
 
-        val entityClass = entity.javaType
         val classMetadata = metaModel.entityPersister(entity.javaType.typeName) as AbstractEntityPersister
         val propertyNames = classMetadata.propertyNames
 
-        var finalFields = mutableSetOf<String>()
+        val finalFields = mutableSetOf<String>()
         finalFields.addAll(fields)
         if (finalFields.size == 0) {
             finalFields.addAll(propertyNames)
@@ -81,9 +80,9 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
 
         finalFields.removeAll(excludeFields)
 
-        var columns = mutableListOf<String>()
+        val columns = mutableListOf<String>()
         for (propertyName in finalFields) {
-            var columnName = classMetadata.getPropertyColumnNames(propertyName)[0]
+            val columnName = classMetadata.getPropertyColumnNames(propertyName)[0]
             columns.add(columnName)
 //            println("${propertyName} --> ${columnName}")
 //            val f = Utils.findDeclaredFieldUsingReflection(entityClass, propertyName)
@@ -93,10 +92,10 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
 //                cascadeDeleteFields.add(cdf)
 //            }
         }
-        return columns;
+        return columns
     }
 
-    private val atIncludeRegex = "\"\\s*@include\\((.*?)\\)\\s*\"".toRegex()
+    private val atIncludeRegex = "[\"']\\s*@include\\((.*?)\\)\\s*[\"']".toRegex()
 
 
     private fun resolveIncludes(json: String, entity: EntityType<*>): String
@@ -104,30 +103,30 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
         // Does actual @include resolving recursively processing @includes in included files
         fun doResolveIncludes(json: String, jsonFile: String?, entity: EntityType<*>?): String
         {
-            var resolvedJson = json+""; // make a copy
+            var resolvedJson = json+"" // make a copy
 
             atIncludeRegex.findAll(json).forEach {
-                var inc = it.groupValues[0];
-                var file = it.groupValues[1];
+                val inc = it.groupValues[0]
+                val file = it.groupValues[1]
                 try {
                     var includedJson = HasuraConfigurator::class.java.getResource(file).readText()
                     // Recursively process includes in the included json
-                    includedJson = doResolveIncludes(includedJson, file, null);
+                    includedJson = doResolveIncludes(includedJson, file, null)
                     resolvedJson = resolvedJson.replace(inc, includedJson)
                 }
                 catch (ex: Throwable) {
                     if (entity != null) {
-                        throw HasuraConfiguratorException("Unable to load include ${inc} for entity ${entity}", ex);
+                        throw HasuraConfiguratorException("Unable to load include ${inc} for entity ${entity}", ex)
                     }
                     else {
-                        throw HasuraConfiguratorException("Unable to load include ${inc} in file ${jsonFile!!}", ex);
+                        throw HasuraConfiguratorException("Unable to load include ${inc} in file ${jsonFile!!}", ex)
                     }
                 }
             }
-            return resolvedJson;
+            return resolvedJson
         }
 
-        return doResolveIncludes(json, null, entity);
+        return doResolveIncludes(json, null, entity)
     }
 
     /**
@@ -136,40 +135,40 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
      * other files via {@code @include(/path/to/file)} this way the permission JSON can be defined modularly where
      * JSON fragments can be reused.
      */
-    private fun calcJson(json: String, jsonFile: String, entity: EntityType<*>): String
+    private fun calcJson(jsonString: String, jsonFile: String, entity: EntityType<*>): String
     {
-        var json = json.trim();
+        var json = jsonString.trim()
         if (json.length == 0 && jsonFile.length != 0) {
             try {
                 json = HasuraConfigurator::class.java.getResource(jsonFile).readText()
             }
             catch(ex: Throwable) {
-                throw HasuraConfiguratorException("Unable to load from jsonFile ${jsonFile} for entity ${entity}", ex);
+                throw HasuraConfiguratorException("Unable to load from jsonFile ${jsonFile} for entity ${entity}", ex)
             }
         }
 
         if (json.trim().length == 0) {
             LOG.warn("Neither json nor jsonFile defined for hasura permission annotation on ${entity.javaType}")
-            return json;
+            return json
             //throw HasuraConfiguratorException("Neither json nor jsonFile defined for hasura permission annotation on ${entity}");
         }
         try {
-            json = resolveIncludes(json, entity);
+            json = resolveIncludes(json, entity)
             val configObject = Jankson
                     .builder()
                     .build()
-                    .load(json);
+                    .load(json)
 
             //This will strip comments and regularize the file, but emit newlines and indents for readability
-            val processed = configObject.toJson(false, true);
-            return processed;
+            val processed = configObject.toJson(false, true)
+            return processed
         } catch (error: SyntaxError) {
-            throw HasuraConfiguratorException("Syntax error in hasura permission annotation on ${entity}: ${error.completeMessage}")
+            throw HasuraConfiguratorException("Syntax error in hasura permission annotation on ${entity.javaType}: ${error.completeMessage}")
         }
     }
 
     fun process(entity: EntityType<*>): List<PermissionData> {
-        val permissions = mutableListOf<PermissionData>();
+        val permissions = mutableListOf<PermissionData>()
         val classMetadata = metaModel.entityPersister(entity.javaType.typeName) as AbstractEntityPersister
         val tableName = classMetadata.tableName
 
@@ -212,7 +211,7 @@ data class PermissionData (
     val columns: List<String>
 ) {
     fun toHasuraJson(schema: String = "public"): String {
-        var filterOrCheckJson = "";
+        val filterOrCheckJson: String
 
         if (operation == HasuraOperation.INSERT) {
             if (json.length != 0) {
@@ -228,7 +227,6 @@ data class PermissionData (
                 filterOrCheckJson = "\"filter\": {}"
             }
         }
-
 
         return """
             {

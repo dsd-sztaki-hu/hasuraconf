@@ -51,6 +51,5 @@ import java.lang.annotation.RetentionPolicy
  * FOR EACH ROW EXECUTE PROCEDURE task_text_cascade_delete();;
 </pre> *
  */
-@Retention(RetentionPolicy.RUNTIME)
 @Target(AnnotationTarget.FIELD)
 annotation class HasuraGenerateCascadeDeleteTrigger

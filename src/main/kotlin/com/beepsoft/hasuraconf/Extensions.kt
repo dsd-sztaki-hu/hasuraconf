@@ -11,7 +11,7 @@ fun Annotation.getProp(name: String): KCallable<*>? {
         return this.annotationClass.members.first { it.name == name }
     }
     catch (ex: NoSuchElementException) {
-        return null;
+        return null
     }
 }
 
@@ -24,23 +24,18 @@ fun Annotation.getProp(name: String): KCallable<*>? {
 //    }
 //}
 
+@Suppress("UNCHECKED_CAST")
 fun <T> Annotation.valueOf(name: String): T {
     return this.annotationClass.members.first { it.name == name }.call(this) as T
 }
 
-fun Annotation.stringValueOf(name: String): String =
-    this.annotationClass.members.first { it.name == name }.call(this) as String
-
-fun Annotation.stringArrayValueOf(name: String): Array<String> =
-        this.annotationClass.members.first { it.name == name }.call(this) as Array<String>
-
-private val objectMapper = ObjectMapper();
+private val objectMapper = ObjectMapper()
 
 fun String.reformatJson(): String {
     // Reformat json
-    objectMapper.configure(SerializationFeature.INDENT_OUTPUT, true);
-    val tree = objectMapper.readTree(this);
-    return objectMapper.writeValueAsString(tree);
+    objectMapper.configure(SerializationFeature.INDENT_OUTPUT, true)
+    val tree = objectMapper.readTree(this)
+    return objectMapper.writeValueAsString(tree)
 }
 
 fun List<String>.toJson() : String =

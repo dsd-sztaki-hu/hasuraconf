@@ -1,6 +1,9 @@
 package com.beepsoft.hasuraconf.model
 
 
+import com.beepsoft.hasuraconf.annotation.HasuraOperation
+import com.beepsoft.hasuraconf.annotation.HasuraPermission
+import com.beepsoft.hasuraconf.annotation.HasuraPermissions
 import javax.persistence.*
 
 /**
@@ -12,6 +15,7 @@ import javax.persistence.*
         Index(columnList = "updatedAt"),
         Index(columnList = "id"))
 )
+@CalendarBasedPermissions
 class Event : BaseObject() {
 
     /** The Calendar it belongs to.  */
