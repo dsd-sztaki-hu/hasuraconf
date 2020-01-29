@@ -7,11 +7,12 @@ import org.atteo.evo.inflector.English
 import org.hibernate.SessionFactory
 import org.hibernate.internal.SessionFactoryImpl
 import org.hibernate.metamodel.spi.MetamodelImplementor
+import org.hibernate.persister.collection.BasicCollectionPersister
 import org.hibernate.persister.entity.AbstractEntityPersister
 import org.hibernate.type.AssociationType
 import org.hibernate.type.CollectionType
 import org.hibernate.type.ForeignKeyDirection
-import org.springframework.beans.factory.annotation.Autowired
+import org.hibernate.type.ManyToOneType
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.WebClientResponseException
@@ -437,6 +438,34 @@ class HasuraConfigurator(
                             }                            
                         """
                 customRelationshipNameJSONBuilder.append(arrayRel)
+
+                // BasicCollectionPersister - despite the name - is for many-to-many associations
+                if (join is BasicCollectionPersister) {
+                    if (join.isManyToMany) {
+                        // arrayRel only allows accessing the join table ID fields. Now add navigation to the
+                        // related entity
+                        val relatedColumnName = join.elementColumnNames[0]
+                        val relatedTableName = (join.elementType as ManyToOneType).getAssociatedJoinable(sessionFactoryImpl as SessionFactoryImpl?).tableName;
+                        val related =
+                                """
+                                ,
+                                {
+                                    "type": "create_object_relationship",
+                                    "args": {
+                                        "name": "${relatedTableName}",
+                                        "table": {
+                                            "name": "${join.tableName}",
+                                            "schema": "${schemaName}"
+                                        },
+                                        "using": {
+                                            "foreign_key_constraint_on": "${relatedColumnName}"
+                                        }
+                                    }
+                                }                            
+                                """
+                        customRelationshipNameJSONBuilder.append(related)
+                    }
+                }
             } else {
                 val assocType = propType as AssociationType
                 val fkDir = assocType.foreignKeyDirection

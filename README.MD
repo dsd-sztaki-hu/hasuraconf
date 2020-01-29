@@ -45,16 +45,22 @@ TODO:
 The easiest way to use it in a Maven project is via jitpack
 
 ```
-<repository>
-    <id>jitpack.io</id>
-    <url>https://jitpack.io</url>
-</repository>
+<repositories>
+    ...
+    <repository>
+        <id>jitpack.io</id>
+        <url>https://jitpack.io</url>
+    </repository>
+</repositories>
 ...
-<dependency>
-    <groupId>com.github.beepshow</groupId>
-    <artifactId>hasuraconf</artifactId>
-    <version>0.0.3</version>
-</dependency>
+
+<dependencies>
+    <dependency>
+        <groupId>com.github.beepsoft</groupId>
+        <artifactId>hasuraconf</artifactId>
+        <version>0.0.4</version>
+    </dependency>
+</dependencies>
 ```
 
 Then you should use `HasuraConfigurator` like this:

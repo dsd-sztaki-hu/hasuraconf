@@ -1,6 +1,8 @@
 package com.beepsoft.hasuraconf.model
 
 
+import org.hibernate.annotations.OnDelete
+import org.hibernate.annotations.OnDeleteAction
 import java.io.Serializable
 import javax.persistence.*
 
@@ -27,5 +29,12 @@ class CalendarUser : BaseObject(), Serializable {
     @Column(unique = true)
     var username: String? = null
     var password: String? = null
+
+    @ManyToMany
+    var friends: List<CalendarUser>? = null
+
+    @ManyToMany
+    @JoinTable(name="user_calendars", joinColumns=arrayOf(JoinColumn(name="the_user_id")), inverseJoinColumns=arrayOf(JoinColumn(name="the_calendar_id")))
+    var calendars: List<Calendar>? = null
 
 }
