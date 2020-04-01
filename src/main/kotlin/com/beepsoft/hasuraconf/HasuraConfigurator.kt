@@ -355,8 +355,11 @@ class HasuraConfigurator(
                                 "select_by_pk": "${entityNameLower}",
                                 "select_aggregate": "${entityNameLower}Aggregate",
                                 "insert": "create${English.plural(entityName)}",
+                                "insert_one": "create${entityName}",
                                 "update": "update${English.plural(entityName)}",
-                                "delete": "delete${English.plural(entityName)}"
+                                "update_by_pk": "update${entityName}", 
+                                "delete": "delete${English.plural(entityName)}",
+                                "delete_by_pk": "delete${entityName}"
                             },
                             "custom_column_names": {                 
                 """
@@ -365,7 +368,7 @@ class HasuraConfigurator(
         val propNames = classMetadata.propertyNames
         var propAdded = false
         for (propName in propNames) {
-            val added = addCustomFieldNameOrRef(propAdded, classMetadata, tableName, propName, customFieldNameJSONBuilder, customRelationshipNameJSONBuilder)
+            val added = addCustomFieldNameOrRef(entity, propAdded, classMetadata, tableName, propName, customFieldNameJSONBuilder, customRelationshipNameJSONBuilder)
             if (propAdded != true && added == true) {
                 propAdded = true
             }
@@ -395,12 +398,20 @@ class HasuraConfigurator(
      * (custom field name is not added, or relationship has been added)
      */
     private fun addCustomFieldNameOrRef(
+            entity: EntityType<*>,
             propAdded: Boolean,
             classMetadata: AbstractEntityPersister,
             tableName: String,
             propName: String,
             customFieldNameJSONBuilder: StringBuilder,
-            customRelationshipNameJSONBuilder: StringBuilder): Boolean {
+            customRelationshipNameJSONBuilder: StringBuilder): Boolean
+    {
+        // Handle @HasuraIgnoreRelationship annotation on field
+        val f = Utils.findDeclaredFieldUsingReflection(entity.javaType, propName)
+        if (f!!.isAnnotationPresent(HasuraIgnoreRelationship::class.java)) {
+            return false;
+        }
+
         val columnName = classMetadata.getPropertyColumnNames(propName)[0]
         val propType = classMetadata.getPropertyType(propName)
         //

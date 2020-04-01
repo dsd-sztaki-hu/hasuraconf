@@ -85,6 +85,11 @@ class Calendar : BaseObject() {
     /** Theme specific JSON config.  */
     var themeConfig: String? = null
 
+    @ManyToMany
+    @JoinTable(name="user_calendars", joinColumns=arrayOf(JoinColumn(name="the_calendar_id")), inverseJoinColumns=arrayOf(JoinColumn(name="the_user_id")))
+    @OnDelete(action=OnDeleteAction.CASCADE)
+    @HasuraIgnoreRelationship
+    var users: List<CalendarUser>? = null
 
     @Entity
     @Table(name = "calendar_availability")

@@ -14,10 +14,13 @@ Configurations this tool handles:
 * Tracking of relationships that match the relationships defined in JPA.
 
 * Custom GraphQL root field generation. For an entity named `SomeEntity` the root queries/mutations will be renamed from → to:
-    * delete → deleteSomeEntity
     * insert → createSomeEntites
-    * select → someEntites
+    * insert_one → createSomeEntity
     * update → updateSomeEntites
+    * update_by_pk → updateSomeEntity
+    * delete → deleteSomeEntities
+    * delete_by_pk → deleteSomeEntity
+    * select → someEntites
     * select_by_pk → someEntity
     * select_aggregate → someEntityAggregate
 
@@ -29,6 +32,7 @@ Configurations this tool handles:
 
 * Generation of cascading delete triggers via `@HasuraGenerateCascadeDeleteTrigger` in cases where `@OnDelete(action=OnDeleteAction.CASCADE)` cannot be used because the parent is referencing the child and not the child the parent
 
+* For JPA annotated relationships that you do not want to appear in the graphql add `@HasuraIgnoreRelationship`. (By default all relationships present in the model will automatically will be tracked and be present in the graphql model)
 
 
 TODO:
@@ -58,7 +62,7 @@ The easiest way to use it in a Maven project is via jitpack
     <dependency>
         <groupId>com.github.beepsoft</groupId>
         <artifactId>hasuraconf</artifactId>
-        <version>0.0.4</version>
+        <version>0.0.5</version>
     </dependency>
 </dependencies>
 ```

@@ -82,6 +82,11 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
 
         val columns = mutableListOf<String>()
         for (propertyName in finalFields) {
+            // Handle @HasuraIgnoreRelationship annotation on field
+            val f = Utils.findDeclaredFieldUsingReflection(entity.javaType, propertyName)
+            if (f!!.isAnnotationPresent(HasuraIgnoreRelationship::class.java)) {
+                continue;
+            }
             val columnName = classMetadata.getPropertyColumnNames(propertyName)[0]
             columns.add(columnName)
 //            println("${propertyName} --> ${columnName}")
