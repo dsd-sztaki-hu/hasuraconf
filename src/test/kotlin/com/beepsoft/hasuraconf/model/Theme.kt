@@ -19,7 +19,7 @@ class Theme : BaseObject() {
     var cssClassName: String? = null
     var minDayCount: Int? = null
     var maxDayCount: Int? = null
-    @OneToMany
+    @OneToMany(mappedBy = "theme")
     var themeLayouts: List<Layout>? = null
 
 }

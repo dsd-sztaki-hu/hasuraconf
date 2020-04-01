@@ -2,6 +2,9 @@ package com.beepsoft.hasuraconf
 
 import com.beepsoft.hasuraconf.annotation.*
 import com.google.common.net.HttpHeaders
+import net.pearx.kasechange.CaseFormat
+import net.pearx.kasechange.toCamelCase
+import net.pearx.kasechange.toCase
 import org.apache.commons.text.CaseUtils
 import org.atteo.evo.inflector.English
 import org.hibernate.SessionFactory
@@ -9,6 +12,7 @@ import org.hibernate.internal.SessionFactoryImpl
 import org.hibernate.metamodel.spi.MetamodelImplementor
 import org.hibernate.persister.collection.BasicCollectionPersister
 import org.hibernate.persister.entity.AbstractEntityPersister
+import org.hibernate.persister.entity.Joinable
 import org.hibernate.type.AssociationType
 import org.hibernate.type.CollectionType
 import org.hibernate.type.ForeignKeyDirection
@@ -131,6 +135,7 @@ class HasuraConfigurator(
     private var permissionAnnotationProcessor: PermissionAnnotationProcessor
 
     private lateinit var tableNames: MutableSet<String>
+    private lateinit var manyToManyTableNames: MutableSet<String>
     private lateinit var enumTables: MutableSet<String>
     private lateinit var cascadeDeleteFields: MutableSet<CascadeDeleteFields>
 
@@ -156,6 +161,7 @@ class HasuraConfigurator(
     fun configure() {
         confJson = null
         tableNames = mutableSetOf<String>()
+        manyToManyTableNames = mutableSetOf<String>()
         enumTables = mutableSetOf<String>()
         cascadeDeleteFields = mutableSetOf<CascadeDeleteFields>()
 
@@ -463,7 +469,7 @@ class HasuraConfigurator(
                                 {
                                     "type": "create_object_relationship",
                                     "args": {
-                                        "name": "${relatedTableName}",
+                                        "name": "${relatedTableName.toCamelCase()}",
                                         "table": {
                                             "name": "${join.tableName}",
                                             "schema": "${schemaName}"
@@ -472,9 +478,18 @@ class HasuraConfigurator(
                                             "foreign_key_constraint_on": "${relatedColumnName}"
                                         }
                                     }
-                                }                            
+                                }
                                 """
                         customRelationshipNameJSONBuilder.append(related)
+                        var res = handleManyToManyJoinTable(join);
+                        if (res != null) {
+                            customRelationshipNameJSONBuilder.append(
+                                    """
+                                       ,
+                                        ${res}
+                                    """
+                            )
+                        }
                     }
                 }
             } else {
@@ -568,6 +583,75 @@ class HasuraConfigurator(
             return true
         }
         return false
+    }
+
+    /**
+     * Many-to-many relationships are represented with a joint table, however this table has no Java
+     * representation therefore no hasura configuration coul dbe generated for them the usual reflection
+     * driven way. Instead we need to generate these based on the
+     */
+    private fun handleManyToManyJoinTable(join: BasicCollectionPersister): String?
+    {
+        val keyColumn = join.keyColumnNames[0]
+        val relatedColumnName = join.elementColumnNames[0]
+
+        val tableName = join.tableName
+        // Make sure only generate one
+        if (manyToManyTableNames.contains(tableName)) {
+            return null;
+        }
+        manyToManyTableNames.add(tableName)
+        var entityName = tableName.toCase(CaseFormat.CAPITALIZED_CAMEL);
+        val customFieldNameJSONBuilder = StringBuilder()
+        tableNames.add(tableName)
+        // Remove inner $ from the name of inner classes
+        entityName = entityName.replace("\\$".toRegex(), "")
+        // Copy
+        var entityNameLower = entityName.toString()
+        entityNameLower = Character.toLowerCase(entityNameLower[0]).toString() + entityNameLower.substring(1)
+        customFieldNameJSONBuilder.append(
+                """
+                    {
+                        "type": "set_table_custom_fields",
+                        "version": 2,
+                        "args": {
+                            "table": "${tableName}",
+                            "schema": "${schemaName}",
+                            "custom_root_fields": {
+                                "select": "${English.plural(entityNameLower)}",
+                                "select_by_pk": "${entityNameLower}",
+                                "select_aggregate": "${entityNameLower}Aggregate",
+                                "insert": "create${English.plural(entityName)}",
+                                "insert_one": "create${entityName}",
+                                "update": "update${English.plural(entityName)}",
+                                "update_by_pk": "update${entityName}",
+                                "delete": "delete${English.plural(entityName)}",
+                                "delete_by_pk": "delete${entityName}"
+                            },
+                            "custom_column_names": {
+                                 "${keyColumn}": "${keyColumn.toCamelCase()}",
+                                 "${relatedColumnName}": "${relatedColumnName.toCamelCase()}"
+                """
+        )
+        // Add index columns names, ie. @OrderColumns
+        join.indexColumnNames?.forEach { customFieldNameJSONBuilder.append(
+                """
+                   ,"${it}": "${it.toCamelCase()}" 
+                """
+        ) }
+
+        // Add ending curly brackets
+        customFieldNameJSONBuilder.append(
+                """
+                            }
+                         }
+                    }                    
+                """
+        )
+
+
+//        println(customFieldNameJSONBuilder)
+        return customFieldNameJSONBuilder.toString()
     }
 
     /**

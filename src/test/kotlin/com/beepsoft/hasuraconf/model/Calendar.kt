@@ -86,7 +86,7 @@ class Calendar : BaseObject() {
     var themeConfig: String? = null
 
     @ManyToMany
-    @JoinTable(name="user_calendars", joinColumns=arrayOf(JoinColumn(name="the_calendar_id")), inverseJoinColumns=arrayOf(JoinColumn(name="the_user_id")))
+    @JoinTable(name="user_calendar", joinColumns=arrayOf(JoinColumn(name="the_calendar_id")), inverseJoinColumns=arrayOf(JoinColumn(name="the_user_id")))
     @OnDelete(action=OnDeleteAction.CASCADE)
     @HasuraIgnoreRelationship
     var users: List<CalendarUser>? = null

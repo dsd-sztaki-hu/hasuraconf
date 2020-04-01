@@ -34,7 +34,10 @@ class CalendarUser : BaseObject(), Serializable {
     var friends: List<CalendarUser>? = null
 
     @ManyToMany
-    @JoinTable(name="user_calendars", joinColumns=arrayOf(JoinColumn(name="the_user_id")), inverseJoinColumns=arrayOf(JoinColumn(name="the_calendar_id")))
+    @OrderColumn(name="calendar_order", nullable = false)
+    @JoinTable(name="user_calendar",
+            joinColumns=arrayOf(JoinColumn(name="the_user_id")),
+            inverseJoinColumns=arrayOf(JoinColumn(name="the_calendar_id")))
     @OnDelete(action=OnDeleteAction.CASCADE)
     var calendars: List<Calendar>? = null
 
