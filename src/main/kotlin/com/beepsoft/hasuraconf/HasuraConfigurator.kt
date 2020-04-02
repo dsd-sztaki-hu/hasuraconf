@@ -12,7 +12,6 @@ import org.hibernate.internal.SessionFactoryImpl
 import org.hibernate.metamodel.spi.MetamodelImplementor
 import org.hibernate.persister.collection.BasicCollectionPersister
 import org.hibernate.persister.entity.AbstractEntityPersister
-import org.hibernate.persister.entity.Joinable
 import org.hibernate.type.AssociationType
 import org.hibernate.type.CollectionType
 import org.hibernate.type.ForeignKeyDirection
@@ -22,6 +21,7 @@ import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.WebClientResponseException
 import reactor.core.publisher.Mono
 import java.io.PrintWriter
+import java.lang.reflect.Field
 import javax.persistence.EntityManagerFactory
 import javax.persistence.metamodel.EntityType
 
@@ -135,7 +135,6 @@ class HasuraConfigurator(
     private var permissionAnnotationProcessor: PermissionAnnotationProcessor
 
     private lateinit var tableNames: MutableSet<String>
-    private lateinit var manyToManyTableNames: MutableSet<String>
     private lateinit var enumTables: MutableSet<String>
     private lateinit var cascadeDeleteFields: MutableSet<CascadeDeleteFields>
 
@@ -161,7 +160,6 @@ class HasuraConfigurator(
     fun configure() {
         confJson = null
         tableNames = mutableSetOf<String>()
-        manyToManyTableNames = mutableSetOf<String>()
         enumTables = mutableSetOf<String>()
         cascadeDeleteFields = mutableSetOf<CascadeDeleteFields>()
 
@@ -340,56 +338,49 @@ class HasuraConfigurator(
     private fun generateEntityCustomization(entity: EntityType<*>): String {
         val classMetadata = metaModel.entityPersister(entity.javaType.typeName) as AbstractEntityPersister
         val tableName = classMetadata.tableName
-        var entityName = entity.name
-        val customFieldNameJSONBuilder = StringBuilder()
         tableNames.add(tableName)
+
+        var entityName = entity.name
+
+        // Get the HasuraRootFields and may reset entityName
+        var rootFields = entity.javaType.getAnnotation(HasuraRootFields::class.java)
+        if (rootFields != null && rootFields.baseName.isNotBlank()) {
+            entityName = rootFields.baseName
+        }
+
+        val customRootFieldColumnNameJSONBuilder = StringBuilder()
         // Remove inner $ from the name of inner classes
         entityName = entityName.replace("\\$".toRegex(), "")
         // Copy
         var entityNameLower = entityName.toString()
         entityNameLower = Character.toLowerCase(entityNameLower[0]).toString() + entityNameLower.substring(1)
-        customFieldNameJSONBuilder.append(
+
+        customRootFieldColumnNameJSONBuilder.append(
                 """
-                    {
-                        "type": "set_table_custom_fields",
-                        "version": 2,
-                        "args": {
-                            "table": "${tableName}",
-                            "schema": "${schemaName}",
-                            "custom_root_fields": {
-                                "select": "${English.plural(entityNameLower)}",
-                                "select_by_pk": "${entityNameLower}",
-                                "select_aggregate": "${entityNameLower}Aggregate",
-                                "insert": "create${English.plural(entityName)}",
-                                "insert_one": "create${entityName}",
-                                "update": "update${English.plural(entityName)}",
-                                "update_by_pk": "update${entityName}", 
-                                "delete": "delete${English.plural(entityName)}",
-                                "delete_by_pk": "delete${entityName}"
-                            },
-                            "custom_column_names": {                 
+                    ${generateSetTableCustomFields(rootFields, tableName, entityName, entityNameLower)}
+                    "custom_column_names": {                 
                 """
         )
         val customRelationshipNameJSONBuilder = StringBuilder()
         val propNames = classMetadata.propertyNames
         var propAdded = false
         for (propName in propNames) {
-            val added = addCustomFieldNameOrRef(entity, propAdded, classMetadata, tableName, propName, customFieldNameJSONBuilder, customRelationshipNameJSONBuilder)
+            val added = addCustomFieldNameOrRef(entity, propAdded, classMetadata, tableName, propName, customRootFieldColumnNameJSONBuilder, customRelationshipNameJSONBuilder)
             if (propAdded != true && added == true) {
                 propAdded = true
             }
         }
-        customFieldNameJSONBuilder.append(
+        customRootFieldColumnNameJSONBuilder.append(
                 "\n\t\t\t}\n"
                         + "\t\t}\n"
                         + "\t}"
         )
         // Add optional relationship renames
         if (customRelationshipNameJSONBuilder.length != 0) {
-            customFieldNameJSONBuilder.append(",\n")
-            customFieldNameJSONBuilder.append(customRelationshipNameJSONBuilder)
+            customRootFieldColumnNameJSONBuilder.append(",\n")
+            customRootFieldColumnNameJSONBuilder.append(customRelationshipNameJSONBuilder)
         }
-        return customFieldNameJSONBuilder.toString()
+        return customRootFieldColumnNameJSONBuilder.toString()
     }
 
     /**
@@ -408,18 +399,27 @@ class HasuraConfigurator(
             propAdded: Boolean,
             classMetadata: AbstractEntityPersister,
             tableName: String,
-            propName: String,
+            propNameIn: String,
             customFieldNameJSONBuilder: StringBuilder,
             customRelationshipNameJSONBuilder: StringBuilder): Boolean
     {
+        var propName = propNameIn;
+
         // Handle @HasuraIgnoreRelationship annotation on field
         val f = Utils.findDeclaredFieldUsingReflection(entity.javaType, propName)
         if (f!!.isAnnotationPresent(HasuraIgnoreRelationship::class.java)) {
-            return false;
+            return false
         }
 
         val columnName = classMetadata.getPropertyColumnNames(propName)[0]
         val propType = classMetadata.getPropertyType(propName)
+
+        // Now we may alias field name according to @HasuraAlias annotation
+        var hasuraAlias = f!!.getAnnotation(HasuraAlias::class.java)
+        if (hasuraAlias != null && hasuraAlias!!.fieldAlias.isNotBlank()) {
+            propName = hasuraAlias!!.fieldAlias
+        }
+
         //
         // If it is an association type, add an array or object relationship
         //
@@ -459,33 +459,10 @@ class HasuraConfigurator(
                 // BasicCollectionPersister - despite the name - is for many-to-many associations
                 if (join is BasicCollectionPersister) {
                     if (join.isManyToMany) {
-                        // arrayRel only allows accessing the join table ID fields. Now add navigation to the
-                        // related entity
-                        val relatedColumnName = join.elementColumnNames[0]
-                        val relatedTableName = (join.elementType as ManyToOneType).getAssociatedJoinable(sessionFactoryImpl as SessionFactoryImpl?).tableName;
-                        val related =
-                                """
-                                ,
-                                {
-                                    "type": "create_object_relationship",
-                                    "args": {
-                                        "name": "${relatedTableName.toCamelCase()}",
-                                        "table": {
-                                            "name": "${join.tableName}",
-                                            "schema": "${schemaName}"
-                                        },
-                                        "using": {
-                                            "foreign_key_constraint_on": "${relatedColumnName}"
-                                        }
-                                    }
-                                }
-                                """
-                        customRelationshipNameJSONBuilder.append(related)
-                        var res = handleManyToManyJoinTable(join);
+                        var res = handleManyToManyJoinTable(join, f);
                         if (res != null) {
                             customRelationshipNameJSONBuilder.append(
                                     """
-                                       ,
                                         ${res}
                                     """
                             )
@@ -547,31 +524,6 @@ class HasuraConfigurator(
                                     }
                                 }                                
                             """
-//                            "{\n" +
-//                            "\t\"type\": \"create_object_relationship\",\n" +
-//                            "\t\"args\": {\n" +
-//                            "\t\t\"name\": \"" + propName + "\",\n" +
-//                            "\t\t\"table\": {\n" +
-//                            "\t\t\t\"name\": \"" + tableName + "\",\n" +
-//                            "\t\t\t\"schema\": \"" + schemaName + "\"\n" +
-//                            "\t\t},\n" +
-//                            "\t\t\"using\": {\n" +
-//                            "\t\t\t\"manual_configuration\": {\n" +
-//                            "\t\t\t\t\"remote_table\": {\n" +
-//                            "\t\t\t\t\t\"name\": \"" + join.tableName + "\",\n" +
-//                            "\t\t\t\t\t\"schema\": \"" + schemaName + "\"\n" +
-//                            "\t\t\t\t},\n" +
-//                            "\t\t\t\t\"column_mapping\": {\n" +
-//                            // This worked in case of array relations, but here it is always 'id' ...
-//                            //"\t\t\t\t\t\"id\": \""+keyColumn+"\"\n" +
-//                            // So instead this is rather hackish and assumes that table names + "_id"
-//                            // is the mapping side's value
-//                            "\t\t\t\t\t\"id\": \"" + tableName + "_id\"\n" +
-//                            "\t\t\t\t}\n" +
-//                            "\t\t\t}\n" +
-//                            "\t\t}\n" +
-//                            "\t}\n" +
-//                            "}"
                     customRelationshipNameJSONBuilder.append(objectRel)
                 }
             }
@@ -590,58 +542,87 @@ class HasuraConfigurator(
      * representation therefore no hasura configuration coul dbe generated for them the usual reflection
      * driven way. Instead we need to generate these based on the
      */
-    private fun handleManyToManyJoinTable(join: BasicCollectionPersister): String?
+    private fun handleManyToManyJoinTable(join: BasicCollectionPersister, field: Field): String?
     {
-        val keyColumn = join.keyColumnNames[0]
-        val relatedColumnName = join.elementColumnNames[0]
-
         val tableName = join.tableName
-        // Make sure only generate one
-        if (manyToManyTableNames.contains(tableName)) {
-            return null;
-        }
-        manyToManyTableNames.add(tableName)
         var entityName = tableName.toCase(CaseFormat.CAPITALIZED_CAMEL);
-        val customFieldNameJSONBuilder = StringBuilder()
+        var keyColumn = join.keyColumnNames[0]
+        var keyColumnAlias = keyColumn.toCamelCase();
+        var relatedColumnName = join.elementColumnNames[0]
+        var relatedColumnNameAlias = relatedColumnName.toCamelCase()
+
+        // Get the HasuraAlias and may reset entityName
+        var alias = field.getAnnotation(HasuraAlias::class.java);
+        var rootFields = if(alias != null) alias.rootFieldAliases else null
+        if (rootFields != null) {
+            if (rootFields.baseName.isNotBlank()) {
+                entityName = rootFields.baseName
+            }
+        }
+        if (alias != null) {
+            if (alias.keyColumnAlias.isNotBlank()) {
+                keyColumnAlias = alias.keyColumnAlias
+            }
+            else if (alias.joinColumnAlias.isNotBlank()) {
+                keyColumnAlias = alias.joinColumnAlias
+            }
+
+            if (alias.relatedColumnAlias.isNotBlank()) {
+                relatedColumnNameAlias = alias.relatedColumnAlias
+            }
+            else if (alias.inverseJoinColumnAlias.isNotBlank()) {
+                relatedColumnNameAlias = alias.inverseJoinColumnAlias
+            }
+        }
+
+        val customRootFieldColumnNameJSONBuilder = StringBuilder()
         tableNames.add(tableName)
         // Remove inner $ from the name of inner classes
         entityName = entityName.replace("\\$".toRegex(), "")
         // Copy
         var entityNameLower = entityName.toString()
         entityNameLower = Character.toLowerCase(entityNameLower[0]).toString() + entityNameLower.substring(1)
-        customFieldNameJSONBuilder.append(
+
+        // arrayRel only allows accessing the join table ID fields. Now add navigation to the
+        // related entity
+        val relatedTableName = (join.elementType as ManyToOneType).getAssociatedJoinable(sessionFactoryImpl as SessionFactoryImpl?).tableName;
+        var joinFieldName = relatedTableName.toCamelCase();
+        if (alias != null && alias.joinFieldAlias.isNotBlank()) {
+            joinFieldName = alias.joinFieldAlias;
+        }
+
+        customRootFieldColumnNameJSONBuilder.append(
                 """
+                    ,
                     {
-                        "type": "set_table_custom_fields",
-                        "version": 2,
+                        "type": "create_object_relationship",
                         "args": {
-                            "table": "${tableName}",
-                            "schema": "${schemaName}",
-                            "custom_root_fields": {
-                                "select": "${English.plural(entityNameLower)}",
-                                "select_by_pk": "${entityNameLower}",
-                                "select_aggregate": "${entityNameLower}Aggregate",
-                                "insert": "create${English.plural(entityName)}",
-                                "insert_one": "create${entityName}",
-                                "update": "update${English.plural(entityName)}",
-                                "update_by_pk": "update${entityName}",
-                                "delete": "delete${English.plural(entityName)}",
-                                "delete_by_pk": "delete${entityName}"
+                            "name": "${joinFieldName}",
+                            "table": {
+                                "name": "${join.tableName}",
+                                "schema": "${schemaName}"
                             },
-                            "custom_column_names": {
-                                 "${keyColumn}": "${keyColumn.toCamelCase()}",
-                                 "${relatedColumnName}": "${relatedColumnName.toCamelCase()}"
+                            "using": {
+                                "foreign_key_constraint_on": "${relatedColumnName}"
+                            }
+                        }
+                    }
+                    ,                    
+                    ${generateSetTableCustomFields(rootFields, tableName, entityName, entityNameLower)}
+                    "custom_column_names": {
+                         "${keyColumn}": "${keyColumnAlias}",
+                         "${relatedColumnName}": "${relatedColumnNameAlias}"
                 """
         )
         // Add index columns names, ie. @OrderColumns
-        join.indexColumnNames?.forEach { customFieldNameJSONBuilder.append(
+        join.indexColumnNames?.forEach { customRootFieldColumnNameJSONBuilder.append(
                 """
                    ,"${it}": "${it.toCamelCase()}" 
                 """
         ) }
 
         // Add ending curly brackets
-        customFieldNameJSONBuilder.append(
+        customRootFieldColumnNameJSONBuilder.append(
                 """
                             }
                          }
@@ -651,7 +632,34 @@ class HasuraConfigurator(
 
 
 //        println(customFieldNameJSONBuilder)
-        return customFieldNameJSONBuilder.toString()
+        return customRootFieldColumnNameJSONBuilder.toString()
+    }
+
+    private fun generateSetTableCustomFields(
+            rootFields: HasuraRootFields?,
+            tableName: String,
+            entityName: String,
+            entityNameLower: String) : String
+    {
+        return  """
+                    {
+                        "type": "set_table_custom_fields",
+                        "version": 2,
+                        "args": {
+                            "table": "${tableName}",
+                            "schema": "${schemaName}",
+                            "custom_root_fields": {
+                                "select": "${if (rootFields != null && rootFields.select.isNotBlank()) rootFields.select else English.plural(entityNameLower)}",
+                                "select_by_pk": "${if (rootFields != null && rootFields.selectByPk.isNotBlank()) rootFields.selectByPk else entityNameLower}",
+                                "select_aggregate": "${if (rootFields != null && rootFields.selectAggregate.isNotBlank()) rootFields.selectAggregate else entityNameLower+"Aggregate"}",
+                                "insert": "${if (rootFields != null && rootFields.insert.isNotBlank()) rootFields.insert else "create"+English.plural(entityName)}",
+                                "insert_one": "${if (rootFields != null && rootFields.insertOne.isNotBlank()) rootFields.insertOne else "create"+entityName}",
+                                "update": "${if (rootFields != null && rootFields.update.isNotBlank()) rootFields.update else "update"+English.plural(entityName)}",
+                                "update_by_pk": "${if (rootFields != null && rootFields.updateByPk.isNotBlank()) rootFields.updateByPk else "update"+entityName}", 
+                                "delete": "${if (rootFields != null && rootFields.delete.isNotBlank()) rootFields.delete else "delete"+English.plural(entityName)}",
+                                "delete_by_pk": "${if (rootFields != null && rootFields.deleteByPk.isNotBlank()) rootFields.deleteByPk else "delete"+entityName}"
+                            },
+                """
     }
 
     /**

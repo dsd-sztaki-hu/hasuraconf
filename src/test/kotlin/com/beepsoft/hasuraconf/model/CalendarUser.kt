@@ -1,6 +1,8 @@
 package com.beepsoft.hasuraconf.model
 
 
+import com.beepsoft.hasuraconf.annotation.HasuraAlias
+import com.beepsoft.hasuraconf.annotation.HasuraRootFields
 import org.hibernate.annotations.OnDelete
 import org.hibernate.annotations.OnDeleteAction
 import java.io.Serializable
@@ -28,9 +30,22 @@ class CalendarUser : BaseObject(), Serializable {
     var enabled: Boolean = true
     @Column(unique = true)
     var username: String? = null
+    @HasuraAlias(fieldAlias = "superSecretPassword")
     var password: String? = null
 
     @ManyToMany
+    @HasuraAlias(
+            fieldAlias="theFriends",
+            joinColumnAlias="myUserId",
+            inverseJoinColumnAlias= "myFriendUserId",
+            joinFieldAlias="myFriend",
+            rootFieldAliases = HasuraRootFields(
+                    baseName = "BaseDearFriend",
+                    select = "myDearFriends",
+                    insert = "addMyDearFriends",
+                    insertOne = "addOneDearFriend"
+            )
+    )
     var friends: List<CalendarUser>? = null
 
     @ManyToMany

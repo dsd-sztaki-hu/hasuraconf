@@ -24,7 +24,22 @@ Configurations this tool handles:
     * select_by_pk → someEntity
     * select_aggregate → someEntityAggregate
 
+* Root field names can be redefined using the `@HasuraRootFields` annotation. Here you can define either a `baseName`, which will be used instead of the default base name (`SomeEntity` above) derived from the class name, or you can sepcify a custom name for each of the root fields with the matching field of the `@HasuraRootFields` annotation.
+
 * Custom column name definition for fields so that they appear in Hasura generated graphql schema the same way as they are defined in the Java models. Hasura, by default, generates names in the graphql schema based on the Postgresql field names which are in snake_case. The custom column name definitions converts these back to camelCase. Ie. If there's a field in Java called `veryLongPropertyName`, it becomes `very_long_property_name` in the database, but `HasuraConfigurator` generates a configuration json to make it appear as `veryLongPropertyName` again in the graphql schema
+
+* Default cutom column names can be redefined using the `@HasuraAlias` annotation:
+    * `fieldAlias`: Instead of using the field name as defined in Java, use this alias
+
+    * Values relevant for `@ManyToMany` relationships 
+    
+        * `joinColumnAlias` or `keyColumnAlias`: In case of many-to-many associations use this explicit name instead of the one generated based on the in the join column / key column name (which is also settable via `@JoinTable(joinColumn=...)`)
+
+        * `inverseJoinColumnAlias` or `relatedColumnAlias`: In case of many-to-many associations use this explicit name instead of the one generated based on the in the inverse join / related column column name (which is also settable via `@JoinTable(inverseJoinColumn=...)`)
+        
+        * `joinFieldAlias` In case of many-to-many association the object reference's name is derived from the joined table's name (by convertin it from snake_case to camelCase). In most cases this is satisfactory, but sometimes you want to override this behaviour. `joinFieldAlias` can be used in this case
+
+        * rootFieldAliases: a `@HasuraRootFields` annotation defining redefinitions for the join table's root fields.    
 
 * Mapping Java enums to Hasura enums using the `@HasuraEnum` annotations. For this to work the Java enum must be defined as a `@Entity` and it must follow the [Hasura enum table format](https://docs.hasura.io/1.0/graphql/manual/schema/enums.html#creating-an-enum-compatible-table ) 
 
@@ -38,7 +53,6 @@ Configurations this tool handles:
 TODO:
 * More documentation on use of `HasuraConfigurator` especially `@HasuraPermission`.
 
-* Make root field customization customizable via annotation
 
 * Annotation for generating trigger that sets default value for fields if a value is not already set. `@HasuraDefaultValueTrigger(value="defaultValue")`
 
@@ -62,7 +76,7 @@ The easiest way to use it in a Maven project is via jitpack
     <dependency>
         <groupId>com.github.beepsoft</groupId>
         <artifactId>hasuraconf</artifactId>
-        <version>0.1.0</version>
+        <version>0.2.0</version>
     </dependency>
 </dependencies>
 ```

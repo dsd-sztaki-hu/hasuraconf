@@ -1,6 +1,7 @@
 package com.beepsoft.hasuraconf.model
 
 
+import com.beepsoft.hasuraconf.annotation.HasuraRootFields
 import javax.persistence.*
 
 /**
@@ -10,6 +11,17 @@ import javax.persistence.*
         Index(columnList = "createdAt"),
         Index(columnList = "updatedAt"),
         Index(columnList = "id"))
+)
+@HasuraRootFields(
+        select = "getThemes",
+        selectByPk = "getATheme",
+        selectAggregate = "getThemeAgregate",
+        insert = "addSomeThemes",
+        insertOne = "addOneTheme",
+        update = "updateSomeThemes",
+        updateByPk = "updateOneTheme",
+        delete = "deleteSomeThemes",
+        deleteByPk = "deleteOneTheme"
 )
 class Theme : BaseObject() {
     var mnemonic: String? = null
