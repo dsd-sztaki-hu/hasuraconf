@@ -18,8 +18,29 @@ class AutoConfiguration
             @Value("\${hasuraconf.schemaName:public}") schemaName: String,
             @Value("\${hasuraconf.loadConf:false}") loadConf: Boolean,
             @Value("\${hasuraconf.hasuraEndpoint:http://localhost:8080/v1/query}") hasuraEndpoint: String,
-            @Value("\${hasuraconf.hasuraAdminSecret:#{null}}") hasuraAdminSecret: String?
+            @Value("\${hasuraconf.hasuraAdminSecret:#{null}}") hasuraAdminSecret: String?,
+            @Value("\${hasuraconf.jsonSchema.schemaFile:hasura-json-schema.json}") schemaFile: String?,
+            @Value("\${hasuraconf.jsonSchema.schemaVersion:DRAFT_2019_09}") schemaVersion: String,
+            @Value("\${hasuraconf.jsonSchema.customPropsFieldName:hasura}") customPropsFieldName: String
     ): HasuraConfigurator {
-        return HasuraConfigurator(entityManagerFactory, confFile, schemaName, loadConf, hasuraEndpoint, hasuraAdminSecret)
+        return HasuraConfigurator(
+                entityManagerFactory,
+                confFile,
+                schemaName,
+                loadConf,
+                hasuraEndpoint,
+                hasuraAdminSecret,
+                schemaFile,
+                schemaVersion,
+                customPropsFieldName)
     }
+
+//    @Bean
+//    @ConditionalOnMissingBean
+//    fun hasuraJsonSchemaGenerator(
+//            @Value("\${hasuraconf.jsonSchema.customPropsFieldName:hasura}") customPropsFieldName: String
+//    ) : HasuraJsonSchemaGenerator
+//    {
+//        return HasuraJsonSchemaGenerator(customPropsFieldName)
+//    }
 }

@@ -23,6 +23,8 @@ import reactor.core.publisher.Mono
 import java.io.PrintWriter
 import java.lang.reflect.Field
 import javax.persistence.EntityManagerFactory
+import javax.persistence.OneToMany
+import javax.persistence.OneToOne
 import javax.persistence.metamodel.EntityType
 
 /**
@@ -116,7 +118,10 @@ class HasuraConfigurator(
         var schemaName: String,
         var loadConf: Boolean,
         var hasuraEndpoint: String,
-        var hasuraAdminSecret: String?
+        var hasuraAdminSecret: String?,
+        var schemaFile: String?,
+        var schemaVersion: String,
+        var customPropsFieldName: String
 ) {
 
     companion object {
@@ -135,9 +140,10 @@ class HasuraConfigurator(
     private var permissionAnnotationProcessor: PermissionAnnotationProcessor
 
     private lateinit var tableNames: MutableSet<String>
+    private lateinit var entityClasses: MutableSet<Class<out Any>>
     private lateinit var enumTables: MutableSet<String>
     private lateinit var cascadeDeleteFields: MutableSet<CascadeDeleteFields>
-
+    private lateinit var jsonSchemaGenerator: HasuraJsonSchemaGenerator
 
     init {
         sessionFactoryImpl = entityManagerFactory.unwrap(SessionFactory::class.java) as SessionFactoryImpl
@@ -160,8 +166,10 @@ class HasuraConfigurator(
     fun configure() {
         confJson = null
         tableNames = mutableSetOf<String>()
+        entityClasses = mutableSetOf<Class<out Any>>()
         enumTables = mutableSetOf<String>()
         cascadeDeleteFields = mutableSetOf<CascadeDeleteFields>()
+        jsonSchemaGenerator = HasuraJsonSchemaGenerator(schemaVersion, customPropsFieldName)
 
         val entities = metaModel.entities
         // Add custom field and relationship names for each table
@@ -254,6 +262,8 @@ class HasuraConfigurator(
         bulk.append("}\n")
         confJson = bulk.toString().reformatJson()
 
+        jsonSchemaGenerator.generateSchema(*entityClasses.toTypedArray())
+
         if (confFile != null) {
             PrintWriter(confFile!!).use { out -> out.println(confJson) }
             if (loadConf) {
@@ -339,6 +349,7 @@ class HasuraConfigurator(
         val classMetadata = metaModel.entityPersister(entity.javaType.typeName) as AbstractEntityPersister
         val tableName = classMetadata.tableName
         tableNames.add(tableName)
+        entityClasses.add(entity.javaType)
 
         var entityName = entity.name
 
@@ -415,16 +426,16 @@ class HasuraConfigurator(
         val propType = classMetadata.getPropertyType(propName)
 
         // Now we may alias field name according to @HasuraAlias annotation
-        var hasuraAlias = f!!.getAnnotation(HasuraAlias::class.java)
-        if (hasuraAlias != null && hasuraAlias!!.fieldAlias.isNotBlank()) {
-            propName = hasuraAlias!!.fieldAlias
+        var hasuraAlias = f.getAnnotation(HasuraAlias::class.java)
+        if (hasuraAlias != null && hasuraAlias.fieldAlias.isNotBlank()) {
+            propName = hasuraAlias.fieldAlias
         }
 
         //
         // If it is an association type, add an array or object relationship
         //
         if (propType.isAssociationType) {
-            if (customRelationshipNameJSONBuilder.length != 0) {
+            if (customRelationshipNameJSONBuilder.isNotEmpty()) {
                 customRelationshipNameJSONBuilder.append(",\n")
             }
             if (propType.isCollectionType) {
@@ -459,7 +470,7 @@ class HasuraConfigurator(
                 // BasicCollectionPersister - despite the name - is for many-to-many associations
                 if (join is BasicCollectionPersister) {
                     if (join.isManyToMany) {
-                        var res = handleManyToManyJoinTable(join, f);
+                        var res = handleManyToManyJoinTable(entity, join, f);
                         if (res != null) {
                             customRelationshipNameJSONBuilder.append(
                                     """
@@ -468,6 +479,13 @@ class HasuraConfigurator(
                             )
                         }
                     }
+                }
+
+                if (f.isAnnotationPresent(OneToMany::class.java)) {
+                    val oneToMany = f.getAnnotation(OneToMany::class.java)
+                    jsonSchemaGenerator.addSpecValue(f, entity.javaType,
+                            HasuraSpecValues(relation="one-to-many", mappedBy=oneToMany.mappedBy))
+
                 }
             } else {
                 val assocType = propType as AssociationType
@@ -496,6 +514,15 @@ class HasuraConfigurator(
                         customFieldNameJSONBuilder.append(",\n")
                     }
                     customFieldNameJSONBuilder.append("\t\t\t\t\"$columnName\": \"$camelCasedIdName\"")
+
+                    if (assocType is ManyToOneType) {
+                        jsonSchemaGenerator.addSpecValue(f, entity.javaType,
+                                HasuraSpecValues(relation = "many-to-one", reference = camelCasedIdName))
+                    }
+                    else {
+                        jsonSchemaGenerator.addSpecValue(f, entity.javaType,
+                                HasuraSpecValues(relation = "one-to-one", reference = camelCasedIdName))
+                    }
                     return true
                 } else { // TO_PARENT, ie. assocition is mapped by the other side
                     val join = assocType.getAssociatedJoinable(sessionFactoryImpl as SessionFactoryImpl?)
@@ -525,7 +552,15 @@ class HasuraConfigurator(
                                 }                                
                             """
                     customRelationshipNameJSONBuilder.append(objectRel)
+
+                    val oneToOne = f.getAnnotation(OneToOne::class.java)
+                    oneToOne?.let {
+                        jsonSchemaGenerator.addSpecValue(f, entity.javaType,
+                                HasuraSpecValues(relation="one-to-one", mappedBy=oneToOne.mappedBy))
+
+                    }
                 }
+
             }
         } else if (columnName != propName) {
             if (propAdded) {
@@ -542,7 +577,7 @@ class HasuraConfigurator(
      * representation therefore no hasura configuration coul dbe generated for them the usual reflection
      * driven way. Instead we need to generate these based on the
      */
-    private fun handleManyToManyJoinTable(join: BasicCollectionPersister, field: Field): String?
+    private fun handleManyToManyJoinTable(entity: EntityType<*>, join: BasicCollectionPersister, field: Field): String?
     {
         val tableName = join.tableName
         var entityName = tableName.toCase(CaseFormat.CAPITALIZED_CAMEL);
@@ -591,6 +626,11 @@ class HasuraConfigurator(
             joinFieldName = alias.joinFieldAlias;
         }
 
+        val classMetadata = metaModel.entityPersister(entity.javaType.typeName) as AbstractEntityPersister
+        val keyTableName = classMetadata.tableName
+        val keyFieldName = keyTableName.toCamelCase()
+
+
         customRootFieldColumnNameJSONBuilder.append(
                 """
                     ,
@@ -630,6 +670,29 @@ class HasuraConfigurator(
                 """
         )
 
+        jsonSchemaGenerator.addSpecValue(field, entity.javaType,
+                HasuraSpecValues(
+                        relation="many-to-many",
+                        reference=relatedColumnNameAlias,
+                        item=joinFieldName,
+                        graphqlType=tableName.toCase(CaseFormat.CAPITALIZED_CAMEL)
+                ))
+
+        jsonSchemaGenerator.addJoinEntity(JoinEntity(
+                name = tableName.toCase(CaseFormat.CAPITALIZED_CAMEL),
+                fromIdName = keyColumnAlias,
+                fromIdType = "integer",
+                fromAccessor = keyFieldName,
+                fromAccessorType= entity.name,
+                toIdName = relatedColumnNameAlias,
+                toIdType = "integer",
+                toAccessor = joinFieldName,
+                toAccessorType = relatedTableName.toCase(CaseFormat.CAPITALIZED_CAMEL),
+                orderField = join.indexColumnNames?.let {
+                    it[0].toCamelCase()
+                },
+                orderFieldType = join.indexColumnNames?.let{"orderFieldType"}
+        ))
 
 //        println(customFieldNameJSONBuilder)
         return customRootFieldColumnNameJSONBuilder.toString()
