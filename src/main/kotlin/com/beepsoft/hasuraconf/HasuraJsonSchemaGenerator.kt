@@ -1,6 +1,7 @@
 package com.beepsoft.hasuraconf
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.github.victools.jsonschema.generator.*
 import java.lang.reflect.Field
@@ -8,15 +9,19 @@ import java.util.*
 import com.github.victools.jsonschema.module.javax.validation.JavaxValidationModule;
 
 
-class HasuraSpecValues(
+class HasuraSpecPropValues(
         var relation: String,
         var mappedBy: String? = null,
-        var graphqlType: String? = null,
+        var type: String? = null,
         var item: String?  = null,
         var reference: String?  = null)
 
-class JoinEntity(
+class HasuraSpecTypeValues(
+        var tableName: String)
+
+class JoinType(
         var name: String,
+        var tableName: String,
         var fromIdName: String,
         var fromIdType: String,
         var fromAccessor: String,
@@ -29,29 +34,39 @@ class JoinEntity(
         var orderFieldType: String? = null
 )
 
+
 /**
  * Generates JSON schema adding hasura specific extensions to the schema. Data for the extensions
  * are collected by the [HasuraConfigurator] and set on [HasuraJsonSchemaGenerator] via
- * [addJoinEntity] and [addSpecValue]
+ * [addJoinType] and [addSpecValue]
  *
  */
 class HasuraJsonSchemaGenerator(
         private val schemaVersion: String = "DRAFT_2019_09",
         private val customPropsFieldName: String
 ) {
-    // Class name + field name to HasuraSpecValues map collected while generarting
+    // Class name + field name to HasuraSpecPropValues map collected while generarting
     // Haura confiuguration
-    private val hasuraSpecValuesMap = mutableMapOf<String, HasuraSpecValues>()
+    private val hasuraSpecPropValuesMap = mutableMapOf<String, HasuraSpecPropValues>()
+    private val hasuraSpecTypeValuesMap = mutableMapOf<String, HasuraSpecTypeValues>()
 
-    private val joinEntities = mutableMapOf<String, JoinEntity>()
+    private val joinTypes = mutableMapOf<String, JoinType>()
 
     private val defsNames = mapOf(
             SchemaVersion.DRAFT_2019_09 to "\$defs",
             SchemaVersion.DRAFT_7 to "definitions"
     )
 
-    private lateinit var defsName : String;
+    private lateinit var defsName: String;
 
+    val ObjectNode.customNode: ObjectNode
+        get() {
+            var customNode: ObjectNode? = if (this.has(customPropsFieldName)) this[customPropsFieldName] as ObjectNode else null
+            if (customNode == null) {
+                customNode = this.putObject(customPropsFieldName)
+            }
+            return customNode!!
+        }
 
     fun generateSchema(vararg forClass: Class<out Any>): String
     {
@@ -66,26 +81,85 @@ class HasuraJsonSchemaGenerator(
                 .with(JavaxValidationModule())
 
         configBuilder.forTypesInGeneral().withTypeAttributeOverride { jsonSchemaTypeNode:ObjectNode, scope: TypeScope, config: SchemaGeneratorConfig ->
+            if (jsonSchemaTypeNode.has("properties")) {
+                var custom = jsonSchemaTypeNode.customNode
+                hasuraSpecTypeValuesMap[scope.type.typeName]?.let {
+                    custom.put("tableName", it.tableName)
+                }
+            }
+
+            // Handle case that withInstanceAttributeOverride also adds the custom definitions to the property
+            // and to the items and there seems no way to distinguish there for which part of the schema we are
+            // generating the spec values. So we clean this up  here and remove 'hasura'field from items
+            //
+            // "calendars": {
+            // 	"hasura": {
+            // 		"relation": "many-to-many",
+            // 		"JoinType": {
+            // 			"type": "#/$defs/UserCalendar",
+            // 			"reference": "theCalendarId",
+            // 			"item": "calendar"
+            // 		}
+            // 	},
+            // 	"type": "array",
+            // 	"items": {
+            // 		"$ref": "#/$defs/Calendar",
+            // 		"hasura": {
+            // 			"relation": "many-to-many",
+            // 			"JoinType": {
+            // 				"type": "#/$defs/UserCalendar",
+            // 				"reference": "theCalendarId",
+            // 				"item": "calendar"
+            // 			}
+            // 		}
+            // 	}
+            // },
+            if (jsonSchemaTypeNode.has("items")) {
+                // For some reason at this pint it is not the usual "type":array representation but:
+                // "items": {
+                // 	    "allOf": [
+                // 		    {
+                // 		    },
+                // 		    {
+                // 			    "hasura": {
+                // 				    "relation": "one-to-many",
+                // 				    "mappedBy": "theme"
+                // 			    }
+                // 		    }
+                // 	    ]
+                // }
+
+                val items = jsonSchemaTypeNode.get("items") as ObjectNode;
+                if (items.has("allOf")) {
+                    val allOf = items.get("allOf") as ArrayNode
+                    for (jsonNode  in allOf) {
+                        (jsonNode as ObjectNode).remove(customPropsFieldName)
+                    }
+                }
+
+                // Handle the "usual way" too
+                items.remove(customPropsFieldName)
+            }
         };
 
         configBuilder.forFields()
                 // Add custom hasura node values
                 .withInstanceAttributeOverride { jsonSchemaAttributesNode: ObjectNode, member: FieldScope ->
                     val f = member.rawMember
-                    val value = hasuraSpecValuesMap[f.declaringClass.name + "-" + f.name]
+                    val value = hasuraSpecPropValuesMap[f.declaringClass.name + "-" + f.name]
                     if (value != null) {
-                        val customNode = getCustomNode(jsonSchemaAttributesNode)
+                        val customNode = jsonSchemaAttributesNode.customNode
 
                         // Relation is available for all spec properties
                         customNode.put("relation", value.relation)
                         value.mappedBy?.let { customNode.put("mappedBy", value.mappedBy) }
 
-                        // For many-to-many we define the joinEntity and  its attributes
+                        // For many-to-many we define the JoinType and  its attributes
                         if (value.relation == "many-to-many") {
-                            val joinEntityNode = customNode.putObject("joinEntity")
-                            value.graphqlType?.let { joinEntityNode.put("graphqlType", "#/$defsName/${value.graphqlType}") }
-                            value.reference?.let { joinEntityNode.put("reference", value.reference) }
-                            value.item?.let { joinEntityNode.put("item", value.item) }
+                            val joinTypeNode = customNode.putObject("join")
+                            value.type?.let { joinTypeNode.put("type", "#/$defsName/${value.type}") }
+                            value.reference?.let { joinTypeNode.put("reference", value.reference) }
+                            value.item?.let { joinTypeNode.put("item", value.item) }
                         }
                         else {
                             value.reference?.let { customNode.put("reference", value.reference) }
@@ -115,7 +189,7 @@ class HasuraJsonSchemaGenerator(
             moveRefs(classSchema, resultSchema, someClass);
         }
 
-        addJointEntities(resultSchema)
+        addJoinTypes(resultSchema)
 
         println(resultSchema.toString())
         return resultSchema.toString()
@@ -172,24 +246,18 @@ class HasuraJsonSchemaGenerator(
         }
     }
 
-    private fun getCustomNode(parent: ObjectNode): ObjectNode {
-        var customNode: ObjectNode? = if (parent.has(customPropsFieldName)) parent[customPropsFieldName] as ObjectNode else null
-        if (customNode == null) {
-            customNode = parent.putObject(customPropsFieldName)
-        }
-        return customNode!!
-    }
-
     /**
      * Add colelcted join entities to the final schema.
      */
-    private fun addJointEntities(schema: ObjectNode) {
+    private fun addJoinTypes(schema: ObjectNode) {
         val  defs = schema.get(defsName) as ObjectNode
 
-        for (mapEntry in joinEntities) {
-            val entityNode = defs.putObject(mapEntry.key);
+        for (mapEntry in joinTypes) {
+            val entityNode = defs.putObject(mapEntry.key)
+
             entityNode.put("type", "object")
             val properties = entityNode.putObject("properties")
+
             var node = properties.putObject(mapEntry.value.fromIdName)
             node.put("type", mapEntry.value.fromIdType);
             properties.putObject(mapEntry.value.fromAccessor).put("\$ref", "#/$defsName/"+mapEntry.value.fromAccessorType)
@@ -201,21 +269,20 @@ class HasuraJsonSchemaGenerator(
             mapEntry.value.orderField?.let {
                 node = properties.putObject(mapEntry.value.orderField)
                 node.put("type", mapEntry.value.orderFieldType)
-                var custom = getCustomNode(node);
-                custom.put("orderField", true)
+                node.customNode.put("orderField", true)
             }
 
-            var custom = getCustomNode(entityNode);
-            custom.put("joinEntity", true)
+            entityNode.customNode.put("tableName", mapEntry.value.tableName)
+            entityNode.customNode.put("joinType", true)
         }
     }
 
     /**
      * Add join entity description with the provided values
-     * @param entity the join entity descriptor to add
+     * @param type the join type descriptor to add
      */
-    fun addJoinEntity(entity: JoinEntity) {
-        joinEntities.putIfAbsent(entity.name, entity)
+    fun addJoinType(type: JoinType) {
+        joinTypes.putIfAbsent(type.name, type)
     }
 
     /**
@@ -227,10 +294,19 @@ class HasuraJsonSchemaGenerator(
     fun addSpecValue(
             field: Field,
             clazz: Class<out Any>,
-            specValues: HasuraSpecValues
+            specValues: HasuraSpecPropValues
     )
     {
-        hasuraSpecValuesMap.putIfAbsent(clazz.name+"-"+field.name, specValues)
+        hasuraSpecPropValuesMap.putIfAbsent(clazz.name+"-"+field.name, specValues)
+    }
+
+
+    fun addSpecValue(
+            clazz: Class<out Any>,
+            specValues: HasuraSpecTypeValues
+    )
+    {
+        hasuraSpecTypeValuesMap.putIfAbsent(clazz.name, specValues)
     }
 
 }

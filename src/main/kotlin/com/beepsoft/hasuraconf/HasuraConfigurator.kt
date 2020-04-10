@@ -351,6 +351,8 @@ class HasuraConfigurator(
         tableNames.add(tableName)
         entityClasses.add(entity.javaType)
 
+        jsonSchemaGenerator.addSpecValue(entity.javaType, HasuraSpecTypeValues(tableName))
+
         var entityName = entity.name
 
         // Get the HasuraRootFields and may reset entityName
@@ -484,7 +486,7 @@ class HasuraConfigurator(
                 if (f.isAnnotationPresent(OneToMany::class.java)) {
                     val oneToMany = f.getAnnotation(OneToMany::class.java)
                     jsonSchemaGenerator.addSpecValue(f, entity.javaType,
-                            HasuraSpecValues(relation="one-to-many", mappedBy=oneToMany.mappedBy))
+                            HasuraSpecPropValues(relation="one-to-many", mappedBy=oneToMany.mappedBy))
 
                 }
             } else {
@@ -517,11 +519,11 @@ class HasuraConfigurator(
 
                     if (assocType is ManyToOneType) {
                         jsonSchemaGenerator.addSpecValue(f, entity.javaType,
-                                HasuraSpecValues(relation = "many-to-one", reference = camelCasedIdName))
+                                HasuraSpecPropValues(relation = "many-to-one", reference = camelCasedIdName))
                     }
                     else {
                         jsonSchemaGenerator.addSpecValue(f, entity.javaType,
-                                HasuraSpecValues(relation = "one-to-one", reference = camelCasedIdName))
+                                HasuraSpecPropValues(relation = "one-to-one", reference = camelCasedIdName))
                     }
                     return true
                 } else { // TO_PARENT, ie. assocition is mapped by the other side
@@ -556,7 +558,7 @@ class HasuraConfigurator(
                     val oneToOne = f.getAnnotation(OneToOne::class.java)
                     oneToOne?.let {
                         jsonSchemaGenerator.addSpecValue(f, entity.javaType,
-                                HasuraSpecValues(relation="one-to-one", mappedBy=oneToOne.mappedBy))
+                                HasuraSpecPropValues(relation="one-to-one", mappedBy=oneToOne.mappedBy))
 
                     }
                 }
@@ -671,15 +673,16 @@ class HasuraConfigurator(
         )
 
         jsonSchemaGenerator.addSpecValue(field, entity.javaType,
-                HasuraSpecValues(
+                HasuraSpecPropValues(
                         relation="many-to-many",
+                        type=tableName.toCase(CaseFormat.CAPITALIZED_CAMEL),
                         reference=relatedColumnNameAlias,
-                        item=joinFieldName,
-                        graphqlType=tableName.toCase(CaseFormat.CAPITALIZED_CAMEL)
-                ))
+                        item=joinFieldName)
+                )
 
-        jsonSchemaGenerator.addJoinEntity(JoinEntity(
+        jsonSchemaGenerator.addJoinType(JoinType(
                 name = tableName.toCase(CaseFormat.CAPITALIZED_CAMEL),
+                tableName = tableName,
                 fromIdName = keyColumnAlias,
                 fromIdType = "integer",
                 fromAccessor = keyFieldName,
