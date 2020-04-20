@@ -125,9 +125,14 @@ class HasuraConfiguratorIntegrationTests {
 	fun testJsonWithSnapshot() {
 		conf.loadConf = false
 		conf.configure()
-		println(conf.confJson)
-		val snapshot = readFileUsingGetResource("/hasura_config_snapshot1.json")
-		JSONAssert.assertEquals(conf.confJson,snapshot, false)
+
+		println("Hasura conf generated:\n${conf.confJson}")
+		var snapshot = readFileUsingGetResource("/hasura_config_snapshot1.json")
+		JSONAssert.assertEquals(conf.confJson, snapshot, false)
+
+		println("JSON schema generated:\n${conf.jsonSchema}")
+		snapshot = readFileUsingGetResource("/json_schema_snapshot1.json")
+		JSONAssert.assertEquals(conf.jsonSchema, snapshot, false)
 	}
 
 	@DisplayName("Test generated hasura conf JSON by loading into Hasura")

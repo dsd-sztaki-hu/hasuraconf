@@ -8,33 +8,6 @@ import java.lang.reflect.Field
 import java.util.*
 import com.github.victools.jsonschema.module.javax.validation.JavaxValidationModule;
 
-
-class HasuraSpecPropValues(
-        var relation: String,
-        var mappedBy: String? = null,
-        var type: String? = null,
-        var item: String?  = null,
-        var reference: String?  = null)
-
-class HasuraSpecTypeValues(
-        var tableName: String)
-
-class JoinType(
-        var name: String,
-        var tableName: String,
-        var fromIdName: String,
-        var fromIdType: String,
-        var fromAccessor: String,
-        var fromAccessorType: String,
-        var toIdName: String,
-        var toIdType: String,
-        var toAccessor: String,
-        var toAccessorType: String,
-        var orderField: String?  = null,
-        var orderFieldType: String? = null
-)
-
-
 /**
  * Generates JSON schema adding hasura specific extensions to the schema. Data for the extensions
  * are collected by the [HasuraConfigurator] and set on [HasuraJsonSchemaGenerator] via
@@ -80,11 +53,53 @@ class HasuraJsonSchemaGenerator(
                 .with(Option.DEFINITIONS_FOR_ALL_OBJECTS)
                 .with(JavaxValidationModule())
 
+        // Add hasura:{} values to "properties"
+        configBuilder.forFields()
+                // Add custom hasura node values
+                .withInstanceAttributeOverride { jsonSchemaAttributesNode: ObjectNode, member: FieldScope ->
+                    val f = member.rawMember
+                    val value = hasuraSpecPropValuesMap[f.declaringClass.name + "-" + f.name]
+                    if (value != null) {
+                        val customNode = jsonSchemaAttributesNode.customNode
+
+                        // Relation is available for all spec properties
+                        customNode.put("relation", value.relation)
+                        value.mappedBy?.let { customNode.put("mappedBy", value.mappedBy) }
+
+                        // For many-to-many we define the JoinType and  its attributes
+                        if (value.relation == "many-to-many") {
+                            val joinTypeNode = customNode.putObject("join")
+                            value.type?.let { joinTypeNode.put("type", "#/$defsName/${value.type}") }
+                            value.reference?.let { joinTypeNode.put("reference", value.reference) }
+                            value.item?.let { joinTypeNode.put("item", value.item) }
+                        }
+                        else {
+                            value.reference?.let { customNode.put("reference", value.reference) }
+                        }
+                    }
+                    //println("jsonSchemaAttributesNode$jsonSchemaAttributesNode")
+                }
+                // Add format. Currently only Date fields are mapped to "date-time" format
+                .withStringFormatResolver { target: FieldScope? ->
+                    target?.let {
+                        val field = it.rawMember
+                        if (Date::class.java.isAssignableFrom(field.type)) {
+                            "date-time"
+                        }
+                        else {
+                            null
+                        }
+                    }
+                }
+
+        // Handle case that withInstanceAttributeOverride also adds the custom definitions to the property
+        // and to the "items" and there seems no way to distinguish there for which part of the schema we are
+        // generating the spec values.
         configBuilder.forTypesInGeneral().withTypeAttributeOverride { jsonSchemaTypeNode:ObjectNode, scope: TypeScope, config: SchemaGeneratorConfig ->
             if (jsonSchemaTypeNode.has("properties")) {
                 var custom = jsonSchemaTypeNode.customNode
                 hasuraSpecTypeValuesMap[scope.type.typeName]?.let {
-                    custom.put("tableName", it.tableName)
+                    custom.put("typeName", it.tableName)
                 }
             }
 
@@ -140,46 +155,9 @@ class HasuraJsonSchemaGenerator(
                 // Handle the "usual way" too
                 items.remove(customPropsFieldName)
             }
-        };
+        }
 
-        configBuilder.forFields()
-                // Add custom hasura node values
-                .withInstanceAttributeOverride { jsonSchemaAttributesNode: ObjectNode, member: FieldScope ->
-                    val f = member.rawMember
-                    val value = hasuraSpecPropValuesMap[f.declaringClass.name + "-" + f.name]
-                    if (value != null) {
-                        val customNode = jsonSchemaAttributesNode.customNode
-
-                        // Relation is available for all spec properties
-                        customNode.put("relation", value.relation)
-                        value.mappedBy?.let { customNode.put("mappedBy", value.mappedBy) }
-
-                        // For many-to-many we define the JoinType and  its attributes
-                        if (value.relation == "many-to-many") {
-                            val joinTypeNode = customNode.putObject("join")
-                            value.type?.let { joinTypeNode.put("type", "#/$defsName/${value.type}") }
-                            value.reference?.let { joinTypeNode.put("reference", value.reference) }
-                            value.item?.let { joinTypeNode.put("item", value.item) }
-                        }
-                        else {
-                            value.reference?.let { customNode.put("reference", value.reference) }
-                        }
-                    }
-                    //println("jsonSchemaAttributesNode$jsonSchemaAttributesNode")
-                }
-                // Add format. Currently only Date fields are mapped to "date-time" format
-                .withStringFormatResolver { target: FieldScope? ->
-                    target?.let {
-                        val field = it.rawMember
-                        if (Date::class.java.isAssignableFrom(field.type)) {
-                            "date-time"
-                        }
-                        else {
-                            null
-                        }
-                    }
-                }
-
+        // Build config and start json schema generation
         val config = configBuilder.build()
         val generator = SchemaGenerator(config)
         var resultSchema: ObjectNode = ObjectMapper().createObjectNode()
@@ -191,7 +169,7 @@ class HasuraJsonSchemaGenerator(
 
         addJoinTypes(resultSchema)
 
-        println(resultSchema.toString())
+//        println(resultSchema.toString())
         return resultSchema.toString()
     }
 
@@ -272,7 +250,7 @@ class HasuraJsonSchemaGenerator(
                 node.customNode.put("orderField", true)
             }
 
-            entityNode.customNode.put("tableName", mapEntry.value.tableName)
+            entityNode.customNode.put("typeName", mapEntry.value.tableName)
             entityNode.customNode.put("joinType", true)
         }
     }
@@ -310,3 +288,29 @@ class HasuraJsonSchemaGenerator(
     }
 
 }
+
+class HasuraSpecPropValues(
+        var relation: String,
+        var mappedBy: String? = null,
+        var type: String? = null,
+        var item: String?  = null,
+        var reference: String?  = null)
+
+class HasuraSpecTypeValues(
+        var tableName: String)
+
+class JoinType(
+        var name: String,
+        var tableName: String,
+        var fromIdName: String,
+        var fromIdType: String,
+        var fromAccessor: String,
+        var fromAccessorType: String,
+        var toIdName: String,
+        var toIdType: String,
+        var toAccessor: String,
+        var toAccessorType: String,
+        var orderField: String?  = null,
+        var orderFieldType: String? = null
+)
+

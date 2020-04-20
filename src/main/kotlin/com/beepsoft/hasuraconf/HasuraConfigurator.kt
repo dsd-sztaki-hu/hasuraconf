@@ -135,6 +135,9 @@ class HasuraConfigurator(
     var confJson: String? = null
         private set // the setter is private and has the default implementation
 
+    var jsonSchema: String? = null
+        private set // the setter is private and has the default implementation
+
     private var sessionFactoryImpl: SessionFactory
     private var metaModel: MetamodelImplementor
     private var permissionAnnotationProcessor: PermissionAnnotationProcessor
@@ -165,6 +168,7 @@ class HasuraConfigurator(
     @Throws(HasuraConfiguratorException::class)
     fun configure() {
         confJson = null
+        jsonSchema = null
         tableNames = mutableSetOf<String>()
         entityClasses = mutableSetOf<Class<out Any>>()
         enumTables = mutableSetOf<String>()
@@ -260,16 +264,21 @@ class HasuraConfigurator(
         }
         bulk.append("\n\t]\n")
         bulk.append("}\n")
+
+        jsonSchema = jsonSchemaGenerator.generateSchema(*entityClasses.toTypedArray()).toString().reformatJson()
+        schemaFile?.let {
+            PrintWriter(it).use { out -> out.println(jsonSchema) }
+        }
+
         confJson = bulk.toString().reformatJson()
-
-        jsonSchemaGenerator.generateSchema(*entityClasses.toTypedArray())
-
-        if (confFile != null) {
-            PrintWriter(confFile!!).use { out -> out.println(confJson) }
+        confFile?.let {
+            PrintWriter(it).use { out -> out.println(confJson) }
             if (loadConf) {
                 loadConfScriptIntoHasura()
             }
+
         }
+
     }
 
     private fun collectCascadeDeleteCandidates(entity: EntityType<*>) {
