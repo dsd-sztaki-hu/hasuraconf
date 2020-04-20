@@ -12,10 +12,7 @@ import org.hibernate.internal.SessionFactoryImpl
 import org.hibernate.metamodel.spi.MetamodelImplementor
 import org.hibernate.persister.collection.BasicCollectionPersister
 import org.hibernate.persister.entity.AbstractEntityPersister
-import org.hibernate.type.AssociationType
-import org.hibernate.type.CollectionType
-import org.hibernate.type.ForeignKeyDirection
-import org.hibernate.type.ManyToOneType
+import org.hibernate.type.*
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.WebClientResponseException
@@ -434,6 +431,7 @@ class HasuraConfigurator(
         }
 
         val columnName = classMetadata.getPropertyColumnNames(propName)[0]
+        val columnType = classMetadata.getPropertyType(propName)
         val propType = classMetadata.getPropertyType(propName)
 
         // Now we may alias field name according to @HasuraAlias annotation
@@ -525,14 +523,25 @@ class HasuraConfigurator(
                         customFieldNameJSONBuilder.append(",\n")
                     }
                     customFieldNameJSONBuilder.append("\t\t\t\t\"$columnName\": \"$camelCasedIdName\"")
+                    jsonSchemaGenerator.addSpecValue(entity.javaType,
+                            HasuraSpecTypeValues(referenceProp =
+                            HasuraReferenceProp(name=camelCasedIdName, type=jsonSchemaTypeForReference(columnType, classMetadata))))
 
                     if (assocType is ManyToOneType) {
                         jsonSchemaGenerator.addSpecValue(f, entity.javaType,
-                                HasuraSpecPropValues(relation = "many-to-one", reference = camelCasedIdName))
+                                HasuraSpecPropValues(relation = "many-to-one",
+                                        reference = camelCasedIdName,
+                                        referenceType = jsonSchemaTypeForReference(columnType, classMetadata)
+                                )
+                        )
                     }
                     else {
                         jsonSchemaGenerator.addSpecValue(f, entity.javaType,
-                                HasuraSpecPropValues(relation = "one-to-one", reference = camelCasedIdName))
+                                HasuraSpecPropValues(relation = "one-to-one",
+                                        reference = camelCasedIdName,
+                                        referenceType = jsonSchemaTypeForReference(columnType, classMetadata)
+                                )
+                        )
                     }
                     return true
                 } else { // TO_PARENT, ie. assocition is mapped by the other side
@@ -583,6 +592,20 @@ class HasuraConfigurator(
         return false
     }
 
+    private fun jsonSchemaTypeForReference(columnType: Type, classMetadata: AbstractEntityPersister): String {
+        if (columnType is ManyToOneType) {
+            val refType = columnType.getIdentifierOrUniqueKeyType(classMetadata.factory)
+            if (refType is LongType || refType is IntegerType || refType is ShortType
+                    || refType is BigDecimalType || refType is BigIntegerType) {
+                return "integer"
+            }
+            else if (refType is StringType) {
+                return "string";
+            }
+        }
+        return "<UNKNOWN TYPE>";
+    }
+
     /**
      * Many-to-many relationships are represented with a joint table, however this table has no Java
      * representation therefore no hasura configuration coul dbe generated for them the usual reflection
@@ -593,8 +616,10 @@ class HasuraConfigurator(
         val tableName = join.tableName
         var entityName = tableName.toCase(CaseFormat.CAPITALIZED_CAMEL);
         var keyColumn = join.keyColumnNames[0]
+        var keyColumnType = join.keyType
         var keyColumnAlias = keyColumn.toCamelCase();
         var relatedColumnName = join.elementColumnNames[0]
+        var relatedColumnType = join.elementType
         var relatedColumnNameAlias = relatedColumnName.toCamelCase()
 
         // Get the HasuraAlias and may reset entityName
@@ -686,6 +711,9 @@ class HasuraConfigurator(
                         relation="many-to-many",
                         type=tableName.toCase(CaseFormat.CAPITALIZED_CAMEL),
                         reference=relatedColumnNameAlias,
+                        // Could add type of the reference but there's no really point in it since the
+                        // it can be found in the join type.
+                        // referenceType = jsonSchemaTypeForReference(relatedColumnType, classMetadata),
                         item=joinFieldName)
                 )
 

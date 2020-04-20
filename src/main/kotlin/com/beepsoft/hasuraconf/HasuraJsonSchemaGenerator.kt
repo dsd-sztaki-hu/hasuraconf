@@ -7,6 +7,8 @@ import com.github.victools.jsonschema.generator.*
 import java.lang.reflect.Field
 import java.util.*
 import com.github.victools.jsonschema.module.javax.validation.JavaxValidationModule;
+import org.hibernate.type.ManyToOneType
+import org.hibernate.type.Type
 
 /**
  * Generates JSON schema adding hasura specific extensions to the schema. Data for the extensions
@@ -71,10 +73,12 @@ class HasuraJsonSchemaGenerator(
                             val joinTypeNode = customNode.putObject("join")
                             value.type?.let { joinTypeNode.put("type", "#/$defsName/${value.type}") }
                             value.reference?.let { joinTypeNode.put("reference", value.reference) }
+                            value.referenceType?.let { joinTypeNode.put("referenceType", value.referenceType) }
                             value.item?.let { joinTypeNode.put("item", value.item) }
                         }
                         else {
                             value.reference?.let { customNode.put("reference", value.reference) }
+                            value.referenceType?.let { customNode.put("referenceType", value.referenceType) }
                         }
                     }
                     //println("jsonSchemaAttributesNode$jsonSchemaAttributesNode")
@@ -99,7 +103,14 @@ class HasuraJsonSchemaGenerator(
             if (jsonSchemaTypeNode.has("properties")) {
                 var custom = jsonSchemaTypeNode.customNode
                 hasuraSpecTypeValuesMap[scope.type.typeName]?.let {
-                    custom.put("typeName", it.tableName)
+                    custom.put("typeName", it.typeName)
+                    // If there are referenceProps add these as "properties" on "hasura".
+                    if (it.referenceProps.isNotEmpty()) {
+                        val properties = custom.putObject("properties")
+                        for (referenceProp in it.referenceProps) {
+                            properties.putObject(referenceProp.name).put("type", referenceProp.type)
+                        }
+                    }
                 }
             }
 
@@ -284,7 +295,16 @@ class HasuraJsonSchemaGenerator(
             specValues: HasuraSpecTypeValues
     )
     {
-        hasuraSpecTypeValuesMap.putIfAbsent(clazz.name, specValues)
+        var existing = hasuraSpecTypeValuesMap[clazz.name]
+        if (existing == null) {
+            existing = specValues;
+        }
+        // We only keep the props in referenceProps for final processing
+        if (specValues.referenceProp != null) {
+            existing.referenceProps.add(specValues.referenceProp!!)
+            existing.referenceProp = null;
+        }
+        hasuraSpecTypeValuesMap.putIfAbsent(clazz.name, existing)
     }
 
 }
@@ -294,10 +314,35 @@ class HasuraSpecPropValues(
         var mappedBy: String? = null,
         var type: String? = null,
         var item: String?  = null,
-        var reference: String?  = null)
+        var reference: String?  = null,
+        var referenceType: String?  = null
 
+)
+
+class HasuraReferenceProp(
+        var name: String,
+        var type: String
+)
+
+/**
+ * Special hasura properties on types
+ */
 class HasuraSpecTypeValues(
-        var tableName: String)
+        /**
+         * The Hasura type name for a Java type name. This is also the table name of the type in the db
+         */
+        var typeName: String? = null,
+
+        /**
+         * An extra property of the type, which holds a reference value, ie. an ID of a related entity.
+         */
+        var referenceProp:  HasuraReferenceProp? = null,
+
+        /**
+         * A list of extra properties.
+         */
+        var referenceProps: MutableList<HasuraReferenceProp> = mutableListOf()
+)
 
 class JoinType(
         var name: String,
