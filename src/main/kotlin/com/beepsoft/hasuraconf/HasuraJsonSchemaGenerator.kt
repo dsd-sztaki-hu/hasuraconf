@@ -1,5 +1,6 @@
 package com.beepsoft.hasuraconf
 
+import com.beepsoft.hasuraconf.annotation.ReadOnly
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
@@ -7,6 +8,7 @@ import com.github.victools.jsonschema.generator.*
 import java.lang.reflect.Field
 import java.util.*
 import com.github.victools.jsonschema.module.javax.validation.JavaxValidationModule;
+import com.github.victools.jsonschema.module.javax.validation.JavaxValidationOption
 import org.hibernate.type.ManyToOneType
 import org.hibernate.type.Type
 
@@ -52,8 +54,11 @@ class HasuraJsonSchemaGenerator(
         defsName = defsNames[schemaVersionEnum]!!
 
         val configBuilder = SchemaGeneratorConfigBuilder(schemaVersionEnum, OptionPreset.PLAIN_JSON)
-                .with(Option.DEFINITIONS_FOR_ALL_OBJECTS)
-                .with(JavaxValidationModule())
+                .with(
+                        Option.DEFINITIONS_FOR_ALL_OBJECTS)
+                .with(JavaxValidationModule(
+                        JavaxValidationOption.NOT_NULLABLE_FIELD_IS_REQUIRED,
+                        JavaxValidationOption.INCLUDE_PATTERN_EXPRESSIONS))
 
         // Add hasura:{} values to "properties"
         configBuilder.forFields()
@@ -81,6 +86,14 @@ class HasuraJsonSchemaGenerator(
                             value.referenceType?.let { customNode.put("referenceType", value.referenceType) }
                         }
                     }
+                    val readOnlyAnnot = f.getAnnotation(ReadOnly::class.java)
+                    if (readOnlyAnnot != null) {
+                        jsonSchemaAttributesNode.put("readOnly", true)
+                        if (readOnlyAnnot.exceptAtCreation) {
+                            jsonSchemaAttributesNode.customNode.put("allowWriteAtCreation", true);
+                        }
+                    }
+
                     //println("jsonSchemaAttributesNode$jsonSchemaAttributesNode")
                 }
                 // Add format. Currently only Date fields are mapped to "date-time" format

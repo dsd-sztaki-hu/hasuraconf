@@ -1,5 +1,6 @@
 package com.beepsoft.hasuraconf.model
 
+import com.beepsoft.hasuraconf.annotation.ReadOnly
 import com.fasterxml.jackson.annotation.JsonIgnore
 import java.util.*
 import javax.persistence.*
@@ -11,6 +12,7 @@ import javax.persistence.*
 abstract class BaseObject {
     @Id
     @GeneratedValue(strategy=GenerationType.IDENTITY)
+    @ReadOnly
     var id: Long? = null
 
     var createdAt: Date? = null
@@ -18,6 +20,7 @@ abstract class BaseObject {
 
 
     @Column(unique = true)
+    @ReadOnly(exceptAtCreation = true)
     var tag: String? = null
 
     @PrePersist

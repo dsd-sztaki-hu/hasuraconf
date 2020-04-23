@@ -1,55 +1,5 @@
 {
   "$defs" : {
-    "Theme" : {
-      "type" : "object",
-      "properties" : {
-        "createdAt" : {
-          "type" : "string",
-          "format" : "date-time"
-        },
-        "cssClassName" : {
-          "type" : "string"
-        },
-        "description" : {
-          "type" : "string"
-        },
-        "id" : {
-          "type" : "integer"
-        },
-        "maxDayCount" : {
-          "type" : "integer"
-        },
-        "minDayCount" : {
-          "type" : "integer"
-        },
-        "mnemonic" : {
-          "type" : "string"
-        },
-        "tag" : {
-          "type" : "string"
-        },
-        "themeLayouts" : {
-          "hasura" : {
-            "relation" : "one-to-many",
-            "mappedBy" : "theme"
-          },
-          "type" : "array",
-          "items" : {
-            "$ref" : "#/$defs/Layout"
-          }
-        },
-        "title" : {
-          "type" : "string"
-        },
-        "updatedAt" : {
-          "type" : "string",
-          "format" : "date-time"
-        }
-      },
-      "hasura" : {
-        "typeName" : "theme"
-      }
-    },
     "Layout" : {
       "type" : "object",
       "properties" : {
@@ -67,7 +17,8 @@
           "type" : "string"
         },
         "id" : {
-          "type" : "integer"
+          "type" : "integer",
+          "readOnly" : true
         },
         "maxHeight" : {
           "type" : "integer"
@@ -88,7 +39,11 @@
           "type" : "string"
         },
         "tag" : {
-          "type" : "string"
+          "type" : "string",
+          "readOnly" : true,
+          "hasura" : {
+            "allowWriteAtCreation" : true
+          }
         },
         "theme" : {
           "$ref" : "#/$defs/Theme",
@@ -116,6 +71,61 @@
             "type" : "integer"
           }
         }
+      }
+    },
+    "Theme" : {
+      "type" : "object",
+      "properties" : {
+        "createdAt" : {
+          "type" : "string",
+          "format" : "date-time"
+        },
+        "cssClassName" : {
+          "type" : "string"
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "integer",
+          "readOnly" : true
+        },
+        "maxDayCount" : {
+          "type" : "integer"
+        },
+        "minDayCount" : {
+          "type" : "integer"
+        },
+        "mnemonic" : {
+          "type" : "string"
+        },
+        "tag" : {
+          "type" : "string",
+          "readOnly" : true,
+          "hasura" : {
+            "allowWriteAtCreation" : true
+          }
+        },
+        "themeLayouts" : {
+          "hasura" : {
+            "relation" : "one-to-many",
+            "mappedBy" : "theme"
+          },
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/Layout"
+          }
+        },
+        "title" : {
+          "type" : "string"
+        },
+        "updatedAt" : {
+          "type" : "string",
+          "format" : "date-time"
+        }
+      },
+      "hasura" : {
+        "typeName" : "theme"
       }
     },
     "Availability" : {
@@ -151,7 +161,8 @@
           "type" : "string"
         },
         "id" : {
-          "type" : "integer"
+          "type" : "integer",
+          "readOnly" : true
         },
         "localeCountry" : {
           "type" : "string"
@@ -189,7 +200,11 @@
           }
         },
         "tag" : {
-          "type" : "string"
+          "type" : "string",
+          "readOnly" : true,
+          "hasura" : {
+            "allowWriteAtCreation" : true
+          }
         },
         "theme" : {
           "$ref" : "#/$defs/Theme",
@@ -253,7 +268,8 @@
           "format" : "date-time"
         },
         "id" : {
-          "type" : "integer"
+          "type" : "integer",
+          "readOnly" : true
         },
         "role" : {
           "$ref" : "#/$defs/RoleType",
@@ -264,7 +280,11 @@
           }
         },
         "tag" : {
-          "type" : "string"
+          "type" : "string",
+          "readOnly" : true,
+          "hasura" : {
+            "allowWriteAtCreation" : true
+          }
         },
         "updatedAt" : {
           "type" : "string",
@@ -342,7 +362,8 @@
           }
         },
         "id" : {
-          "type" : "integer"
+          "type" : "integer",
+          "readOnly" : true
         },
         "lastName" : {
           "type" : "string"
@@ -354,7 +375,11 @@
           "type" : "string"
         },
         "tag" : {
-          "type" : "string"
+          "type" : "string",
+          "readOnly" : true,
+          "hasura" : {
+            "allowWriteAtCreation" : true
+          }
         },
         "updatedAt" : {
           "type" : "string",
@@ -367,6 +392,73 @@
       "hasura" : {
         "typeName" : "calendar_user"
       }
+    },
+    "Event" : {
+      "type" : "object",
+      "properties" : {
+        "calendar" : {
+          "$ref" : "#/$defs/Calendar",
+          "hasura" : {
+            "relation" : "many-to-one",
+            "reference" : "calendarId",
+            "referenceType" : "integer"
+          }
+        },
+        "content" : {
+          "type" : "array",
+          "items" : {
+            "type" : "integer"
+          }
+        },
+        "contentType" : {
+          "type" : "integer"
+        },
+        "createdAt" : {
+          "type" : "string",
+          "format" : "date-time"
+        },
+        "day" : {
+          "$ref" : "#/$defs/Day",
+          "hasura" : {
+            "relation" : "many-to-one",
+            "reference" : "dayId",
+            "referenceType" : "integer"
+          }
+        },
+        "id" : {
+          "type" : "integer",
+          "readOnly" : true
+        },
+        "reference" : {
+          "type" : "string"
+        },
+        "tag" : {
+          "type" : "string",
+          "readOnly" : true,
+          "hasura" : {
+            "allowWriteAtCreation" : true
+          }
+        },
+        "updatedAt" : {
+          "type" : "string",
+          "format" : "date-time"
+        }
+      },
+      "hasura" : {
+        "typeName" : "event",
+        "properties" : {
+          "calendarId" : {
+            "type" : "integer"
+          },
+          "dayId" : {
+            "type" : "integer"
+          }
+        }
+      }
+    },
+    "RoleType" : {
+      "type" : "string",
+      "enum" : [ "OWNER", "EDITOR", "VIEWER" ]
     },
     "Day" : {
       "type" : "object",
@@ -403,13 +495,18 @@
           }
         },
         "id" : {
-          "type" : "integer"
+          "type" : "integer",
+          "readOnly" : true
         },
         "pos" : {
           "type" : "integer"
         },
         "tag" : {
-          "type" : "string"
+          "type" : "string",
+          "readOnly" : true,
+          "hasura" : {
+            "allowWriteAtCreation" : true
+          }
         },
         "themeConfig" : {
           "type" : "string"
@@ -426,68 +523,6 @@
         "typeName" : "day",
         "properties" : {
           "calendarId" : {
-            "type" : "integer"
-          }
-        }
-      }
-    },
-    "RoleType" : {
-      "type" : "string",
-      "enum" : [ "OWNER", "EDITOR", "VIEWER" ]
-    },
-    "Event" : {
-      "type" : "object",
-      "properties" : {
-        "calendar" : {
-          "$ref" : "#/$defs/Calendar",
-          "hasura" : {
-            "relation" : "many-to-one",
-            "reference" : "calendarId",
-            "referenceType" : "integer"
-          }
-        },
-        "content" : {
-          "type" : "array",
-          "items" : {
-            "type" : "integer"
-          }
-        },
-        "contentType" : {
-          "type" : "integer"
-        },
-        "createdAt" : {
-          "type" : "string",
-          "format" : "date-time"
-        },
-        "day" : {
-          "$ref" : "#/$defs/Day",
-          "hasura" : {
-            "relation" : "many-to-one",
-            "reference" : "dayId",
-            "referenceType" : "integer"
-          }
-        },
-        "id" : {
-          "type" : "integer"
-        },
-        "reference" : {
-          "type" : "string"
-        },
-        "tag" : {
-          "type" : "string"
-        },
-        "updatedAt" : {
-          "type" : "string",
-          "format" : "date-time"
-        }
-      },
-      "hasura" : {
-        "typeName" : "event",
-        "properties" : {
-          "calendarId" : {
-            "type" : "integer"
-          },
-          "dayId" : {
             "type" : "integer"
           }
         }
@@ -543,3 +578,4 @@
     }
   }
 }
+
