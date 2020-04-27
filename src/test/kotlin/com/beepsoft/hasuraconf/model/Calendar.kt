@@ -76,7 +76,6 @@ class Calendar : BaseObject() {
     /** Next version.  */
     @OneToOne
     @HasuraGenerateCascadeDeleteTrigger
-    @HasuraIgnoreRelationship
     var nextVersion: Calendar? = null
 
     /** Theme descriptor of the calendar.  */

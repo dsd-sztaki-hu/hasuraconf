@@ -43,7 +43,12 @@
           "type" : "string"
         },
         "nextVersion" : {
-          "$ref" : "#/$defs/Calendar"
+          "$ref" : "#/$defs/Calendar",
+          "hasura" : {
+            "relation" : "one-to-one",
+            "reference" : "nextVersionId",
+            "referenceType" : "integer"
+          }
         },
         "previousVersion" : {
           "$ref" : "#/$defs/Calendar",
@@ -114,6 +119,9 @@
         "properties" : {
           "availabilityValue" : {
             "type" : "string"
+          },
+          "nextVersionId" : {
+            "type" : "integer"
           },
           "previousVersionId" : {
             "type" : "integer"
@@ -186,46 +194,65 @@
         }
       }
     },
-    "Day" : {
+    "CalendarUser" : {
       "type" : "object",
       "properties" : {
-        "calendar" : {
-          "$ref" : "#/$defs/Calendar",
+        "calendars" : {
           "hasura" : {
-            "relation" : "many-to-one",
-            "reference" : "calendarId",
-            "referenceType" : "integer"
+            "relation" : "many-to-many",
+            "join" : {
+              "type" : "#/$defs/UserCalendar",
+              "reference" : "theCalendarId",
+              "item" : "calendar"
+            }
+          },
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/Calendar"
           }
-        },
-        "conditionClass" : {
-          "type" : "string"
-        },
-        "conditionParams" : {
-          "type" : "string"
         },
         "createdAt" : {
           "type" : "string",
           "format" : "date-time"
         },
-        "description" : {
+        "email" : {
           "type" : "string"
         },
-        "events" : {
+        "enabled" : {
+          "type" : "boolean"
+        },
+        "firebaseUserId" : {
+          "type" : "string"
+        },
+        "firstName" : {
+          "type" : "string"
+        },
+        "friends" : {
           "hasura" : {
-            "relation" : "one-to-many",
-            "mappedBy" : "day"
+            "relation" : "many-to-many",
+            "join" : {
+              "type" : "#/$defs/CalendarUserFriends",
+              "reference" : "myFriendUserId",
+              "item" : "myFriend"
+            }
           },
           "type" : "array",
           "items" : {
-            "$ref" : "#/$defs/Event"
+            "$ref" : "#/$defs/CalendarUser"
           }
         },
         "id" : {
           "type" : "integer",
           "readOnly" : true
         },
-        "pos" : {
-          "type" : "integer"
+        "lastName" : {
+          "type" : "string"
+        },
+        "nickname" : {
+          "type" : "string"
+        },
+        "password" : {
+          "type" : "string"
         },
         "tag" : {
           "type" : "string",
@@ -234,24 +261,16 @@
             "allowWriteAtCreation" : true
           }
         },
-        "themeConfig" : {
-          "type" : "string"
-        },
-        "title" : {
-          "type" : "string"
-        },
         "updatedAt" : {
           "type" : "string",
           "format" : "date-time"
+        },
+        "username" : {
+          "type" : "string"
         }
       },
       "hasura" : {
-        "typeName" : "day",
-        "properties" : {
-          "calendarId" : {
-            "type" : "integer"
-          }
-        }
+        "typeName" : "calendar_user"
       }
     },
     "Event" : {
@@ -449,65 +468,46 @@
         "typeName" : "theme"
       }
     },
-    "CalendarUser" : {
+    "Day" : {
       "type" : "object",
       "properties" : {
-        "calendars" : {
+        "calendar" : {
+          "$ref" : "#/$defs/Calendar",
           "hasura" : {
-            "relation" : "many-to-many",
-            "join" : {
-              "type" : "#/$defs/UserCalendar",
-              "reference" : "theCalendarId",
-              "item" : "calendar"
-            }
-          },
-          "type" : "array",
-          "items" : {
-            "$ref" : "#/$defs/Calendar"
+            "relation" : "many-to-one",
+            "reference" : "calendarId",
+            "referenceType" : "integer"
           }
+        },
+        "conditionClass" : {
+          "type" : "string"
+        },
+        "conditionParams" : {
+          "type" : "string"
         },
         "createdAt" : {
           "type" : "string",
           "format" : "date-time"
         },
-        "email" : {
+        "description" : {
           "type" : "string"
         },
-        "enabled" : {
-          "type" : "boolean"
-        },
-        "firebaseUserId" : {
-          "type" : "string"
-        },
-        "firstName" : {
-          "type" : "string"
-        },
-        "friends" : {
+        "events" : {
           "hasura" : {
-            "relation" : "many-to-many",
-            "join" : {
-              "type" : "#/$defs/CalendarUserFriends",
-              "reference" : "myFriendUserId",
-              "item" : "myFriend"
-            }
+            "relation" : "one-to-many",
+            "mappedBy" : "day"
           },
           "type" : "array",
           "items" : {
-            "$ref" : "#/$defs/CalendarUser"
+            "$ref" : "#/$defs/Event"
           }
         },
         "id" : {
           "type" : "integer",
           "readOnly" : true
         },
-        "lastName" : {
-          "type" : "string"
-        },
-        "nickname" : {
-          "type" : "string"
-        },
-        "password" : {
-          "type" : "string"
+        "pos" : {
+          "type" : "integer"
         },
         "tag" : {
           "type" : "string",
@@ -516,38 +516,40 @@
             "allowWriteAtCreation" : true
           }
         },
+        "themeConfig" : {
+          "type" : "string"
+        },
+        "title" : {
+          "type" : "string"
+        },
         "updatedAt" : {
           "type" : "string",
           "format" : "date-time"
-        },
-        "username" : {
-          "type" : "string"
         }
       },
       "hasura" : {
-        "typeName" : "calendar_user"
+        "typeName" : "day",
+        "properties" : {
+          "calendarId" : {
+            "type" : "integer"
+          }
+        }
       }
     },
     "UserCalendar" : {
       "type" : "object",
       "properties" : {
-        "theUserId" : {
-          "type" : "integer"
-        },
-        "calendarUser" : {
-          "$ref" : "#/$defs/CalendarUser"
-        },
         "theCalendarId" : {
           "type" : "integer"
         },
         "calendar" : {
           "$ref" : "#/$defs/Calendar"
         },
-        "calendarOrder" : {
-          "type" : "orderFieldType",
-          "hasura" : {
-            "orderField" : true
-          }
+        "theUserId" : {
+          "type" : "integer"
+        },
+        "calendarUser" : {
+          "$ref" : "#/$defs/CalendarUser"
         }
       },
       "hasura" : {
@@ -578,4 +580,3 @@
     }
   }
 }
-
