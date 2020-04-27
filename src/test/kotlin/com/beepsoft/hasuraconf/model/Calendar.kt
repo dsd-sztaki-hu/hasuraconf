@@ -76,6 +76,7 @@ class Calendar : BaseObject() {
     /** Next version.  */
     @OneToOne
     @HasuraGenerateCascadeDeleteTrigger
+    @HasuraIgnoreRelationship
     var nextVersion: Calendar? = null
 
     /** Theme descriptor of the calendar.  */
@@ -88,7 +89,6 @@ class Calendar : BaseObject() {
     @ManyToMany
     @JoinTable(name="user_calendar", joinColumns=arrayOf(JoinColumn(name="the_calendar_id")), inverseJoinColumns=arrayOf(JoinColumn(name="the_user_id")))
     @OnDelete(action=OnDeleteAction.CASCADE)
-    @HasuraIgnoreRelationship
     var users: List<CalendarUser>? = null
 
     @Entity

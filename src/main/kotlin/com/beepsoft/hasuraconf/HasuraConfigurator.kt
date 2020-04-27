@@ -527,7 +527,7 @@ class HasuraConfigurator(
                             HasuraSpecTypeValues(referenceProp =
                             HasuraReferenceProp(name=camelCasedIdName, type=jsonSchemaTypeForReference(columnType, classMetadata))))
 
-                    if (assocType is ManyToOneType) {
+                    if (assocType is ManyToOneType && !assocType.isLogicalOneToOne) {
                         jsonSchemaGenerator.addSpecValue(f, entity.javaType,
                                 HasuraSpecPropValues(relation = "many-to-one",
                                         reference = camelCasedIdName,
