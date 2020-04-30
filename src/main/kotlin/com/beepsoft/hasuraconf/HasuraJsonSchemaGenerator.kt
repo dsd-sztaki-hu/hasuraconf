@@ -78,7 +78,7 @@ class HasuraJsonSchemaGenerator(
                             val joinTypeNode = customNode.putObject("join")
                             value.type?.let { joinTypeNode.put("\$ref", "#/$defsName/${value.type}") }
                             value.reference?.let { joinTypeNode.put("reference", value.reference) }
-                            value.referenceType?.let { joinTypeNode.put("referenceType", value.referenceType) }
+                            value.parentReference?.let { joinTypeNode.put("parentReference", value.parentReference) }
                             value.item?.let { joinTypeNode.put("item", value.item) }
                         }
                         else {
@@ -323,14 +323,41 @@ class HasuraJsonSchemaGenerator(
 
 }
 
+/**
+ * Hasura spec values for properties
+ */
 class HasuraSpecPropValues(
+        /**
+         * Type of the relation. One of one-to-one, many-to-one, one-to-many, many-to-many
+         */
         var relation: String,
+        /**
+         * In case the reference is not hold by this entity but the other entity, which field of the related
+         * entity holds the reference.
+         */
         var mappedBy: String? = null,
+        /**
+         * Type of the referred entity. Becomes a $ref.
+         */
         var type: String? = null,
+        /**
+         * The field to navigate to the referecnced entity in case of many-to-many join table.
+         */
         var item: String?  = null,
+        /**
+         * Field holding the ID to the related entity.
+         */
         var reference: String?  = null,
-        var referenceType: String?  = null
-
+        /**
+         * Type of the reference field. In case of many-to-many not set, as this can be found on the join
+         * entity itself.
+         */
+        var referenceType: String?  = null,
+        /**
+         * In case of many-to-many the reference in the join table pointing to the parent entity from where
+         * we can navigate to the 'item'
+         */
+        var parentReference: String?  = null
 )
 
 class HasuraReferenceProp(

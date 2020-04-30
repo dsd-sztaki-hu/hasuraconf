@@ -715,9 +715,7 @@ class HasuraConfigurator(
                         relation="many-to-many",
                         type=tableName.toCase(CaseFormat.CAPITALIZED_CAMEL),
                         reference=relatedColumnNameAlias,
-                        // Could add type of the reference but there's no really point in it since the
-                        // it can be found in the join type.
-                        // referenceType = jsonSchemaTypeForReference(relatedColumnType, classMetadata),
+                        parentReference=keyColumnAlias,
                         item=joinFieldName)
                 )
 
