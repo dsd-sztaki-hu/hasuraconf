@@ -117,6 +117,7 @@ class HasuraJsonSchemaGenerator(
                 var custom = jsonSchemaTypeNode.customNode
                 hasuraSpecTypeValuesMap[scope.type.typeName]?.let {
                     custom.put("typeName", it.typeName)
+                    custom.put("idProp", it.idProp)
                     // If there are referenceProps add these as "properties" on "hasura".
                     if (it.referenceProps.isNotEmpty()) {
                         val properties = custom.putObject("properties")
@@ -354,7 +355,12 @@ class HasuraSpecTypeValues(
         /**
          * A list of extra properties.
          */
-        var referenceProps: MutableList<HasuraReferenceProp> = mutableListOf()
+        var referenceProps: MutableList<HasuraReferenceProp> = mutableListOf(),
+
+        /**
+         * Primary key of the entities of this type
+         */
+        var idProp: String? = null
 )
 
 class JoinType(

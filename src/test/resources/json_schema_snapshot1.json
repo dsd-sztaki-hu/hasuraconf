@@ -1,5 +1,9 @@
 {
   "$defs" : {
+    "Availability" : {
+      "type" : "string",
+      "enum" : [ "PRIVATE", "PUBLIC" ]
+    },
     "Theme" : {
       "type" : "object",
       "properties" : {
@@ -52,7 +56,8 @@
         }
       },
       "hasura" : {
-        "typeName" : "theme"
+        "typeName" : "theme",
+        "idProp" : "id"
       }
     },
     "Layout" : {
@@ -121,16 +126,13 @@
       },
       "hasura" : {
         "typeName" : "layout",
+        "idProp" : "id",
         "properties" : {
           "themeId" : {
             "type" : "integer"
           }
         }
       }
-    },
-    "Availability" : {
-      "type" : "string",
-      "enum" : [ "PRIVATE", "PUBLIC" ]
     },
     "Calendar" : {
       "type" : "object",
@@ -244,6 +246,7 @@
       },
       "hasura" : {
         "typeName" : "calendar",
+        "idProp" : "id",
         "properties" : {
           "availabilityValue" : {
             "type" : "string"
@@ -309,6 +312,7 @@
       },
       "hasura" : {
         "typeName" : "calendar_role",
+        "idProp" : "id",
         "properties" : {
           "calendarId" : {
             "type" : "integer"
@@ -383,6 +387,7 @@
       },
       "hasura" : {
         "typeName" : "day",
+        "idProp" : "id",
         "properties" : {
           "calendarId" : {
             "type" : "integer"
@@ -443,6 +448,7 @@
       },
       "hasura" : {
         "typeName" : "event",
+        "idProp" : "id",
         "properties" : {
           "calendarId" : {
             "type" : "integer"
@@ -533,7 +539,8 @@
         }
       },
       "hasura" : {
-        "typeName" : "calendar_user"
+        "typeName" : "calendar_user",
+        "idProp" : "id"
       }
     },
     "UserCalendar" : {

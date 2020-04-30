@@ -354,10 +354,14 @@ class HasuraConfigurator(
     private fun generateEntityCustomization(entity: EntityType<*>): String {
         val classMetadata = metaModel.entityPersister(entity.javaType.typeName) as AbstractEntityPersister
         val tableName = classMetadata.tableName
+        val keyKolumnName = classMetadata.keyColumnNames[0]
         tableNames.add(tableName)
         entityClasses.add(entity.javaType)
 
-        jsonSchemaGenerator.addSpecValue(entity.javaType, HasuraSpecTypeValues(tableName))
+        jsonSchemaGenerator.addSpecValue(entity.javaType,
+                HasuraSpecTypeValues(
+                        typeName=tableName,
+                        idProp=keyKolumnName))
 
         var entityName = entity.name
 

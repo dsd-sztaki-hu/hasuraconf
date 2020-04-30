@@ -333,8 +333,9 @@ In case of many-to-many relationships only:
       
 ## Hasura extension values on types
 
-* `typeName`: the typename used in Hasura graphql.
-* `properties`: lists "hidden" reference properties. These are the properties holding ID references to other entities. These are not part of the Java class definitions,  but these are present in the Hasura graphql schema and we reprexent these here in the usual JSON Schema `properties` format.   
+* `typeName`: the type name used in Hasura graphql.
+* `idProp`: name of the ID - primary key - property
+* `properties`: lists "hidden" reference properties. These are the properties holding ID references to other entities. These are not part of the Java class definitions,  but these are present in the Hasura graphql schema and we reprexent these here in the usual JSON Schema `properties` format.    
 
 # Usage
 
