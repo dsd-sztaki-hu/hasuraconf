@@ -1,138 +1,9 @@
+
 {
   "$defs" : {
     "Availability" : {
       "type" : "string",
       "enum" : [ "PRIVATE", "PUBLIC" ]
-    },
-    "Theme" : {
-      "type" : "object",
-      "properties" : {
-        "createdAt" : {
-          "type" : "string",
-          "format" : "date-time"
-        },
-        "cssClassName" : {
-          "type" : "string"
-        },
-        "description" : {
-          "type" : "string"
-        },
-        "id" : {
-          "type" : "integer",
-          "readOnly" : true
-        },
-        "maxDayCount" : {
-          "type" : "integer"
-        },
-        "minDayCount" : {
-          "type" : "integer"
-        },
-        "mnemonic" : {
-          "type" : "string"
-        },
-        "tag" : {
-          "type" : "string",
-          "readOnly" : true,
-          "hasura" : {
-            "allowWriteAtCreation" : true
-          }
-        },
-        "themeLayouts" : {
-          "hasura" : {
-            "relation" : "one-to-many",
-            "mappedBy" : "theme"
-          },
-          "type" : "array",
-          "items" : {
-            "$ref" : "#/$defs/Layout"
-          }
-        },
-        "title" : {
-          "type" : "string"
-        },
-        "updatedAt" : {
-          "type" : "string",
-          "format" : "date-time"
-        }
-      },
-      "hasura" : {
-        "typeName" : "theme",
-        "idProp" : "id"
-      }
-    },
-    "Layout" : {
-      "type" : "object",
-      "properties" : {
-        "createdAt" : {
-          "type" : "string",
-          "format" : "date-time"
-        },
-        "data" : {
-          "type" : "array",
-          "items" : {
-            "type" : "integer"
-          }
-        },
-        "description" : {
-          "type" : "string"
-        },
-        "id" : {
-          "type" : "integer",
-          "readOnly" : true
-        },
-        "maxHeight" : {
-          "type" : "integer"
-        },
-        "maxWidth" : {
-          "type" : "integer"
-        },
-        "mediaQuery" : {
-          "type" : "string"
-        },
-        "minHeight" : {
-          "type" : "integer"
-        },
-        "minWidth" : {
-          "type" : "integer"
-        },
-        "mnemonic" : {
-          "type" : "string"
-        },
-        "tag" : {
-          "type" : "string",
-          "readOnly" : true,
-          "hasura" : {
-            "allowWriteAtCreation" : true
-          }
-        },
-        "theme" : {
-          "$ref" : "#/$defs/Theme",
-          "hasura" : {
-            "relation" : "many-to-one",
-            "reference" : "themeId",
-            "referenceType" : "integer"
-          }
-        },
-        "title" : {
-          "type" : "string"
-        },
-        "updatedAt" : {
-          "type" : "string",
-          "format" : "date-time"
-        },
-        "userAgentRegexp" : {
-          "type" : "string"
-        }
-      },
-      "hasura" : {
-        "typeName" : "layout",
-        "idProp" : "id",
-        "properties" : {
-          "themeId" : {
-            "type" : "integer"
-          }
-        }
-      }
     },
     "Calendar" : {
       "type" : "object",
@@ -230,7 +101,7 @@
           "hasura" : {
             "relation" : "many-to-many",
             "join" : {
-              "type" : "#/$defs/UserCalendar",
+              "$ref" : "#/$defs/UserCalendar",
               "reference" : "theUserId",
               "item" : "calendarUser"
             }
@@ -263,32 +134,65 @@
         }
       }
     },
-    "CalendarRole" : {
+    "CalendarUser" : {
       "type" : "object",
       "properties" : {
-        "calendar" : {
-          "$ref" : "#/$defs/Calendar",
+        "calendars" : {
           "hasura" : {
-            "relation" : "many-to-one",
-            "reference" : "calendarId",
-            "referenceType" : "integer"
+            "relation" : "many-to-many",
+            "join" : {
+              "$ref" : "#/$defs/UserCalendar",
+              "reference" : "theCalendarId",
+              "item" : "calendar"
+            }
+          },
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/Calendar"
           }
         },
         "createdAt" : {
           "type" : "string",
           "format" : "date-time"
         },
+        "email" : {
+          "type" : "string"
+        },
+        "enabled" : {
+          "type" : "boolean"
+        },
+        "firebaseUserId" : {
+          "type" : "string"
+        },
+        "firstName" : {
+          "type" : "string"
+        },
+        "friends" : {
+          "hasura" : {
+            "relation" : "many-to-many",
+            "join" : {
+              "$ref" : "#/$defs/CalendarUserFriends",
+              "reference" : "myFriendUserId",
+              "item" : "myFriend"
+            }
+          },
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/CalendarUser"
+          }
+        },
         "id" : {
           "type" : "integer",
           "readOnly" : true
         },
-        "role" : {
-          "$ref" : "#/$defs/RoleType",
-          "hasura" : {
-            "relation" : "many-to-one",
-            "reference" : "roleValue",
-            "referenceType" : "string"
-          }
+        "lastName" : {
+          "type" : "string"
+        },
+        "nickname" : {
+          "type" : "string"
+        },
+        "password" : {
+          "type" : "string"
         },
         "tag" : {
           "type" : "string",
@@ -301,29 +205,13 @@
           "type" : "string",
           "format" : "date-time"
         },
-        "user" : {
-          "$ref" : "#/$defs/CalendarUser",
-          "hasura" : {
-            "relation" : "many-to-one",
-            "reference" : "userId",
-            "referenceType" : "integer"
-          }
+        "username" : {
+          "type" : "string"
         }
       },
       "hasura" : {
-        "typeName" : "calendar_role",
-        "idProp" : "id",
-        "properties" : {
-          "calendarId" : {
-            "type" : "integer"
-          },
-          "roleValue" : {
-            "type" : "string"
-          },
-          "userId" : {
-            "type" : "integer"
-          }
-        }
+        "typeName" : "calendar_user",
+        "idProp" : "id"
       }
     },
     "Day" : {
@@ -459,69 +347,166 @@
         }
       }
     },
+    "Layout" : {
+      "type" : "object",
+      "properties" : {
+        "createdAt" : {
+          "type" : "string",
+          "format" : "date-time"
+        },
+        "data" : {
+          "type" : "array",
+          "items" : {
+            "type" : "integer"
+          }
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "integer",
+          "readOnly" : true
+        },
+        "maxHeight" : {
+          "type" : "integer"
+        },
+        "maxWidth" : {
+          "type" : "integer"
+        },
+        "mediaQuery" : {
+          "type" : "string"
+        },
+        "minHeight" : {
+          "type" : "integer"
+        },
+        "minWidth" : {
+          "type" : "integer"
+        },
+        "mnemonic" : {
+          "type" : "string"
+        },
+        "tag" : {
+          "type" : "string",
+          "readOnly" : true,
+          "hasura" : {
+            "allowWriteAtCreation" : true
+          }
+        },
+        "theme" : {
+          "$ref" : "#/$defs/Theme",
+          "hasura" : {
+            "relation" : "many-to-one",
+            "reference" : "themeId",
+            "referenceType" : "integer"
+          }
+        },
+        "title" : {
+          "type" : "string"
+        },
+        "updatedAt" : {
+          "type" : "string",
+          "format" : "date-time"
+        },
+        "userAgentRegexp" : {
+          "type" : "string"
+        }
+      },
+      "hasura" : {
+        "typeName" : "layout",
+        "idProp" : "id",
+        "properties" : {
+          "themeId" : {
+            "type" : "integer"
+          }
+        }
+      }
+    },
     "RoleType" : {
       "type" : "string",
       "enum" : [ "OWNER", "EDITOR", "VIEWER" ]
     },
-    "CalendarUser" : {
+    "Theme" : {
       "type" : "object",
       "properties" : {
-        "calendars" : {
+        "createdAt" : {
+          "type" : "string",
+          "format" : "date-time"
+        },
+        "cssClassName" : {
+          "type" : "string"
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "integer",
+          "readOnly" : true
+        },
+        "maxDayCount" : {
+          "type" : "integer"
+        },
+        "minDayCount" : {
+          "type" : "integer"
+        },
+        "mnemonic" : {
+          "type" : "string"
+        },
+        "tag" : {
+          "type" : "string",
+          "readOnly" : true,
           "hasura" : {
-            "relation" : "many-to-many",
-            "join" : {
-              "type" : "#/$defs/UserCalendar",
-              "reference" : "theCalendarId",
-              "item" : "calendar"
-            }
+            "allowWriteAtCreation" : true
+          }
+        },
+        "themeLayouts" : {
+          "hasura" : {
+            "relation" : "one-to-many",
+            "mappedBy" : "theme"
           },
           "type" : "array",
           "items" : {
-            "$ref" : "#/$defs/Calendar"
+            "$ref" : "#/$defs/Layout"
+          }
+        },
+        "title" : {
+          "type" : "string"
+        },
+        "updatedAt" : {
+          "type" : "string",
+          "format" : "date-time"
+        }
+      },
+      "hasura" : {
+        "typeName" : "theme",
+        "idProp" : "id"
+      }
+    },
+    "CalendarRole" : {
+      "type" : "object",
+      "properties" : {
+        "calendar" : {
+          "$ref" : "#/$defs/Calendar",
+          "hasura" : {
+            "relation" : "many-to-one",
+            "reference" : "calendarId",
+            "referenceType" : "integer"
           }
         },
         "createdAt" : {
           "type" : "string",
           "format" : "date-time"
         },
-        "email" : {
-          "type" : "string"
-        },
-        "enabled" : {
-          "type" : "boolean"
-        },
-        "firebaseUserId" : {
-          "type" : "string"
-        },
-        "firstName" : {
-          "type" : "string"
-        },
-        "friends" : {
-          "hasura" : {
-            "relation" : "many-to-many",
-            "join" : {
-              "type" : "#/$defs/CalendarUserFriends",
-              "reference" : "myFriendUserId",
-              "item" : "myFriend"
-            }
-          },
-          "type" : "array",
-          "items" : {
-            "$ref" : "#/$defs/CalendarUser"
-          }
-        },
         "id" : {
           "type" : "integer",
           "readOnly" : true
         },
-        "lastName" : {
-          "type" : "string"
-        },
-        "nickname" : {
-          "type" : "string"
-        },
-        "password" : {
-          "type" : "string"
+        "role" : {
+          "$ref" : "#/$defs/RoleType",
+          "hasura" : {
+            "relation" : "many-to-one",
+            "reference" : "roleValue",
+            "referenceType" : "string"
+          }
         },
         "tag" : {
           "type" : "string",
@@ -534,13 +519,29 @@
           "type" : "string",
           "format" : "date-time"
         },
-        "username" : {
-          "type" : "string"
+        "user" : {
+          "$ref" : "#/$defs/CalendarUser",
+          "hasura" : {
+            "relation" : "many-to-one",
+            "reference" : "userId",
+            "referenceType" : "integer"
+          }
         }
       },
       "hasura" : {
-        "typeName" : "calendar_user",
-        "idProp" : "id"
+        "typeName" : "calendar_role",
+        "idProp" : "id",
+        "properties" : {
+          "calendarId" : {
+            "type" : "integer"
+          },
+          "roleValue" : {
+            "type" : "string"
+          },
+          "userId" : {
+            "type" : "integer"
+          }
+        }
       }
     },
     "UserCalendar" : {

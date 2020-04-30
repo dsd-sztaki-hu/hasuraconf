@@ -326,7 +326,7 @@ Common properties:
 
 In case of many-to-many relationships only:
 * `join`: property holding information about the join entity. In the example above `Calendar` has a `users` relationship to `CalendarUsers`.
-    * `type`: the actual entity type holding the two-way references of the relationship. These join entoties are not visible in Java, these are implementation details from the Java author's point of view. However, for the grpahql/JSON Schema these msut be handled as first class types. To help in this hasuraconf automatically generates a JSON Schema type for the join entities and their type is provided in this field. The type is provided in the "$ref" format,eg. `"#/$defs/UserCalendar"`
+    * `$ref`: the actual entity type holding the two-way references of the relationship. These join entoties are not visible in Java, these are implementation details from the Java author's point of view. However, for the grpahql/JSON Schema these msut be handled as first class types. To help in this hasuraconf automatically generates a JSON Schema type for the join entities and their type is provided in this field. The type is provided in the "$ref" format,eg. `"#/$defs/UserCalendar"`
     * `item`: the field in the join entity, which cen be used to navigate to the actual target. In case of the `users` property the `CalendarUsers.calendarUser` property will result in the connected CalendarUser
     * `reference`: the field in the join entity actually holding the reeference. For the aboce case `theUserId` field holds the reference, so to change where `CalendarUsers.calendarUser` navigates, we have to change the ID in this field.
     * `referenceType`: type of `reference`.
@@ -355,7 +355,7 @@ The easiest way to use it in a Maven project is via jitpack
     <dependency>
         <groupId>com.github.beepsoft</groupId>
         <artifactId>hasuraconf</artifactId>
-        <version>0.3.0</version>
+        <version>0.3.2</version>
     </dependency>
 </dependencies>
 ```

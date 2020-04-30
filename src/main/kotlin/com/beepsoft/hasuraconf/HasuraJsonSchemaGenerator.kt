@@ -76,7 +76,7 @@ class HasuraJsonSchemaGenerator(
                         // For many-to-many we define the JoinType and  its attributes
                         if (value.relation == "many-to-many") {
                             val joinTypeNode = customNode.putObject("join")
-                            value.type?.let { joinTypeNode.put("type", "#/$defsName/${value.type}") }
+                            value.type?.let { joinTypeNode.put("\$ref", "#/$defsName/${value.type}") }
                             value.reference?.let { joinTypeNode.put("reference", value.reference) }
                             value.referenceType?.let { joinTypeNode.put("referenceType", value.referenceType) }
                             value.item?.let { joinTypeNode.put("item", value.item) }
