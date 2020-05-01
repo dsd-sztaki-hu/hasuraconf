@@ -9,8 +9,6 @@ import java.lang.reflect.Field
 import java.util.*
 import com.github.victools.jsonschema.module.javax.validation.JavaxValidationModule;
 import com.github.victools.jsonschema.module.javax.validation.JavaxValidationOption
-import org.hibernate.type.ManyToOneType
-import org.hibernate.type.Type
 
 /**
  * Generates JSON schema adding hasura specific extensions to the schema. Data for the extensions
@@ -36,7 +34,7 @@ class HasuraJsonSchemaGenerator(
 
     private lateinit var defsName: String;
 
-    val ObjectNode.customNode: ObjectNode
+    val ObjectNode.hasuraProps: ObjectNode
         get() {
             var customNode: ObjectNode? = if (this.has(customPropsFieldName)) this[customPropsFieldName] as ObjectNode else null
             if (customNode == null) {
@@ -67,10 +65,13 @@ class HasuraJsonSchemaGenerator(
                     val f = member.rawMember
                     val value = hasuraSpecPropValuesMap[f.declaringClass.name + "-" + f.name]
                     if (value != null) {
-                        val customNode = jsonSchemaAttributesNode.customNode
+                        val customNode = jsonSchemaAttributesNode.hasuraProps
+
+                        // If field has an explicit graphqlType
+                        value.graphqlType?.let {customNode.put("graphqlType", value.graphqlType)}
 
                         // Relation is available for all spec properties
-                        customNode.put("relation", value.relation)
+                        value.relation?.let {customNode.put("relation", value.relation)}
                         value.mappedBy?.let { customNode.put("mappedBy", value.mappedBy) }
 
                         // For many-to-many we define the JoinType and  its attributes
@@ -90,7 +91,7 @@ class HasuraJsonSchemaGenerator(
                     if (readOnlyAnnot != null) {
                         jsonSchemaAttributesNode.put("readOnly", true)
                         if (readOnlyAnnot.exceptAtCreation) {
-                            jsonSchemaAttributesNode.customNode.put("allowWriteAtCreation", true);
+                            jsonSchemaAttributesNode.hasuraProps.put("allowWriteAtCreation", true);
                         }
                     }
 
@@ -114,7 +115,7 @@ class HasuraJsonSchemaGenerator(
         // generating the spec values.
         configBuilder.forTypesInGeneral().withTypeAttributeOverride { jsonSchemaTypeNode:ObjectNode, scope: TypeScope, config: SchemaGeneratorConfig ->
             if (jsonSchemaTypeNode.has("properties")) {
-                var custom = jsonSchemaTypeNode.customNode
+                var custom = jsonSchemaTypeNode.hasuraProps
                 hasuraSpecTypeValuesMap[scope.type.typeName]?.let {
                     custom.put("typeName", it.typeName)
                     custom.put("idProp", it.idProp)
@@ -264,19 +265,22 @@ class HasuraJsonSchemaGenerator(
             var node = properties.putObject(mapEntry.value.fromIdName)
             node.put("type", mapEntry.value.fromIdType);
             properties.putObject(mapEntry.value.fromAccessor).put("\$ref", "#/$defsName/"+mapEntry.value.fromAccessorType)
+            node.hasuraProps.put("graphqlType", mapEntry.value.fromIdGraphqlType)
 
             node = properties.putObject(mapEntry.value.toIdName)
             node.put("type", mapEntry.value.toIdType);
             properties.putObject(mapEntry.value.toAccessor).put("\$ref", "#/$defsName/"+mapEntry.value.toAccessorType)
+            node.hasuraProps.put("graphqlType", mapEntry.value.toIdGraphqlType)
 
             mapEntry.value.orderField?.let {
                 node = properties.putObject(mapEntry.value.orderField)
                 node.put("type", mapEntry.value.orderFieldType)
-                node.customNode.put("orderField", true)
+                node.hasuraProps.put("orderField", true)
+                node.hasuraProps.put("graphqlType", mapEntry.value.orderFieldGraphqlType)
             }
 
-            entityNode.customNode.put("typeName", mapEntry.value.tableName)
-            entityNode.customNode.put("joinType", true)
+            entityNode.hasuraProps.put("typeName", mapEntry.value.tableName)
+            entityNode.hasuraProps.put("joinType", true)
         }
     }
 
@@ -296,11 +300,10 @@ class HasuraJsonSchemaGenerator(
      */
     fun addSpecValue(
             field: Field,
-            clazz: Class<out Any>,
             specValues: HasuraSpecPropValues
     )
     {
-        hasuraSpecPropValuesMap.putIfAbsent(clazz.name+"-"+field.name, specValues)
+        hasuraSpecPropValuesMap.putIfAbsent(field.declaringClass.name+"-"+field.name, specValues)
     }
 
 
@@ -330,7 +333,7 @@ class HasuraSpecPropValues(
         /**
          * Type of the relation. One of one-to-one, many-to-one, one-to-many, many-to-many
          */
-        var relation: String,
+        var relation: String? = null,
         /**
          * In case the reference is not hold by this entity but the other entity, which field of the related
          * entity holds the reference.
@@ -357,7 +360,13 @@ class HasuraSpecPropValues(
          * In case of many-to-many the reference in the join table pointing to the parent entity from where
          * we can navigate to the 'item'
          */
-        var parentReference: String?  = null
+        var parentReference: String?  = null,
+
+        /**
+         * Graphql type of the property. Only set for ID fields for now.
+         */
+        var graphqlType:String? = null
+
 )
 
 class HasuraReferenceProp(
@@ -387,21 +396,29 @@ class HasuraSpecTypeValues(
         /**
          * Primary key of the entities of this type
          */
-        var idProp: String? = null
+        var idProp: String? = null,
+
+        var idPropGraphqlType: String? = null
 )
 
 class JoinType(
         var name: String,
         var tableName: String,
+
         var fromIdName: String,
         var fromIdType: String,
+        var fromIdGraphqlType: String,
         var fromAccessor: String,
         var fromAccessorType: String,
+
         var toIdName: String,
         var toIdType: String,
+        var toIdGraphqlType: String,
         var toAccessor: String,
         var toAccessorType: String,
+
         var orderField: String?  = null,
-        var orderFieldType: String? = null
+        var orderFieldType: String? = null,
+        var orderFieldGraphqlType: String? = null
 )
 

@@ -145,6 +145,31 @@ class HasuraConfigurator(
     private lateinit var cascadeDeleteFields: MutableSet<CascadeDeleteFields>
     private lateinit var jsonSchemaGenerator: HasuraJsonSchemaGenerator
 
+    // Acrtual postgresql types for some SQL types. Hibernate uses the key fields when generating
+    // tables, however Postgresql uses the "values" of postgresqlNames and so does Hasura when
+    // generating graphql schema based on the DB schema.
+    // https://hasura.io/docs/1.0/graphql/manual/api-reference/postgresql-types.html
+    // TODO: should check these some more ...
+    private val postgresqlNames = mapOf(
+            "int2" to "Int",
+            "int4" to "Int",
+            "int8" to "bigint",
+            "int" to "Int",
+            "serial2" to "Int",
+            "serial4" to "Int",
+            "serial8" to "bigserial",
+            "bool" to "Bool",
+            "date" to "Date",
+            "float4" to "Float",
+            "text" to "text",
+            "varchar(\$l)" to "String",
+            "time" to "time",
+            "timetz" to "time",
+            "timestamp" to "timestamp",
+            "timestamptz" to "timestamp",
+            "uuid" to "uuid"
+    );
+
     init {
         sessionFactoryImpl = entityManagerFactory.unwrap(SessionFactory::class.java) as SessionFactoryImpl
         metaModel = sessionFactoryImpl.metamodel as MetamodelImplementor
@@ -363,6 +388,11 @@ class HasuraConfigurator(
                         typeName=tableName,
                         idProp=keyKolumnName))
 
+
+        val f = Utils.findDeclaredFieldUsingReflection(entity.javaType, classMetadata.identifierPropertyName)
+        jsonSchemaGenerator.addSpecValue(f!!,
+                HasuraSpecPropValues(graphqlType = graphqlTypeFor(classMetadata.identifierType, classMetadata)))
+
         var entityName = entity.name
 
         // Get the HasuraRootFields and may reset entityName
@@ -496,7 +526,7 @@ class HasuraConfigurator(
 
                 if (f.isAnnotationPresent(OneToMany::class.java)) {
                     val oneToMany = f.getAnnotation(OneToMany::class.java)
-                    jsonSchemaGenerator.addSpecValue(f, entity.javaType,
+                    jsonSchemaGenerator.addSpecValue(f,
                             HasuraSpecPropValues(relation="one-to-many", mappedBy=oneToMany.mappedBy))
 
                 }
@@ -529,21 +559,21 @@ class HasuraConfigurator(
                     customFieldNameJSONBuilder.append("\t\t\t\t\"$columnName\": \"$camelCasedIdName\"")
                     jsonSchemaGenerator.addSpecValue(entity.javaType,
                             HasuraSpecTypeValues(referenceProp =
-                            HasuraReferenceProp(name=camelCasedIdName, type=jsonSchemaTypeForReference(columnType, classMetadata))))
+                            HasuraReferenceProp(name=camelCasedIdName, type=jsonSchemaTypeFor(columnType, classMetadata))))
 
                     if (assocType is ManyToOneType && !assocType.isLogicalOneToOne) {
-                        jsonSchemaGenerator.addSpecValue(f, entity.javaType,
+                        jsonSchemaGenerator.addSpecValue(f,
                                 HasuraSpecPropValues(relation = "many-to-one",
                                         reference = camelCasedIdName,
-                                        referenceType = jsonSchemaTypeForReference(columnType, classMetadata)
+                                        referenceType = jsonSchemaTypeFor(columnType, classMetadata)
                                 )
                         )
                     }
                     else {
-                        jsonSchemaGenerator.addSpecValue(f, entity.javaType,
+                        jsonSchemaGenerator.addSpecValue(f,
                                 HasuraSpecPropValues(relation = "one-to-one",
                                         reference = camelCasedIdName,
-                                        referenceType = jsonSchemaTypeForReference(columnType, classMetadata)
+                                        referenceType = jsonSchemaTypeFor(columnType, classMetadata)
                                 )
                         )
                     }
@@ -579,7 +609,7 @@ class HasuraConfigurator(
 
                     val oneToOne = f.getAnnotation(OneToOne::class.java)
                     oneToOne?.let {
-                        jsonSchemaGenerator.addSpecValue(f, entity.javaType,
+                        jsonSchemaGenerator.addSpecValue(f,
                                 HasuraSpecPropValues(relation="one-to-one", mappedBy=oneToOne.mappedBy))
 
                     }
@@ -596,19 +626,40 @@ class HasuraConfigurator(
         return false
     }
 
-    private fun jsonSchemaTypeForReference(columnType: Type, classMetadata: AbstractEntityPersister): String {
-        if (columnType is ManyToOneType) {
-            val refType = columnType.getIdentifierOrUniqueKeyType(classMetadata.factory)
-            if (refType is LongType || refType is IntegerType || refType is ShortType
-                    || refType is BigDecimalType || refType is BigIntegerType) {
+    private fun jsonSchemaTypeFor(columnType: Type, classMetadata: AbstractEntityPersister): String {
+
+        fun toJsonSchmeType(actualType: Type) : String
+        {
+            if (actualType is LongType || actualType is IntegerType || actualType is ShortType
+                    || actualType is BigDecimalType || actualType is BigIntegerType) {
                 return "integer"
             }
-            else if (refType is StringType) {
+            else if (actualType is StringType) {
                 return "string";
             }
+            return "<UNKNOWN TYPE>";
+        }
+
+        if (columnType is ManyToOneType) {
+            val refType = columnType.getIdentifierOrUniqueKeyType(classMetadata.factory)
+            return toJsonSchmeType(refType)
+        }
+        // TODO:
+        else {
+            return toJsonSchmeType(columnType)
         }
         return "<UNKNOWN TYPE>";
     }
+
+    private fun graphqlTypeFor(columnType: Type, classMetadata: AbstractEntityPersister): String {
+        val sqlType = columnType.sqlTypes(sessionFactoryImpl as SessionFactoryImpl)[0];
+        val keyTypeName = classMetadata.factory.jdbcServices.dialect.getTypeName(sqlType)
+        if (postgresqlNames[keyTypeName] == null) {
+            throw Error("No postgresql alias found for type $keyTypeName. Graphql type cannot be calculated.")
+        }
+        return postgresqlNames[keyTypeName]!!
+    }
+
 
     /**
      * Many-to-many relationships are represented with a joint table, however this table has no Java
@@ -710,7 +761,7 @@ class HasuraConfigurator(
                 """
         )
 
-        jsonSchemaGenerator.addSpecValue(field, entity.javaType,
+        jsonSchemaGenerator.addSpecValue(field,
                 HasuraSpecPropValues(
                         relation="many-to-many",
                         type=tableName.toCase(CaseFormat.CAPITALIZED_CAMEL),
@@ -723,17 +774,25 @@ class HasuraConfigurator(
                 name = tableName.toCase(CaseFormat.CAPITALIZED_CAMEL),
                 tableName = tableName,
                 fromIdName = keyColumnAlias,
-                fromIdType = "integer",
+                fromIdType = jsonSchemaTypeFor(join.keyType, classMetadata),
+                fromIdGraphqlType = graphqlTypeFor(join.keyType, classMetadata),
                 fromAccessor = keyFieldName,
                 fromAccessorType= entity.name,
                 toIdName = relatedColumnNameAlias,
-                toIdType = "integer",
+                toIdType = jsonSchemaTypeFor(relatedColumnType, classMetadata),
+                toIdGraphqlType = graphqlTypeFor(relatedColumnType, classMetadata),
                 toAccessor = joinFieldName,
                 toAccessorType = relatedTableName.toCase(CaseFormat.CAPITALIZED_CAMEL),
                 orderField = join.indexColumnNames?.let {
                     it[0].toCamelCase()
                 },
-                orderFieldType = join.indexColumnNames?.let{"orderFieldType"}
+                orderFieldType = join.indexColumnNames?.let{
+                    jsonSchemaTypeFor(join.indexType, classMetadata)
+                },
+                orderFieldGraphqlType = join.indexColumnNames?.let{
+                    graphqlTypeFor(join.indexType, classMetadata)
+                }
+
         ))
 
 //        println(customFieldNameJSONBuilder)
