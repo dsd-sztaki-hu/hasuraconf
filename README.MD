@@ -390,6 +390,13 @@ String json = hasuraConf.configure();
 
 All `hasuraconfig.XXX` values can be set on `HasuraConfigurator` directly before calling `configure()`.
 
+# Caveat
+
+hasuraconf has been tailored specifically to work with Hibernate and there are a couple of assumptions made:
+
+1. All table generation is done by Hibernate. This allows hasuraconf to know how the table names will be derived from class names. This also means that the point of truth regagrding the structure of the database should be defined in Java using JPA annotations. hasuraconf - probably - won't work with an existing database layout that is mapped to Hibernate 
+2. Table names are not aliased using `@Table(name=...)`. See the point above. If you use table name aliases the generated JSON Schema and our knowledge of how java class names and table names map to each other will not be in sync.
+
 # Implementation
 
 Written in Kotlin, or more precisely converted from Java to Kotlin and trying to make it more and more idiomatic Kotlin as I proceed learning the language.
