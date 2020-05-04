@@ -79,12 +79,13 @@ class HasuraJsonSchemaGenerator(
                             val joinTypeNode = customNode.putObject("join")
                             value.type?.let { joinTypeNode.put("\$ref", "#/$defsName/${value.type}") }
                             value.reference?.let { joinTypeNode.put("reference", value.reference) }
-                            value.parentReference?.let { joinTypeNode.put("parentReference", value.parentReference) }
                             value.item?.let { joinTypeNode.put("item", value.item) }
+                            value.parentReference?.let { joinTypeNode.put("parentReference", value.parentReference) }
                         }
                         else {
                             value.reference?.let { customNode.put("reference", value.reference) }
                             value.referenceType?.let { customNode.put("referenceType", value.referenceType) }
+                            value.parentReference?.let { customNode.put("parentReference", value.parentReference) }
                         }
                     }
                     val readOnlyAnnot = f.getAnnotation(ReadOnly::class.java)

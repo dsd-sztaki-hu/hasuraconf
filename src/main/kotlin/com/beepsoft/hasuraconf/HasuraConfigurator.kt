@@ -526,8 +526,12 @@ class HasuraConfigurator(
 
                 if (f.isAnnotationPresent(OneToMany::class.java)) {
                     val oneToMany = f.getAnnotation(OneToMany::class.java)
+                    val parentRef = CaseUtils.toCamelCase(keyColumn, false, '_')
                     jsonSchemaGenerator.addSpecValue(f,
-                            HasuraSpecPropValues(relation="one-to-many", mappedBy=oneToMany.mappedBy))
+                            HasuraSpecPropValues(
+                                    relation="one-to-many",
+                                    mappedBy=oneToMany.mappedBy,
+                                    parentReference=parentRef))
 
                 }
             } else {
