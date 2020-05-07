@@ -60,11 +60,11 @@ TODO:
 
 # JSON Schema generation
 
-The Hasura graphql schema doesn't expose some important aspects of the model, for example the natura of array references. An array reference can be either a `@OneToMany` or `@ManyToMany` relationship. In case of a `@OneToMany` the foreign key is mapped by the "many" size, while in case of `@ManyToMany` Hibernate connects the two entities via a enerated join table.
+The Hasura graphql schema doesn't expose some important aspects of the model, for example the nature of array references. An array reference can be either a `@OneToMany` or `@ManyToMany` relationship. In case of a `@OneToMany` the foreign key is mapped by the "many" side, while in case of `@ManyToMany` Hibernate connects the two entities via a generated join table.
 
-The Hasura graphql doesn't expose any information about the constraints of the entities and their fields either, for example, if there are mandatory, how to validate them, etc.
+The Hasura graphql doesn't expose any information about the constraints of the entities and their fields either, for example, if they are mandatory, how to validate them, etc.
 
-So to complements the grpahql schema `hasuraconf` can be used to also generate  JSON Schema based on the JPA and javax.validation annotations. We use the `https://github.com/victools/jsonschema-generator` project to generate the JSON schema with our own extension in the `hasura` property of types or properties.
+So, to complements the graphql schema `hasuraconf` can be used to also generate a JSON Schema based on the JPA and `javax.validation` annotations. We use the `https://github.com/victools/jsonschema-generator` project to generate the JSON schema with our own extensions in the `hasura` property of types or properties.
 
 Take for example for this entity: 
 
@@ -161,7 +161,7 @@ class Calendar : BaseObject() {
 
 ```
 
-... this is the JSON Schema generated . Note tha `hasura` extension prop in the type and in some of the properties
+... this is the JSON Schema generated . Note the `hasura` extension prop in the type and in some of the properties
 ```json
 {
     "Calendar" : {
@@ -301,14 +301,12 @@ class Calendar : BaseObject() {
      },
     "CalendarRole" : {},
     "CalendarUser" : {},
-    "CalendarRole" : {},
     "Theme" : {},
-    "CalendarRole" : {},
     "Day": {}
 }
 ```
 
-The JSON Schema describes the relations of objects as they are defined in Java. Eg. `Calendar` has a List of  `CalendarRole`s associated with it and this is represented by JSON Schema as 
+The JSON Schema describes the relations of objects as they are defined in Java. Eg. `Calendar` has a List of `CalendarRole`s associated with it and this is represented by JSON Schema as 
 
 ```
          "roles" : {
@@ -319,7 +317,7 @@ The JSON Schema describes the relations of objects as they are defined in Java. 
          },
 ```
 
-To add information about the SQL relationship between `Calendar` and `CalendarRole` we added some hasure extension props  describing that this is a one-to-many relationship and it is mapped by the `CalendarRole` entity's `calendar` field
+To add information about the SQL relationship between `Calendar` and `CalendarRole` we added some hasura extension props  describing that this is a one-to-many relationship and it is mapped by the `CalendarRole` entity's `calendar` field
 ```
            "hasura" : {
              "relation" : "one-to-many",
