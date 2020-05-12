@@ -288,7 +288,7 @@ class HasuraJsonSchemaGenerator(
                 node.hasuraProps.put("graphqlType", mapEntry.value.orderFieldGraphqlType)
             }
 
-            entityNode.hasuraProps.put("typeName", mapEntry.value.tableName)
+            entityNode.hasuraProps.put("graphqlType", mapEntry.value.tableName)
             entityNode.hasuraProps.put("joinType", true)
         }
     }
