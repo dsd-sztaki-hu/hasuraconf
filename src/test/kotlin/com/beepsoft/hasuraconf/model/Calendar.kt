@@ -86,6 +86,9 @@ class Calendar : BaseObject() {
     var themeConfig: String? = null
 
     @ManyToMany
+    // TODO: this should not be required, somehow we should collect definitions from both sides of the
+    // relationship and merge those together into a single one
+    @OrderColumn(name="calendar_order", nullable = false)
     @JoinTable(name="user_calendar", joinColumns=arrayOf(JoinColumn(name="the_calendar_id")), inverseJoinColumns=arrayOf(JoinColumn(name="the_user_id")))
     @OnDelete(action=OnDeleteAction.CASCADE)
     var users: List<CalendarUser>? = null
