@@ -290,6 +290,13 @@ class HasuraJsonSchemaGenerator(
 
             entityNode.hasuraProps.put("graphqlType", mapEntry.value.tableName)
             entityNode.hasuraProps.put("joinType", true)
+            if (mapEntry.value.rootFieldNames != EmptyRootFieldNames) {
+                val rootFieldNamesNode = entityNode.hasuraProps.putObject("rootFieldNames")
+                // Add each fields value to rootFieldNamesNode.
+                for (prop in RootFieldNames::class.memberProperties) {
+                    rootFieldNamesNode.put(prop.name, prop.get(mapEntry.value.rootFieldNames) as String)
+                }
+            }
         }
     }
 

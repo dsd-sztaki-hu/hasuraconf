@@ -227,6 +227,102 @@
         }
       }
     },
+    "CalendarUser" : {
+      "type" : "object",
+      "properties" : {
+        "calendars" : {
+          "hasura" : {
+            "relation" : "many-to-many",
+            "join" : {
+              "$ref" : "#/$defs/UserCalendar",
+              "reference" : "theCalendarId",
+              "item" : "calendar",
+              "parentReference" : "theUserId"
+            }
+          },
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/Calendar"
+          }
+        },
+        "createdAt" : {
+          "type" : "string",
+          "format" : "date-time"
+        },
+        "email" : {
+          "type" : "string"
+        },
+        "enabled" : {
+          "type" : "boolean"
+        },
+        "firebaseUserId" : {
+          "type" : "string"
+        },
+        "firstName" : {
+          "type" : "string"
+        },
+        "friends" : {
+          "hasura" : {
+            "relation" : "many-to-many",
+            "join" : {
+              "$ref" : "#/$defs/CalendarUserFriends",
+              "reference" : "myFriendUserId",
+              "item" : "myFriend",
+              "parentReference" : "myUserId"
+            }
+          },
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/CalendarUser"
+          }
+        },
+        "id" : {
+          "type" : "integer",
+          "hasura" : {
+            "graphqlType" : "bigint"
+          },
+          "readOnly" : true
+        },
+        "lastName" : {
+          "type" : "string"
+        },
+        "nickname" : {
+          "type" : "string"
+        },
+        "password" : {
+          "type" : "string"
+        },
+        "tag" : {
+          "type" : "string",
+          "readOnly" : true,
+          "hasura" : {
+            "allowWriteAtCreation" : true
+          }
+        },
+        "updatedAt" : {
+          "type" : "string",
+          "format" : "date-time"
+        },
+        "username" : {
+          "type" : "string"
+        }
+      },
+      "hasura" : {
+        "graphqlType" : "calendar_user",
+        "idProp" : "id",
+        "rootFieldNames" : {
+          "delete" : "deleteCalendarUsers",
+          "deleteByPk" : "deleteCalendarUser",
+          "insert" : "createCalendarUsers",
+          "insertOne" : "createCalendarUser",
+          "select" : "calendarUsers",
+          "selectAggregate" : "calendarUserAggregate",
+          "selectByPk" : "calendarUser",
+          "update" : "updateCalendarUsers",
+          "updateByPk" : "updateCalendarUser"
+        }
+      }
+    },
     "Day" : {
       "type" : "object",
       "properties" : {
@@ -306,84 +402,6 @@
         },
         "properties" : {
           "calendarId" : {
-            "type" : "integer"
-          }
-        }
-      }
-    },
-    "Event" : {
-      "type" : "object",
-      "properties" : {
-        "calendar" : {
-          "$ref" : "#/$defs/Calendar",
-          "hasura" : {
-            "relation" : "many-to-one",
-            "reference" : "calendarId",
-            "referenceType" : "integer"
-          }
-        },
-        "content" : {
-          "type" : "array",
-          "items" : {
-            "type" : "integer"
-          }
-        },
-        "contentType" : {
-          "type" : "integer"
-        },
-        "createdAt" : {
-          "type" : "string",
-          "format" : "date-time"
-        },
-        "day" : {
-          "$ref" : "#/$defs/Day",
-          "hasura" : {
-            "relation" : "many-to-one",
-            "reference" : "dayId",
-            "referenceType" : "integer"
-          }
-        },
-        "id" : {
-          "type" : "integer",
-          "hasura" : {
-            "graphqlType" : "bigint"
-          },
-          "readOnly" : true
-        },
-        "reference" : {
-          "type" : "string"
-        },
-        "tag" : {
-          "type" : "string",
-          "readOnly" : true,
-          "hasura" : {
-            "allowWriteAtCreation" : true
-          }
-        },
-        "updatedAt" : {
-          "type" : "string",
-          "format" : "date-time"
-        }
-      },
-      "hasura" : {
-        "graphqlType" : "event",
-        "idProp" : "id",
-        "rootFieldNames" : {
-          "delete" : "deleteEvents",
-          "deleteByPk" : "deleteEvent",
-          "insert" : "createEvents",
-          "insertOne" : "createEvent",
-          "select" : "events",
-          "selectAggregate" : "eventAggregate",
-          "selectByPk" : "event",
-          "update" : "updateEvents",
-          "updateByPk" : "updateEvent"
-        },
-        "properties" : {
-          "calendarId" : {
-            "type" : "integer"
-          },
-          "dayId" : {
             "type" : "integer"
           }
         }
@@ -552,53 +570,36 @@
         }
       }
     },
-    "CalendarUser" : {
+    "Event" : {
       "type" : "object",
       "properties" : {
-        "calendars" : {
+        "calendar" : {
+          "$ref" : "#/$defs/Calendar",
           "hasura" : {
-            "relation" : "many-to-many",
-            "join" : {
-              "$ref" : "#/$defs/UserCalendar",
-              "reference" : "theCalendarId",
-              "item" : "calendar",
-              "parentReference" : "theUserId"
-            }
-          },
+            "relation" : "many-to-one",
+            "reference" : "calendarId",
+            "referenceType" : "integer"
+          }
+        },
+        "content" : {
           "type" : "array",
           "items" : {
-            "$ref" : "#/$defs/Calendar"
+            "type" : "integer"
           }
+        },
+        "contentType" : {
+          "type" : "integer"
         },
         "createdAt" : {
           "type" : "string",
           "format" : "date-time"
         },
-        "email" : {
-          "type" : "string"
-        },
-        "enabled" : {
-          "type" : "boolean"
-        },
-        "firebaseUserId" : {
-          "type" : "string"
-        },
-        "firstName" : {
-          "type" : "string"
-        },
-        "friends" : {
+        "day" : {
+          "$ref" : "#/$defs/Day",
           "hasura" : {
-            "relation" : "many-to-many",
-            "join" : {
-              "$ref" : "#/$defs/CalendarUserFriends",
-              "reference" : "myFriendUserId",
-              "item" : "myFriend",
-              "parentReference" : "myUserId"
-            }
-          },
-          "type" : "array",
-          "items" : {
-            "$ref" : "#/$defs/CalendarUser"
+            "relation" : "many-to-one",
+            "reference" : "dayId",
+            "referenceType" : "integer"
           }
         },
         "id" : {
@@ -608,13 +609,7 @@
           },
           "readOnly" : true
         },
-        "lastName" : {
-          "type" : "string"
-        },
-        "nickname" : {
-          "type" : "string"
-        },
-        "password" : {
+        "reference" : {
           "type" : "string"
         },
         "tag" : {
@@ -627,39 +622,35 @@
         "updatedAt" : {
           "type" : "string",
           "format" : "date-time"
-        },
-        "username" : {
-          "type" : "string"
         }
       },
       "hasura" : {
-        "graphqlType" : "calendar_user",
+        "graphqlType" : "event",
         "idProp" : "id",
         "rootFieldNames" : {
-          "delete" : "deleteCalendarUsers",
-          "deleteByPk" : "deleteCalendarUser",
-          "insert" : "createCalendarUsers",
-          "insertOne" : "createCalendarUser",
-          "select" : "calendarUsers",
-          "selectAggregate" : "calendarUserAggregate",
-          "selectByPk" : "calendarUser",
-          "update" : "updateCalendarUsers",
-          "updateByPk" : "updateCalendarUser"
+          "delete" : "deleteEvents",
+          "deleteByPk" : "deleteEvent",
+          "insert" : "createEvents",
+          "insertOne" : "createEvent",
+          "select" : "events",
+          "selectAggregate" : "eventAggregate",
+          "selectByPk" : "event",
+          "update" : "updateEvents",
+          "updateByPk" : "updateEvent"
+        },
+        "properties" : {
+          "calendarId" : {
+            "type" : "integer"
+          },
+          "dayId" : {
+            "type" : "integer"
+          }
         }
       }
     },
     "UserCalendar" : {
       "type" : "object",
       "properties" : {
-        "theUserId" : {
-          "type" : "integer",
-          "hasura" : {
-            "graphqlType" : "bigint"
-          }
-        },
-        "calendarUser" : {
-          "$ref" : "#/$defs/CalendarUser"
-        },
         "theCalendarId" : {
           "type" : "integer",
           "hasura" : {
@@ -668,6 +659,15 @@
         },
         "calendar" : {
           "$ref" : "#/$defs/Calendar"
+        },
+        "theUserId" : {
+          "type" : "integer",
+          "hasura" : {
+            "graphqlType" : "bigint"
+          }
+        },
+        "calendarUser" : {
+          "$ref" : "#/$defs/CalendarUser"
         },
         "calendarOrder" : {
           "type" : "integer",
@@ -679,7 +679,18 @@
       },
       "hasura" : {
         "graphqlType" : "user_calendar",
-        "joinType" : true
+        "joinType" : true,
+        "rootFieldNames" : {
+          "delete" : "deleteUserCalendars",
+          "deleteByPk" : "deleteUserCalendar",
+          "insert" : "createUserCalendars",
+          "insertOne" : "createUserCalendar",
+          "select" : "userCalendars",
+          "selectAggregate" : "userCalendarAggregate",
+          "selectByPk" : "userCalendar",
+          "update" : "updateUserCalendars",
+          "updateByPk" : "updateUserCalendar"
+        }
       }
     },
     "CalendarUserFriends" : {
@@ -706,7 +717,18 @@
       },
       "hasura" : {
         "graphqlType" : "calendar_user_friends",
-        "joinType" : true
+        "joinType" : true,
+        "rootFieldNames" : {
+          "delete" : "deleteBaseDearFriends",
+          "deleteByPk" : "deleteBaseDearFriend",
+          "insert" : "addMyDearFriends",
+          "insertOne" : "addOneDearFriend",
+          "select" : "myDearFriends",
+          "selectAggregate" : "baseDearFriendAggregate",
+          "selectByPk" : "baseDearFriend",
+          "update" : "updateBaseDearFriends",
+          "updateByPk" : "updateBaseDearFriend"
+        }
       }
     }
   }
