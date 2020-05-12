@@ -165,140 +165,151 @@ class Calendar : BaseObject() {
 ```json
 {
     "Calendar" : {
-       "type" : "object",
-       "properties" : {
-         "availability" : {
-           "$ref" : "#/$defs/Availability",
-           "hasura" : {
-             "relation" : "many-to-one",
-             "reference" : "availabilityValue",
-             "referenceType" : "string"
-           }
-         },
-         "createdAt" : {
-           "type" : "string",
-           "format" : "date-time"
-         },
-         "days" : {
-           "hasura" : {
-             "relation" : "one-to-many",
-             "mappedBy" : "calendar",
-             "parentReference" : "calendarId"
-           },
-           "type" : "array",
-           "items" : {
-             "$ref" : "#/$defs/Day"
-           }
-         },
-         "description" : {
-           "type" : "string"
-         },
-         "id" : {
-           "type" : "integer",
-           "hasura" : {
-             "graphqlType" : "bigint"
-           },
-           "readOnly" : true
-         },
-         "localeCountry" : {
-           "type" : "string"
-         },
-         "localeLang" : {
-           "type" : "string"
-         },
-         "nextVersion" : {
-           "$ref" : "#/$defs/Calendar",
-           "hasura" : {
-             "relation" : "one-to-one",
-             "reference" : "nextVersionId",
-             "referenceType" : "integer"
-           }
-         },
-         "previousVersion" : {
-           "$ref" : "#/$defs/Calendar",
-           "hasura" : {
-             "relation" : "one-to-one",
-             "reference" : "previousVersionId",
-             "referenceType" : "integer"
-           }
-         },
-         "published" : {
-           "type" : "boolean"
-         },
-         "roles" : {
-           "hasura" : {
-             "relation" : "one-to-many",
-             "mappedBy" : "calendar",
-             "parentReference" : "calendarId"
-           },
-           "type" : "array",
-           "items" : {
-             "$ref" : "#/$defs/CalendarRole"
-           }
-         },
-         "tag" : {
-           "type" : "string",
-           "readOnly" : true,
-           "hasura" : {
-             "allowWriteAtCreation" : true
-           }
-         },
-         "theme" : {
-           "$ref" : "#/$defs/Theme",
-           "hasura" : {
-             "relation" : "one-to-one",
-             "reference" : "themeId",
-             "referenceType" : "integer"
-           }
-         },
-         "themeConfig" : {
-           "type" : "string"
-         },
-         "title" : {
-           "type" : "string"
-         },
-         "updatedAt" : {
-           "type" : "string",
-           "format" : "date-time"
-         },
-         "users" : {
-           "hasura" : {
-             "relation" : "many-to-many",
-             "join" : {
-               "$ref" : "#/$defs/UserCalendar",
-               "reference" : "theUserId",
-               "item" : "calendarUser",
-               "parentReference" : "theCalendarId"
-             }
-           },
-           "type" : "array",
-           "items" : {
-             "$ref" : "#/$defs/CalendarUser"
-           }
-         },
-         "version" : {
-           "type" : "integer"
-         }
-       },
-       "hasura" : {
-         "typeName" : "calendar",
-         "idProp" : "id",
-         "properties" : {
-           "availabilityValue" : {
-             "type" : "string"
-           },
-           "nextVersionId" : {
-             "type" : "integer"
-           },
-           "previousVersionId" : {
-             "type" : "integer"
-           },
-           "themeId" : {
-             "type" : "integer"
-           }
-         }
-       }
-     },
+      "type" : "object",
+      "properties" : {
+        "availability" : {
+          "$ref" : "#/$defs/Availability",
+          "hasura" : {
+            "relation" : "many-to-one",
+            "reference" : "availabilityValue",
+            "referenceType" : "string"
+          }
+        },
+        "createdAt" : {
+          "type" : "string",
+          "format" : "date-time"
+        },
+        "days" : {
+          "hasura" : {
+            "relation" : "one-to-many",
+            "mappedBy" : "calendar",
+            "parentReference" : "calendarId"
+          },
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/Day"
+          }
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "integer",
+          "hasura" : {
+            "graphqlType" : "bigint"
+          },
+          "readOnly" : true
+        },
+        "localeCountry" : {
+          "type" : "string"
+        },
+        "localeLang" : {
+          "type" : "string"
+        },
+        "nextVersion" : {
+          "$ref" : "#/$defs/Calendar",
+          "hasura" : {
+            "relation" : "one-to-one",
+            "reference" : "nextVersionId",
+            "referenceType" : "integer"
+          }
+        },
+        "previousVersion" : {
+          "$ref" : "#/$defs/Calendar",
+          "hasura" : {
+            "relation" : "one-to-one",
+            "reference" : "previousVersionId",
+            "referenceType" : "integer"
+          }
+        },
+        "published" : {
+          "type" : "boolean"
+        },
+        "roles" : {
+          "hasura" : {
+            "relation" : "one-to-many",
+            "mappedBy" : "calendar",
+            "parentReference" : "calendarId"
+          },
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/CalendarRole"
+          }
+        },
+        "tag" : {
+          "type" : "string",
+          "readOnly" : true,
+          "hasura" : {
+            "allowWriteAtCreation" : true
+          }
+        },
+        "theme" : {
+          "$ref" : "#/$defs/Theme",
+          "hasura" : {
+            "relation" : "one-to-one",
+            "reference" : "themeId",
+            "referenceType" : "integer"
+          }
+        },
+        "themeConfig" : {
+          "type" : "string"
+        },
+        "title" : {
+          "type" : "string"
+        },
+        "updatedAt" : {
+          "type" : "string",
+          "format" : "date-time"
+        },
+        "users" : {
+          "hasura" : {
+            "relation" : "many-to-many",
+            "join" : {
+              "$ref" : "#/$defs/UserCalendar",
+              "reference" : "theUserId",
+              "item" : "calendarUser",
+              "parentReference" : "theCalendarId"
+            }
+          },
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/CalendarUser"
+          }
+        },
+        "version" : {
+          "type" : "integer"
+        }
+      },
+      "hasura" : {
+        "graphqlType" : "calendar",
+        "idProp" : "id",
+        "rootFieldNames" : {
+          "delete" : "deleteCalendars",
+          "deleteByPk" : "deleteCalendar",
+          "insert" : "createCalendars",
+          "insertOne" : "createCalendar",
+          "select" : "calendars",
+          "selectAggregate" : "calendarAggregate",
+          "selectByPk" : "calendar",
+          "update" : "updateCalendars",
+          "updateByPk" : "updateCalendar"
+        },
+        "properties" : {
+          "availabilityValue" : {
+            "type" : "string"
+          },
+          "nextVersionId" : {
+            "type" : "integer"
+          },
+          "previousVersionId" : {
+            "type" : "integer"
+          },
+          "themeId" : {
+            "type" : "integer"
+          }
+        }
+      }
+    },
     "CalendarRole" : {},
     "CalendarUser" : {},
     "Theme" : {},
@@ -348,7 +359,7 @@ In case of many-to-many relationships only:
       
 ## Hasura extension values on types
 
-* `typeName`: the type name used in Hasura graphql.
+* `graphqlType`: the type name used in Hasura graphql.
 * `idProp`: name of the ID - primary key - property
 * `properties`: lists "hidden" reference properties. These are the properties holding ID references to other entities. These are not part of the Java class definitions,  but these are present in the Hasura graphql schema and we reprexent these here in the usual JSON Schema `properties` format.    
 * `rootFieldNames`: alias for root field names. HasuraConfigurator provides default aliases for these, which can be overriden using `@HasuraRootFields`. See also: https://hasura.io/docs/1.0/graphql/manual/api-reference/schema-metadata-api/table-view.html#set-table-custom-fields

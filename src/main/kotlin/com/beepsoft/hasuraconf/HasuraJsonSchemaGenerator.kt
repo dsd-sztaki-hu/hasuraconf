@@ -119,7 +119,7 @@ class HasuraJsonSchemaGenerator(
             if (jsonSchemaTypeNode.has("properties")) {
                 var custom = jsonSchemaTypeNode.hasuraProps
                 hasuraSpecTypeValuesMap[scope.type.typeName]?.let {
-                    custom.put("typeName", it.typeName)
+                    custom.put("graphqlType", it.graphqlType)
                     custom.put("idProp", it.idProp)
                     if (it.rootFieldNames != EmptyRootFieldNames) {
                         val rootFieldNamesNode = custom.putObject("rootFieldNames")
@@ -390,7 +390,7 @@ class HasuraSpecTypeValues(
         /**
          * The Hasura type name for a Java type name. This is also the table name of the type in the db
          */
-        var typeName: String? = null,
+        var graphqlType: String? = null,
 
         /**
          * An extra property of the type, which holds a reference value, ie. an ID of a related entity.

@@ -1,5 +1,344 @@
 {
   "$defs" : {
+    "Availability" : {
+      "type" : "string",
+      "enum" : [ "PRIVATE", "PUBLIC" ]
+    },
+    "CalendarRole" : {
+      "type" : "object",
+      "properties" : {
+        "calendar" : {
+          "$ref" : "#/$defs/Calendar",
+          "hasura" : {
+            "relation" : "many-to-one",
+            "reference" : "calendarId",
+            "referenceType" : "integer"
+          }
+        },
+        "createdAt" : {
+          "type" : "string",
+          "format" : "date-time"
+        },
+        "id" : {
+          "type" : "integer",
+          "hasura" : {
+            "graphqlType" : "bigint"
+          },
+          "readOnly" : true
+        },
+        "role" : {
+          "$ref" : "#/$defs/RoleType",
+          "hasura" : {
+            "relation" : "many-to-one",
+            "reference" : "roleValue",
+            "referenceType" : "string"
+          }
+        },
+        "tag" : {
+          "type" : "string",
+          "readOnly" : true,
+          "hasura" : {
+            "allowWriteAtCreation" : true
+          }
+        },
+        "updatedAt" : {
+          "type" : "string",
+          "format" : "date-time"
+        },
+        "user" : {
+          "$ref" : "#/$defs/CalendarUser",
+          "hasura" : {
+            "relation" : "many-to-one",
+            "reference" : "userId",
+            "referenceType" : "integer"
+          }
+        }
+      },
+      "hasura" : {
+        "graphqlType" : "calendar_role",
+        "idProp" : "id",
+        "rootFieldNames" : {
+          "delete" : "deleteCalendarRoles",
+          "deleteByPk" : "deleteCalendarRole",
+          "insert" : "createCalendarRoles",
+          "insertOne" : "createCalendarRole",
+          "select" : "calendarRoles",
+          "selectAggregate" : "calendarRoleAggregate",
+          "selectByPk" : "calendarRole",
+          "update" : "updateCalendarRoles",
+          "updateByPk" : "updateCalendarRole"
+        },
+        "properties" : {
+          "calendarId" : {
+            "type" : "integer"
+          },
+          "roleValue" : {
+            "type" : "string"
+          },
+          "userId" : {
+            "type" : "integer"
+          }
+        }
+      }
+    },
+    "CalendarUser" : {
+      "type" : "object",
+      "properties" : {
+        "calendars" : {
+          "hasura" : {
+            "relation" : "many-to-many",
+            "join" : {
+              "$ref" : "#/$defs/UserCalendar",
+              "reference" : "theCalendarId",
+              "item" : "calendar",
+              "parentReference" : "theUserId"
+            }
+          },
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/Calendar"
+          }
+        },
+        "createdAt" : {
+          "type" : "string",
+          "format" : "date-time"
+        },
+        "email" : {
+          "type" : "string"
+        },
+        "enabled" : {
+          "type" : "boolean"
+        },
+        "firebaseUserId" : {
+          "type" : "string"
+        },
+        "firstName" : {
+          "type" : "string"
+        },
+        "friends" : {
+          "hasura" : {
+            "relation" : "many-to-many",
+            "join" : {
+              "$ref" : "#/$defs/CalendarUserFriends",
+              "reference" : "myFriendUserId",
+              "item" : "myFriend",
+              "parentReference" : "myUserId"
+            }
+          },
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/CalendarUser"
+          }
+        },
+        "id" : {
+          "type" : "integer",
+          "hasura" : {
+            "graphqlType" : "bigint"
+          },
+          "readOnly" : true
+        },
+        "lastName" : {
+          "type" : "string"
+        },
+        "nickname" : {
+          "type" : "string"
+        },
+        "password" : {
+          "type" : "string"
+        },
+        "tag" : {
+          "type" : "string",
+          "readOnly" : true,
+          "hasura" : {
+            "allowWriteAtCreation" : true
+          }
+        },
+        "updatedAt" : {
+          "type" : "string",
+          "format" : "date-time"
+        },
+        "username" : {
+          "type" : "string"
+        }
+      },
+      "hasura" : {
+        "graphqlType" : "calendar_user",
+        "idProp" : "id",
+        "rootFieldNames" : {
+          "delete" : "deleteCalendarUsers",
+          "deleteByPk" : "deleteCalendarUser",
+          "insert" : "createCalendarUsers",
+          "insertOne" : "createCalendarUser",
+          "select" : "calendarUsers",
+          "selectAggregate" : "calendarUserAggregate",
+          "selectByPk" : "calendarUser",
+          "update" : "updateCalendarUsers",
+          "updateByPk" : "updateCalendarUser"
+        }
+      }
+    },
+    "Day" : {
+      "type" : "object",
+      "properties" : {
+        "calendar" : {
+          "$ref" : "#/$defs/Calendar",
+          "hasura" : {
+            "relation" : "many-to-one",
+            "reference" : "calendarId",
+            "referenceType" : "integer"
+          }
+        },
+        "conditionClass" : {
+          "type" : "string"
+        },
+        "conditionParams" : {
+          "type" : "string"
+        },
+        "createdAt" : {
+          "type" : "string",
+          "format" : "date-time"
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "events" : {
+          "hasura" : {
+            "relation" : "one-to-many",
+            "mappedBy" : "day",
+            "parentReference" : "dayId"
+          },
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/Event"
+          }
+        },
+        "id" : {
+          "type" : "integer",
+          "hasura" : {
+            "graphqlType" : "bigint"
+          },
+          "readOnly" : true
+        },
+        "pos" : {
+          "type" : "integer"
+        },
+        "tag" : {
+          "type" : "string",
+          "readOnly" : true,
+          "hasura" : {
+            "allowWriteAtCreation" : true
+          }
+        },
+        "themeConfig" : {
+          "type" : "string"
+        },
+        "title" : {
+          "type" : "string"
+        },
+        "updatedAt" : {
+          "type" : "string",
+          "format" : "date-time"
+        }
+      },
+      "hasura" : {
+        "graphqlType" : "day",
+        "idProp" : "id",
+        "rootFieldNames" : {
+          "delete" : "deleteDays",
+          "deleteByPk" : "deleteDay",
+          "insert" : "createDays",
+          "insertOne" : "createDay",
+          "select" : "days",
+          "selectAggregate" : "dayAggregate",
+          "selectByPk" : "day",
+          "update" : "updateDays",
+          "updateByPk" : "updateDay"
+        },
+        "properties" : {
+          "calendarId" : {
+            "type" : "integer"
+          }
+        }
+      }
+    },
+    "Event" : {
+      "type" : "object",
+      "properties" : {
+        "calendar" : {
+          "$ref" : "#/$defs/Calendar",
+          "hasura" : {
+            "relation" : "many-to-one",
+            "reference" : "calendarId",
+            "referenceType" : "integer"
+          }
+        },
+        "content" : {
+          "type" : "array",
+          "items" : {
+            "type" : "integer"
+          }
+        },
+        "contentType" : {
+          "type" : "integer"
+        },
+        "createdAt" : {
+          "type" : "string",
+          "format" : "date-time"
+        },
+        "day" : {
+          "$ref" : "#/$defs/Day",
+          "hasura" : {
+            "relation" : "many-to-one",
+            "reference" : "dayId",
+            "referenceType" : "integer"
+          }
+        },
+        "id" : {
+          "type" : "integer",
+          "hasura" : {
+            "graphqlType" : "bigint"
+          },
+          "readOnly" : true
+        },
+        "reference" : {
+          "type" : "string"
+        },
+        "tag" : {
+          "type" : "string",
+          "readOnly" : true,
+          "hasura" : {
+            "allowWriteAtCreation" : true
+          }
+        },
+        "updatedAt" : {
+          "type" : "string",
+          "format" : "date-time"
+        }
+      },
+      "hasura" : {
+        "graphqlType" : "event",
+        "idProp" : "id",
+        "rootFieldNames" : {
+          "delete" : "deleteEvents",
+          "deleteByPk" : "deleteEvent",
+          "insert" : "createEvents",
+          "insertOne" : "createEvent",
+          "select" : "events",
+          "selectAggregate" : "eventAggregate",
+          "selectByPk" : "event",
+          "update" : "updateEvents",
+          "updateByPk" : "updateEvent"
+        },
+        "properties" : {
+          "calendarId" : {
+            "type" : "integer"
+          },
+          "dayId" : {
+            "type" : "integer"
+          }
+        }
+      }
+    },
     "Layout" : {
       "type" : "object",
       "properties" : {
@@ -68,7 +407,7 @@
         }
       },
       "hasura" : {
-        "typeName" : "layout",
+        "graphqlType" : "layout",
         "idProp" : "id",
         "rootFieldNames" : {
           "delete" : "deleteLayouts",
@@ -87,6 +426,10 @@
           }
         }
       }
+    },
+    "RoleType" : {
+      "type" : "string",
+      "enum" : [ "OWNER", "EDITOR", "VIEWER" ]
     },
     "Theme" : {
       "type" : "object",
@@ -144,7 +487,7 @@
         }
       },
       "hasura" : {
-        "typeName" : "theme",
+        "graphqlType" : "theme",
         "idProp" : "id",
         "rootFieldNames" : {
           "delete" : "deleteSomeThemes",
@@ -158,14 +501,6 @@
           "updateByPk" : "updateOneTheme"
         }
       }
-    },
-    "RoleType" : {
-      "type" : "string",
-      "enum" : [ "OWNER", "EDITOR", "VIEWER" ]
-    },
-    "Availability" : {
-      "type" : "string",
-      "enum" : [ "PRIVATE", "PUBLIC" ]
     },
     "Calendar" : {
       "type" : "object",
@@ -284,7 +619,7 @@
         }
       },
       "hasura" : {
-        "typeName" : "calendar",
+        "graphqlType" : "calendar",
         "idProp" : "id",
         "rootFieldNames" : {
           "delete" : "deleteCalendars",
@@ -313,353 +648,9 @@
         }
       }
     },
-    "CalendarRole" : {
-      "type" : "object",
-      "properties" : {
-        "calendar" : {
-          "$ref" : "#/$defs/Calendar",
-          "hasura" : {
-            "relation" : "many-to-one",
-            "reference" : "calendarId",
-            "referenceType" : "integer"
-          }
-        },
-        "createdAt" : {
-          "type" : "string",
-          "format" : "date-time"
-        },
-        "id" : {
-          "type" : "integer",
-          "hasura" : {
-            "graphqlType" : "bigint"
-          },
-          "readOnly" : true
-        },
-        "role" : {
-          "$ref" : "#/$defs/RoleType",
-          "hasura" : {
-            "relation" : "many-to-one",
-            "reference" : "roleValue",
-            "referenceType" : "string"
-          }
-        },
-        "tag" : {
-          "type" : "string",
-          "readOnly" : true,
-          "hasura" : {
-            "allowWriteAtCreation" : true
-          }
-        },
-        "updatedAt" : {
-          "type" : "string",
-          "format" : "date-time"
-        },
-        "user" : {
-          "$ref" : "#/$defs/CalendarUser",
-          "hasura" : {
-            "relation" : "many-to-one",
-            "reference" : "userId",
-            "referenceType" : "integer"
-          }
-        }
-      },
-      "hasura" : {
-        "typeName" : "calendar_role",
-        "idProp" : "id",
-        "rootFieldNames" : {
-          "delete" : "deleteCalendarRoles",
-          "deleteByPk" : "deleteCalendarRole",
-          "insert" : "createCalendarRoles",
-          "insertOne" : "createCalendarRole",
-          "select" : "calendarRoles",
-          "selectAggregate" : "calendarRoleAggregate",
-          "selectByPk" : "calendarRole",
-          "update" : "updateCalendarRoles",
-          "updateByPk" : "updateCalendarRole"
-        },
-        "properties" : {
-          "calendarId" : {
-            "type" : "integer"
-          },
-          "roleValue" : {
-            "type" : "string"
-          },
-          "userId" : {
-            "type" : "integer"
-          }
-        }
-      }
-    },
-    "CalendarUser" : {
-      "type" : "object",
-      "properties" : {
-        "calendars" : {
-          "hasura" : {
-            "relation" : "many-to-many",
-            "join" : {
-              "$ref" : "#/$defs/UserCalendar",
-              "reference" : "theCalendarId",
-              "item" : "calendar",
-              "parentReference" : "theUserId"
-            }
-          },
-          "type" : "array",
-          "items" : {
-            "$ref" : "#/$defs/Calendar"
-          }
-        },
-        "createdAt" : {
-          "type" : "string",
-          "format" : "date-time"
-        },
-        "email" : {
-          "type" : "string"
-        },
-        "enabled" : {
-          "type" : "boolean"
-        },
-        "firebaseUserId" : {
-          "type" : "string"
-        },
-        "firstName" : {
-          "type" : "string"
-        },
-        "friends" : {
-          "hasura" : {
-            "relation" : "many-to-many",
-            "join" : {
-              "$ref" : "#/$defs/CalendarUserFriends",
-              "reference" : "myFriendUserId",
-              "item" : "myFriend",
-              "parentReference" : "myUserId"
-            }
-          },
-          "type" : "array",
-          "items" : {
-            "$ref" : "#/$defs/CalendarUser"
-          }
-        },
-        "id" : {
-          "type" : "integer",
-          "hasura" : {
-            "graphqlType" : "bigint"
-          },
-          "readOnly" : true
-        },
-        "lastName" : {
-          "type" : "string"
-        },
-        "nickname" : {
-          "type" : "string"
-        },
-        "password" : {
-          "type" : "string"
-        },
-        "tag" : {
-          "type" : "string",
-          "readOnly" : true,
-          "hasura" : {
-            "allowWriteAtCreation" : true
-          }
-        },
-        "updatedAt" : {
-          "type" : "string",
-          "format" : "date-time"
-        },
-        "username" : {
-          "type" : "string"
-        }
-      },
-      "hasura" : {
-        "typeName" : "calendar_user",
-        "idProp" : "id",
-        "rootFieldNames" : {
-          "delete" : "deleteCalendarUsers",
-          "deleteByPk" : "deleteCalendarUser",
-          "insert" : "createCalendarUsers",
-          "insertOne" : "createCalendarUser",
-          "select" : "calendarUsers",
-          "selectAggregate" : "calendarUserAggregate",
-          "selectByPk" : "calendarUser",
-          "update" : "updateCalendarUsers",
-          "updateByPk" : "updateCalendarUser"
-        }
-      }
-    },
-    "Day" : {
-      "type" : "object",
-      "properties" : {
-        "calendar" : {
-          "$ref" : "#/$defs/Calendar",
-          "hasura" : {
-            "relation" : "many-to-one",
-            "reference" : "calendarId",
-            "referenceType" : "integer"
-          }
-        },
-        "conditionClass" : {
-          "type" : "string"
-        },
-        "conditionParams" : {
-          "type" : "string"
-        },
-        "createdAt" : {
-          "type" : "string",
-          "format" : "date-time"
-        },
-        "description" : {
-          "type" : "string"
-        },
-        "events" : {
-          "hasura" : {
-            "relation" : "one-to-many",
-            "mappedBy" : "day",
-            "parentReference" : "dayId"
-          },
-          "type" : "array",
-          "items" : {
-            "$ref" : "#/$defs/Event"
-          }
-        },
-        "id" : {
-          "type" : "integer",
-          "hasura" : {
-            "graphqlType" : "bigint"
-          },
-          "readOnly" : true
-        },
-        "pos" : {
-          "type" : "integer"
-        },
-        "tag" : {
-          "type" : "string",
-          "readOnly" : true,
-          "hasura" : {
-            "allowWriteAtCreation" : true
-          }
-        },
-        "themeConfig" : {
-          "type" : "string"
-        },
-        "title" : {
-          "type" : "string"
-        },
-        "updatedAt" : {
-          "type" : "string",
-          "format" : "date-time"
-        }
-      },
-      "hasura" : {
-        "typeName" : "day",
-        "idProp" : "id",
-        "rootFieldNames" : {
-          "delete" : "deleteDays",
-          "deleteByPk" : "deleteDay",
-          "insert" : "createDays",
-          "insertOne" : "createDay",
-          "select" : "days",
-          "selectAggregate" : "dayAggregate",
-          "selectByPk" : "day",
-          "update" : "updateDays",
-          "updateByPk" : "updateDay"
-        },
-        "properties" : {
-          "calendarId" : {
-            "type" : "integer"
-          }
-        }
-      }
-    },
-    "Event" : {
-      "type" : "object",
-      "properties" : {
-        "calendar" : {
-          "$ref" : "#/$defs/Calendar",
-          "hasura" : {
-            "relation" : "many-to-one",
-            "reference" : "calendarId",
-            "referenceType" : "integer"
-          }
-        },
-        "content" : {
-          "type" : "array",
-          "items" : {
-            "type" : "integer"
-          }
-        },
-        "contentType" : {
-          "type" : "integer"
-        },
-        "createdAt" : {
-          "type" : "string",
-          "format" : "date-time"
-        },
-        "day" : {
-          "$ref" : "#/$defs/Day",
-          "hasura" : {
-            "relation" : "many-to-one",
-            "reference" : "dayId",
-            "referenceType" : "integer"
-          }
-        },
-        "id" : {
-          "type" : "integer",
-          "hasura" : {
-            "graphqlType" : "bigint"
-          },
-          "readOnly" : true
-        },
-        "reference" : {
-          "type" : "string"
-        },
-        "tag" : {
-          "type" : "string",
-          "readOnly" : true,
-          "hasura" : {
-            "allowWriteAtCreation" : true
-          }
-        },
-        "updatedAt" : {
-          "type" : "string",
-          "format" : "date-time"
-        }
-      },
-      "hasura" : {
-        "typeName" : "event",
-        "idProp" : "id",
-        "rootFieldNames" : {
-          "delete" : "deleteEvents",
-          "deleteByPk" : "deleteEvent",
-          "insert" : "createEvents",
-          "insertOne" : "createEvent",
-          "select" : "events",
-          "selectAggregate" : "eventAggregate",
-          "selectByPk" : "event",
-          "update" : "updateEvents",
-          "updateByPk" : "updateEvent"
-        },
-        "properties" : {
-          "calendarId" : {
-            "type" : "integer"
-          },
-          "dayId" : {
-            "type" : "integer"
-          }
-        }
-      }
-    },
     "UserCalendar" : {
       "type" : "object",
       "properties" : {
-        "theUserId" : {
-          "type" : "integer",
-          "hasura" : {
-            "graphqlType" : "bigint"
-          }
-        },
-        "calendarUser" : {
-          "$ref" : "#/$defs/CalendarUser"
-        },
         "theCalendarId" : {
           "type" : "integer",
           "hasura" : {
@@ -668,6 +659,15 @@
         },
         "calendar" : {
           "$ref" : "#/$defs/Calendar"
+        },
+        "theUserId" : {
+          "type" : "integer",
+          "hasura" : {
+            "graphqlType" : "bigint"
+          }
+        },
+        "calendarUser" : {
+          "$ref" : "#/$defs/CalendarUser"
         },
         "calendarOrder" : {
           "type" : "integer",

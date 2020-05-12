@@ -406,7 +406,7 @@ class HasuraConfigurator(
 
         jsonSchemaGenerator.addSpecValue(entity.javaType,
                 HasuraSpecTypeValues(
-                        typeName=tableName,
+                        graphqlType=tableName,
                         idProp=keyKolumnName,
                         rootFieldNames = rootFieldNames))
 
