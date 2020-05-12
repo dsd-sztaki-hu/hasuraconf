@@ -351,6 +351,7 @@ In case of many-to-many relationships only:
 * `typeName`: the type name used in Hasura graphql.
 * `idProp`: name of the ID - primary key - property
 * `properties`: lists "hidden" reference properties. These are the properties holding ID references to other entities. These are not part of the Java class definitions,  but these are present in the Hasura graphql schema and we reprexent these here in the usual JSON Schema `properties` format.    
+* `rootFieldNames`: alias for root field names. HasuraConfigurator provides default aliases for these, which can be overriden using `@HasuraRootFields`. See also: https://hasura.io/docs/1.0/graphql/manual/api-reference/schema-metadata-api/table-view.html#set-table-custom-fields
 
 # Usage
 
@@ -370,7 +371,7 @@ The easiest way to use it in a Maven project is via jitpack
     <dependency>
         <groupId>com.github.beepsoft</groupId>
         <artifactId>hasuraconf</artifactId>
-        <version>0.3.5</version>
+        <version>0.3.6</version>
     </dependency>
 </dependencies>
 ```

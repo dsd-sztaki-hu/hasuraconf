@@ -9,6 +9,7 @@ import java.lang.reflect.Field
 import java.util.*
 import com.github.victools.jsonschema.module.javax.validation.JavaxValidationModule;
 import com.github.victools.jsonschema.module.javax.validation.JavaxValidationOption
+import kotlin.reflect.full.memberProperties
 
 /**
  * Generates JSON schema adding hasura specific extensions to the schema. Data for the extensions
@@ -120,6 +121,13 @@ class HasuraJsonSchemaGenerator(
                 hasuraSpecTypeValuesMap[scope.type.typeName]?.let {
                     custom.put("typeName", it.typeName)
                     custom.put("idProp", it.idProp)
+                    if (it.rootFieldNames != EmptyRootFieldNames) {
+                        val rootFieldNamesNode = custom.putObject("rootFieldNames")
+                        // Add each fields value to rootFieldNamesNode.
+                        for (prop in RootFieldNames::class.memberProperties) {
+                            rootFieldNamesNode.put(prop.name, prop.get(it.rootFieldNames) as String)
+                        }
+                    }
                     // If there are referenceProps add these as "properties" on "hasura".
                     if (it.referenceProps.isNotEmpty()) {
                         val properties = custom.putObject("properties")
@@ -399,7 +407,9 @@ class HasuraSpecTypeValues(
          */
         var idProp: String? = null,
 
-        var idPropGraphqlType: String? = null
+        var idPropGraphqlType: String? = null,
+
+        var rootFieldNames: RootFieldNames
 )
 
 class JoinType(
@@ -420,6 +430,8 @@ class JoinType(
 
         var orderField: String?  = null,
         var orderFieldType: String? = null,
-        var orderFieldGraphqlType: String? = null
+        var orderFieldGraphqlType: String? = null,
+        var rootFieldNames: RootFieldNames
+
 )
 

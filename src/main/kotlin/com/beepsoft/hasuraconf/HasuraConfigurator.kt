@@ -383,11 +383,6 @@ class HasuraConfigurator(
         tableNames.add(tableName)
         entityClasses.add(entity.javaType)
 
-        jsonSchemaGenerator.addSpecValue(entity.javaType,
-                HasuraSpecTypeValues(
-                        typeName=tableName,
-                        idProp=keyKolumnName))
-
 
         val f = Utils.findDeclaredFieldUsingReflection(entity.javaType, classMetadata.identifierPropertyName)
         jsonSchemaGenerator.addSpecValue(f!!,
@@ -407,10 +402,17 @@ class HasuraConfigurator(
         // Copy
         var entityNameLower = entityName.toString()
         entityNameLower = Character.toLowerCase(entityNameLower[0]).toString() + entityNameLower.substring(1)
+        val rootFieldNames = generateRootFieldNames(rootFields, entityName, entityNameLower)
+
+        jsonSchemaGenerator.addSpecValue(entity.javaType,
+                HasuraSpecTypeValues(
+                        typeName=tableName,
+                        idProp=keyKolumnName,
+                        rootFieldNames = rootFieldNames))
 
         customRootFieldColumnNameJSONBuilder.append(
                 """
-                    ${generateSetTableCustomFields(rootFields, tableName, entityName, entityNameLower)}
+                    ${generateSetTableCustomFields(tableName, rootFieldNames)}
                     "custom_column_names": {                 
                 """
         )
@@ -561,9 +563,13 @@ class HasuraConfigurator(
                         customFieldNameJSONBuilder.append(",\n")
                     }
                     customFieldNameJSONBuilder.append("\t\t\t\t\"$columnName\": \"$camelCasedIdName\"")
+
+                    // Here just add the reference prop (adding EmptyRootFieldNames as we don't need it here actually)
                     jsonSchemaGenerator.addSpecValue(entity.javaType,
-                            HasuraSpecTypeValues(referenceProp =
-                            HasuraReferenceProp(name=camelCasedIdName, type=jsonSchemaTypeFor(columnType, classMetadata))))
+                            HasuraSpecTypeValues(
+                                    referenceProp = HasuraReferenceProp(name=camelCasedIdName, type=jsonSchemaTypeFor(columnType, classMetadata)),
+                                    rootFieldNames = EmptyRootFieldNames
+                            ))
 
                     if (assocType is ManyToOneType && !assocType.isLogicalOneToOne) {
                         jsonSchemaGenerator.addSpecValue(f,
@@ -725,6 +731,7 @@ class HasuraConfigurator(
         val keyTableName = classMetadata.tableName
         val keyFieldName = keyTableName.toCamelCase()
 
+        val rootFieldNames = generateRootFieldNames(rootFields, entityName, entityNameLower)
 
         customRootFieldColumnNameJSONBuilder.append(
                 """
@@ -743,7 +750,7 @@ class HasuraConfigurator(
                         }
                     }
                     ,                    
-                    ${generateSetTableCustomFields(rootFields, tableName, entityName, entityNameLower)}
+                    ${generateSetTableCustomFields(tableName, rootFieldNames)}
                     "custom_column_names": {
                          "${keyColumn}": "${keyColumnAlias}",
                          "${relatedColumnName}": "${relatedColumnNameAlias}"
@@ -795,19 +802,36 @@ class HasuraConfigurator(
                 },
                 orderFieldGraphqlType = join.indexColumnNames?.let{
                     graphqlTypeFor(join.indexType, classMetadata)
-                }
-
+                },
+                rootFieldNames = rootFieldNames
         ))
 
 //        println(customFieldNameJSONBuilder)
         return customRootFieldColumnNameJSONBuilder.toString()
     }
 
-    private fun generateSetTableCustomFields(
+    private fun generateRootFieldNames(
             rootFields: HasuraRootFields?,
-            tableName: String,
             entityName: String,
-            entityNameLower: String) : String
+            entityNameLower: String) : RootFieldNames
+    {
+        val rootFieldNames = RootFieldNames(
+                select = "${if (rootFields != null && rootFields.select.isNotBlank()) rootFields.select else English.plural(entityNameLower)}",
+                selectByPk = "${if (rootFields != null && rootFields.selectByPk.isNotBlank()) rootFields.selectByPk else entityNameLower}",
+                selectAggregate = "${if (rootFields != null && rootFields.selectAggregate.isNotBlank()) rootFields.selectAggregate else entityNameLower+"Aggregate"}",
+                insert = "${if (rootFields != null && rootFields.insert.isNotBlank()) rootFields.insert else "create"+English.plural(entityName)}",
+                insertOne =  "${if (rootFields != null && rootFields.insertOne.isNotBlank()) rootFields.insertOne else "create"+entityName}",
+                update = "${if (rootFields != null && rootFields.update.isNotBlank()) rootFields.update else "update"+English.plural(entityName)}",
+                updateByPk = "${if (rootFields != null && rootFields.updateByPk.isNotBlank()) rootFields.updateByPk else "update"+entityName}",
+                delete = "${if (rootFields != null && rootFields.delete.isNotBlank()) rootFields.delete else "delete"+English.plural(entityName)}",
+                deleteByPk = "${if (rootFields != null && rootFields.deleteByPk.isNotBlank()) rootFields.deleteByPk else "delete"+entityName}"
+        )
+        return rootFieldNames;
+    }
+
+    private fun generateSetTableCustomFields(
+            tableName: String,
+            rootFieldNames: RootFieldNames) : String
     {
         return  """
                     {
@@ -817,15 +841,15 @@ class HasuraConfigurator(
                             "table": "${tableName}",
                             "schema": "${schemaName}",
                             "custom_root_fields": {
-                                "select": "${if (rootFields != null && rootFields.select.isNotBlank()) rootFields.select else English.plural(entityNameLower)}",
-                                "select_by_pk": "${if (rootFields != null && rootFields.selectByPk.isNotBlank()) rootFields.selectByPk else entityNameLower}",
-                                "select_aggregate": "${if (rootFields != null && rootFields.selectAggregate.isNotBlank()) rootFields.selectAggregate else entityNameLower+"Aggregate"}",
-                                "insert": "${if (rootFields != null && rootFields.insert.isNotBlank()) rootFields.insert else "create"+English.plural(entityName)}",
-                                "insert_one": "${if (rootFields != null && rootFields.insertOne.isNotBlank()) rootFields.insertOne else "create"+entityName}",
-                                "update": "${if (rootFields != null && rootFields.update.isNotBlank()) rootFields.update else "update"+English.plural(entityName)}",
-                                "update_by_pk": "${if (rootFields != null && rootFields.updateByPk.isNotBlank()) rootFields.updateByPk else "update"+entityName}", 
-                                "delete": "${if (rootFields != null && rootFields.delete.isNotBlank()) rootFields.delete else "delete"+English.plural(entityName)}",
-                                "delete_by_pk": "${if (rootFields != null && rootFields.deleteByPk.isNotBlank()) rootFields.deleteByPk else "delete"+entityName}"
+                                "select":           "${rootFieldNames.select}",
+                                "select_by_pk":     "${rootFieldNames.selectByPk}",
+                                "select_aggregate": "${rootFieldNames.selectAggregate}",
+                                "insert":           "${rootFieldNames.insert}",
+                                "insert_one":       "${rootFieldNames.insertOne}",
+                                "update":           "${rootFieldNames.update}",
+                                "update_by_pk":     "${rootFieldNames.updateByPk}", 
+                                "delete":           "${rootFieldNames.delete}",
+                                "delete_by_pk":     "${rootFieldNames.deleteByPk}"
                             },
                 """
     }
@@ -863,3 +887,23 @@ class HasuraConfigurator(
     }
 
 }
+
+/**
+ * Root field aliases for a specific type
+ */
+class RootFieldNames(
+        val select : String,
+        val selectByPk : String,
+        val selectAggregate : String,
+        val insert : String,
+        val insertOne : String,
+        val update : String,
+        val updateByPk : String,
+        val delete : String,
+        val deleteByPk : String
+)
+
+/**
+ * A dummy, empty RootFieldNames instance
+ */
+val EmptyRootFieldNames = RootFieldNames("", "", "", "", "", "", "", "", "")
