@@ -438,6 +438,10 @@ Instead doing that I now use `HasuraConfigurator`  to keep my data model and Has
 
 My goal is to add as many configuration options as possible all based on the JPA model and specific `HasuraConfigurator` annotations.
 
+# Author
+
+Balázs E. Pataki [[@beepsoft](https://github.com/beepsoft)]
+
 # LICENSE
 
 MIT
