@@ -1,4 +1,4 @@
-[![CircleCI](https://circleci.com/gh/beepsoft/hasuraconf.svg?style=svg)](https://circleci.com/gh/beepsoft/hasuraconf)
+[![CircleCI](https://circleci.com/gh/dsd-sztaki-hu/hasuraconf.svg?style=svg)](https://circleci.com/gh/dsd-sztaki-hu/hasuraconf)
 
 # Hasura Configuration Based on JPA Annotations
 
