@@ -118,7 +118,8 @@ class HasuraConfigurator(
         var hasuraAdminSecret: String?,
         var schemaFile: String?,
         var schemaVersion: String,
-        var customPropsFieldName: String
+        var customPropsFieldName: String,
+        var ignoreJsonSchema: Boolean = false
 ) {
 
     companion object {
@@ -287,9 +288,11 @@ class HasuraConfigurator(
         bulk.append("\n\t]\n")
         bulk.append("}\n")
 
-        jsonSchema = jsonSchemaGenerator.generateSchema(*entityClasses.toTypedArray()).toString().reformatJson()
-        schemaFile?.let {
-            PrintWriter(it).use { out -> out.println(jsonSchema) }
+        if (!ignoreJsonSchema) {
+            jsonSchema = jsonSchemaGenerator.generateSchema(*entityClasses.toTypedArray()).toString().reformatJson()
+            schemaFile?.let {
+                PrintWriter(it).use { out -> out.println(jsonSchema) }
+            }
         }
 
         confJson = bulk.toString().reformatJson()

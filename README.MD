@@ -382,7 +382,7 @@ The easiest way to use it in a Maven project is via jitpack
     <dependency>
         <groupId>com.github.beepsoft</groupId>
         <artifactId>hasuraconf</artifactId>
-        <version>0.3.9</version>
+        <version>0.3.10</version>
     </dependency>
 </dependencies>
 ```
@@ -392,29 +392,32 @@ Then you should use `HasuraConfigurator` like this:
 ```java
 @Autowired HasuraConfigurator hasuraConf;
 ...
-String json = hasuraConf.configure();
+hasuraConf.configure();
+String json = hasuraConf.getConfJson();
 ```
 
 ## Configuration properties (application.properties values)
 
-* `hasuraconfig.confFile`: configuration JSON will be saved here. Default: hasura-conf.json
+* `hasuraconf.confFile`: configuration JSON will be saved here. Default: hasura-conf.json
 
-*  `hasuraconfig.schemaName`: the Postgresql schema of the model. Default: public
+* `hasuraconf.schemaName`: the Postgresql schema of the model. Default: public
 
-* `hasuraconfig.loadConf`: if true the generated config will also be loaded automatically to Hasura when `HasuraConfigurator#configure()` is called. For this to work `hasuraconfig.hasuraEndpoint` and `hasuraconfig.hasuraAdminSecret` must be specified. Defautlt: false
+* `hasuraconf.loadConf`: if true the generated config will also be loaded automatically to Hasura when `HasuraConfigurator#configure()` is called. For this to work `hasuraconfig.hasuraEndpoint` and `hasuraconfig.hasuraAdminSecret` must be specified. Defautlt: false
 
-* `hasuraconfig.hasuraEndpoint`: URL of the Hasura server. Default: http://localhost:8080/v1/query
+* `hasuraconf.hasuraEndpoint`: URL of the Hasura server. Default: http://localhost:8080/v1/query
 
-* `hasuraconfig.hasuraAdminSecret`: admin secret of the Hasura server. Default: null
+* `hasuraconf.hasuraAdminSecret`: admin secret of the Hasura server. Default: null
 
-* `hasuraconfig.schemaFile`: name of the JSON Schema file to generate. Not set by default, in which case it doesn't generate anything.
+* `hasuraconf.schemaFile`: name of the JSON Schema file to generate. Not set by default, in which case it doesn't generate anything.
 
-* `hasuraconfig.schemaVersion`: version of the schema. Supported values: DRAFT_7, DRAFT_2019_09. Defaults to DRAFT_2019_09
+* `hasuraconf.schemaVersion`: version of the schema. Supported values: DRAFT_7, DRAFT_2019_09. Defaults to DRAFT_2019_09
 
-* `hasuraconfig.customPropsFieldName`: the field holding the hasura specific extenion properties. Defaults to `hasura`
+* `hasuraconf.customPropsFieldName`: the field holding the hasura specific extenion properties. Defaults to `hasura`
+
+* `hasuraconf.jsonSchema.ignore`: if true, JSON schema generation will ignorred. Defaults to `false`
 
 
-All `hasuraconfig.XXX` values can be set on `HasuraConfigurator` directly before calling `configure()`.
+All `hasuraconf.XXX` values can be set on `HasuraConfigurator` directly before calling `configure()`.
 
 # Caveat
 

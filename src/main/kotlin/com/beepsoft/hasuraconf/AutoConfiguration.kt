@@ -21,7 +21,8 @@ class AutoConfiguration
             @Value("\${hasuraconf.hasuraAdminSecret:#{null}}") hasuraAdminSecret: String?,
             @Value("\${hasuraconf.jsonSchema.schemaFile:hasura-json-schema.json}") schemaFile: String?,
             @Value("\${hasuraconf.jsonSchema.schemaVersion:DRAFT_2019_09}") schemaVersion: String,
-            @Value("\${hasuraconf.jsonSchema.customPropsFieldName:hasura}") customPropsFieldName: String
+            @Value("\${hasuraconf.jsonSchema.customPropsFieldName:hasura}") customPropsFieldName: String,
+            @Value("\${hasuraconf.jsonSchema.ignore:false}") ignoreJsonSchema: Boolean
     ): HasuraConfigurator {
         return HasuraConfigurator(
                 entityManagerFactory,
@@ -32,7 +33,8 @@ class AutoConfiguration
                 hasuraAdminSecret,
                 schemaFile,
                 schemaVersion,
-                customPropsFieldName)
+                customPropsFieldName,
+                ignoreJsonSchema)
     }
 
 //    @Bean
