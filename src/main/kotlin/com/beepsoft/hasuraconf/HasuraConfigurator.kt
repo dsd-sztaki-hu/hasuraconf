@@ -609,6 +609,12 @@ class HasuraConfigurator(
                     } else { // TO_PARENT, ie. assocition is mapped by the other side
                         val join = assocType.getAssociatedJoinable(sessionFactoryImpl as SessionFactoryImpl?)
                         val keyColumn = join.keyColumnNames[0]
+                        val mappedBy = assocType.rhsUniqueKeyPropertyName
+                        // In reality mappedBy should always be set. It is either the implicit name or a specific
+                        // mappedBy=<foreign property name> and so it cannot be null. I'm not sure about it so I
+                        // leave here a fallback of the default Hiberante tableName_keyColumn foreign key.
+                        val mappedId = if (mappedBy != null) (join as AbstractEntityPersister).getPropertyColumnNames(mappedBy)[0]
+                                        else "${tableName}_${keyColumn}"
                         val objectRel =
                                 """
                                 {
@@ -626,7 +632,7 @@ class HasuraConfigurator(
                                                     "schema": "${schemaName}"
                                                 },
                                                 "column_mapping": {
-                                                    "id": "${tableName}_${keyColumn}"
+                                                    "${keyColumn}": "${mappedId}"
                                                 }
                                             }
                                         }
