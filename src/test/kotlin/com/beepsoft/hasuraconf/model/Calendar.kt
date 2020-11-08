@@ -55,7 +55,7 @@ class Calendar : BaseObject() {
     /** Boxes making up the calendar  */
     @OneToMany(mappedBy = "calendar", cascade = [CascadeType.ALL])
     @OnDelete(action= OnDeleteAction.CASCADE)
-    var days: List<Day>? = null
+    var days = mutableListOf<Day>()
 
     /** Availability of the calendar.  */
     @ManyToOne

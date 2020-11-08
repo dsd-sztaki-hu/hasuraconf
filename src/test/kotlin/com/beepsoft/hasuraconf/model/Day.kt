@@ -1,9 +1,6 @@
 package com.beepsoft.hasuraconf.model
 
 
-import com.beepsoft.hasuraconf.annotation.HasuraOperation
-import com.beepsoft.hasuraconf.annotation.HasuraPermission
-import com.beepsoft.hasuraconf.annotation.HasuraPermissions
 import org.hibernate.annotations.OnDelete
 import org.hibernate.annotations.OnDeleteAction
 import javax.persistence.*
@@ -18,7 +15,8 @@ import javax.persistence.*
         Index(columnList = "id"))
 )
 @CalendarBasedPermissions
-class Day : BaseObject() {
+@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
+open class Day : BaseObject() {
 
     /** The calendar it belongs to  */
     @ManyToOne(optional = false)
@@ -34,7 +32,7 @@ class Day : BaseObject() {
     // https://github.com/hasura/graphql-engine/pull/2852
     /** Event displayed when opening the day.  */
     @OneToMany(mappedBy = "day", cascade = [CascadeType.ALL])
-    @OnDelete(action=OnDeleteAction.CASCADE)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     var events: List<Event>? = null
 
     /** Order/position of the day in the series of days.  */

@@ -145,6 +145,7 @@ class HasuraConfigurator(
     private lateinit var enumTables: MutableSet<String>
     private lateinit var cascadeDeleteFields: MutableSet<CascadeDeleteFields>
     private lateinit var jsonSchemaGenerator: HasuraJsonSchemaGenerator
+    private lateinit var generatedRelationships:  MutableSet<String>
 
     // Acrtual postgresql types for some SQL types. Hibernate uses the key fields when generating
     // tables, however Postgresql uses the "values" of postgresqlNames and so does Hasura when
@@ -197,6 +198,7 @@ class HasuraConfigurator(
         enumTables = mutableSetOf<String>()
         cascadeDeleteFields = mutableSetOf<CascadeDeleteFields>()
         jsonSchemaGenerator = HasuraJsonSchemaGenerator(schemaVersion, customPropsFieldName)
+        generatedRelationships = mutableSetOf<String>()
 
         val entities = metaModel.entities
         // Add custom field and relationship names for each table
@@ -481,9 +483,6 @@ class HasuraConfigurator(
             // If it is an association type, add an array or object relationship
             //
             if (propType.isAssociationType) {
-                if (customRelationshipNameJSONBuilder.isNotEmpty()) {
-                    customRelationshipNameJSONBuilder.append(",\n")
-                }
                 if (propType.isCollectionType) {
                     val collType = propType as CollectionType
                     val join = collType.getAssociatedJoinable(sessionFactoryImpl as SessionFactoryImpl?)
@@ -511,13 +510,22 @@ class HasuraConfigurator(
                                 }
                             }                            
                         """
-                    customRelationshipNameJSONBuilder.append(arrayRel)
+                    if (!generatedRelationships.contains(arrayRel)) {
+                        generatedRelationships.add(arrayRel)
+                        if (customRelationshipNameJSONBuilder.isNotEmpty()) {
+                            customRelationshipNameJSONBuilder.append(",\n")
+                        }
+                        customRelationshipNameJSONBuilder.append(arrayRel)
+                    }
 
                     // BasicCollectionPersister - despite the name - is for many-to-many associations
                     if (join is BasicCollectionPersister) {
                         if (join.isManyToMany) {
                             var res = handleManyToManyJoinTable(entity, join, f);
                             if (res != null) {
+                                if (customRelationshipNameJSONBuilder.length > 0) {
+                                    customRelationshipNameJSONBuilder.append(",\n")
+                                }
                                 customRelationshipNameJSONBuilder.append(
                                         """
                                         ${res}
@@ -557,7 +565,16 @@ class HasuraConfigurator(
                                     }
                                 }                                
                             """
-                        customRelationshipNameJSONBuilder.append(objectRel)
+                        // In case of @Inheritance(strategy = InheritanceType.SINGLE_TABLE) for each subclass
+                        // we may get here to generate create_object_relationship, but if we already have it for
+                        // any subclass then we should not create_object_relationship anymore
+                        if (!generatedRelationships.contains(objectRel)) {
+                            generatedRelationships.add(objectRel)
+                            if (customRelationshipNameJSONBuilder.isNotEmpty()) {
+                                customRelationshipNameJSONBuilder.append(",\n")
+                            }
+                            customRelationshipNameJSONBuilder.append(objectRel)
+                        }
                         // Also add customization for the ID field name
                         val camelCasedIdName = CaseUtils.toCamelCase(columnName, false, '_')
                         if (propAdded) {
@@ -616,7 +633,13 @@ class HasuraConfigurator(
                                     }
                                 }                                
                             """
-                        customRelationshipNameJSONBuilder.append(objectRel)
+                        if (!generatedRelationships.contains(objectRel)) {
+                            generatedRelationships.add(objectRel)
+                            if (customRelationshipNameJSONBuilder.isNotEmpty()) {
+                                customRelationshipNameJSONBuilder.append(",\n")
+                            }
+                            customRelationshipNameJSONBuilder.append(objectRel)
+                        }
 
                         val oneToOne = f.getAnnotation(OneToOne::class.java)
                         oneToOne?.let {
@@ -652,8 +675,9 @@ class HasuraConfigurator(
                     // TODO: why do we have separate columnType and propType?
                     val columnType = componentType.subtypes[index]
                     val propType = componentType.subtypes[index]
-                    println("$columnName --> ${field.name}")
+                    //println("$columnName --> ${field.name}")
                     val ret = doAddCustomFieldNameOrRef(field, columnName, columnType, propType)
+                    // If any doAddCustomFieldNameOrRef returns true, make final result true
                     if (ret) {
                         result = ret
                     }
@@ -770,9 +794,7 @@ class HasuraConfigurator(
 
         val rootFieldNames = generateRootFieldNames(rootFields, entityName, entityNameLower)
 
-        customRootFieldColumnNameJSONBuilder.append(
-                """
-                    ,
+        val objectRel = """
                     {
                         "type": "create_object_relationship",
                         "args": {
@@ -786,7 +808,20 @@ class HasuraConfigurator(
                             }
                         }
                     }
-                    ,                    
+                    """
+        if (!generatedRelationships.contains(objectRel)) {
+            generatedRelationships.add(objectRel)
+            if (customRootFieldColumnNameJSONBuilder.length > 0) {
+                customRootFieldColumnNameJSONBuilder.append(",")
+            }
+            customRootFieldColumnNameJSONBuilder.append(objectRel)
+        }
+
+        if (customRootFieldColumnNameJSONBuilder.length > 0) {
+            customRootFieldColumnNameJSONBuilder.append(",")
+        }
+        customRootFieldColumnNameJSONBuilder.append(
+                """
                     ${generateSetTableCustomFields(tableName, rootFieldNames)}
                     "custom_column_names": {
                          "${keyColumn}": "${keyColumnAlias}",
@@ -899,7 +934,7 @@ class HasuraConfigurator(
             tableName: String,
             rootFieldNames: RootFieldNames) : String
     {
-        return  """
+        val customFields =  """
                     {
                         "type": "set_table_custom_fields",
                         "version": 2,
@@ -918,6 +953,7 @@ class HasuraConfigurator(
                                 "delete_by_pk":     "${rootFieldNames.deleteByPk}"
                             },
                 """
+        return customFields
     }
 
     /**
