@@ -48,4 +48,7 @@ class Day : BaseObject() {
 
     /** Theme specific configuration for the Day.  */
     var themeConfig: String? = null
+
+    /** For testing @Embedded class and field handling. */
+    var list: EmbeddedList? = null
 }

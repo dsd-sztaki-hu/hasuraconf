@@ -469,30 +469,28 @@ class HasuraConfigurator(
             return false
         }
 
-        val columnName = classMetadata.getPropertyColumnNames(propName)[0]
-        val columnType = classMetadata.getPropertyType(propName)
-        val propType = classMetadata.getPropertyType(propName)
-
-        // Now we may alias field name according to @HasuraAlias annotation
-        var hasuraAlias = f.getAnnotation(HasuraAlias::class.java)
-        if (hasuraAlias != null && hasuraAlias.fieldAlias.isNotBlank()) {
-            propName = hasuraAlias.fieldAlias
-        }
-
-        //
-        // If it is an association type, add an array or object relationship
-        //
-        if (propType.isAssociationType) {
-            if (customRelationshipNameJSONBuilder.isNotEmpty()) {
-                customRelationshipNameJSONBuilder.append(",\n")
+        fun doAddCustomFieldNameOrRef(field: Field, columnName: String, columnType: Type, propType: Type) : Boolean
+        {
+            // Now we may alias field name according to @HasuraAlias annotation
+            var hasuraAlias = f.getAnnotation(HasuraAlias::class.java)
+            if (hasuraAlias != null && hasuraAlias.fieldAlias.isNotBlank()) {
+                propName = hasuraAlias.fieldAlias
             }
-            if (propType.isCollectionType) {
-                val collType = propType as CollectionType
-                val join = collType.getAssociatedJoinable(sessionFactoryImpl as SessionFactoryImpl?)
-                val keyColumn = join.keyColumnNames[0]
-                tableNames.add(join.tableName)
-                val arrayRel =
-                        """
+
+            //
+            // If it is an association type, add an array or object relationship
+            //
+            if (propType.isAssociationType) {
+                if (customRelationshipNameJSONBuilder.isNotEmpty()) {
+                    customRelationshipNameJSONBuilder.append(",\n")
+                }
+                if (propType.isCollectionType) {
+                    val collType = propType as CollectionType
+                    val join = collType.getAssociatedJoinable(sessionFactoryImpl as SessionFactoryImpl?)
+                    val keyColumn = join.keyColumnNames[0]
+                    tableNames.add(join.tableName)
+                    val arrayRel =
+                            """
                             {
                                 "type": "create_array_relationship",
                                 "args": {
@@ -513,38 +511,38 @@ class HasuraConfigurator(
                                 }
                             }                            
                         """
-                customRelationshipNameJSONBuilder.append(arrayRel)
+                    customRelationshipNameJSONBuilder.append(arrayRel)
 
-                // BasicCollectionPersister - despite the name - is for many-to-many associations
-                if (join is BasicCollectionPersister) {
-                    if (join.isManyToMany) {
-                        var res = handleManyToManyJoinTable(entity, join, f);
-                        if (res != null) {
-                            customRelationshipNameJSONBuilder.append(
-                                    """
+                    // BasicCollectionPersister - despite the name - is for many-to-many associations
+                    if (join is BasicCollectionPersister) {
+                        if (join.isManyToMany) {
+                            var res = handleManyToManyJoinTable(entity, join, f);
+                            if (res != null) {
+                                customRelationshipNameJSONBuilder.append(
+                                        """
                                         ${res}
                                     """
-                            )
+                                )
+                            }
                         }
                     }
-                }
 
-                if (f.isAnnotationPresent(OneToMany::class.java)) {
-                    val oneToMany = f.getAnnotation(OneToMany::class.java)
-                    val parentRef = CaseUtils.toCamelCase(keyColumn, false, '_')
-                    jsonSchemaGenerator.addSpecValue(f,
-                            HasuraSpecPropValues(
-                                    relation="one-to-many",
-                                    mappedBy=oneToMany.mappedBy,
-                                    parentReference=parentRef))
+                    if (f.isAnnotationPresent(OneToMany::class.java)) {
+                        val oneToMany = f.getAnnotation(OneToMany::class.java)
+                        val parentRef = CaseUtils.toCamelCase(keyColumn, false, '_')
+                        jsonSchemaGenerator.addSpecValue(f,
+                                HasuraSpecPropValues(
+                                        relation="one-to-many",
+                                        mappedBy=oneToMany.mappedBy,
+                                        parentReference=parentRef))
 
-                }
-            } else {
-                val assocType = propType as AssociationType
-                val fkDir = assocType.foreignKeyDirection
-                if (fkDir === ForeignKeyDirection.FROM_PARENT) {
-                    val objectRel =
-                            """
+                    }
+                } else {
+                    val assocType = propType as AssociationType
+                    val fkDir = assocType.foreignKeyDirection
+                    if (fkDir === ForeignKeyDirection.FROM_PARENT) {
+                        val objectRel =
+                                """
                                 {
                                     "type": "create_object_relationship",
                                     "args": {
@@ -559,43 +557,43 @@ class HasuraConfigurator(
                                     }
                                 }                                
                             """
-                    customRelationshipNameJSONBuilder.append(objectRel)
-                    // Also add customization for the ID field name
-                    val camelCasedIdName = CaseUtils.toCamelCase(columnName, false, '_')
-                    if (propAdded) {
-                        customFieldNameJSONBuilder.append(",\n")
-                    }
-                    customFieldNameJSONBuilder.append("\t\t\t\t\"$columnName\": \"$camelCasedIdName\"")
+                        customRelationshipNameJSONBuilder.append(objectRel)
+                        // Also add customization for the ID field name
+                        val camelCasedIdName = CaseUtils.toCamelCase(columnName, false, '_')
+                        if (propAdded) {
+                            customFieldNameJSONBuilder.append(",\n")
+                        }
+                        customFieldNameJSONBuilder.append("\t\t\t\t\"$columnName\": \"$camelCasedIdName\"")
 
-                    // Here just add the reference prop (adding EmptyRootFieldNames as we don't need it here actually)
-                    jsonSchemaGenerator.addSpecValue(entity.javaType,
-                            HasuraSpecTypeValues(
-                                    referenceProp = HasuraReferenceProp(name=camelCasedIdName, type=jsonSchemaTypeFor(columnType, classMetadata)),
-                                    rootFieldNames = EmptyRootFieldNames
-                            ))
+                        // Here just add the reference prop (adding EmptyRootFieldNames as we don't need it here actually)
+                        jsonSchemaGenerator.addSpecValue(entity.javaType,
+                                HasuraSpecTypeValues(
+                                        referenceProp = HasuraReferenceProp(name=camelCasedIdName, type=jsonSchemaTypeFor(columnType, classMetadata)),
+                                        rootFieldNames = EmptyRootFieldNames
+                                ))
 
-                    if (assocType is ManyToOneType && !assocType.isLogicalOneToOne) {
-                        jsonSchemaGenerator.addSpecValue(f,
-                                HasuraSpecPropValues(relation = "many-to-one",
-                                        reference = camelCasedIdName,
-                                        referenceType = jsonSchemaTypeFor(columnType, classMetadata)
-                                )
-                        )
-                    }
-                    else {
-                        jsonSchemaGenerator.addSpecValue(f,
-                                HasuraSpecPropValues(relation = "one-to-one",
-                                        reference = camelCasedIdName,
-                                        referenceType = jsonSchemaTypeFor(columnType, classMetadata)
-                                )
-                        )
-                    }
-                    return true
-                } else { // TO_PARENT, ie. assocition is mapped by the other side
-                    val join = assocType.getAssociatedJoinable(sessionFactoryImpl as SessionFactoryImpl?)
+                        if (assocType is ManyToOneType && !assocType.isLogicalOneToOne) {
+                            jsonSchemaGenerator.addSpecValue(f,
+                                    HasuraSpecPropValues(relation = "many-to-one",
+                                            reference = camelCasedIdName,
+                                            referenceType = jsonSchemaTypeFor(columnType, classMetadata)
+                                    )
+                            )
+                        }
+                        else {
+                            jsonSchemaGenerator.addSpecValue(f,
+                                    HasuraSpecPropValues(relation = "one-to-one",
+                                            reference = camelCasedIdName,
+                                            referenceType = jsonSchemaTypeFor(columnType, classMetadata)
+                                    )
+                            )
+                        }
+                        return true
+                    } else { // TO_PARENT, ie. assocition is mapped by the other side
+                        val join = assocType.getAssociatedJoinable(sessionFactoryImpl as SessionFactoryImpl?)
 //                    val keyColumn = join.keyColumnNames[0]
-                    val objectRel =
-                            """
+                        val objectRel =
+                                """
                                 {
                                     "type": "create_object_relationship",
                                     "args": {
@@ -618,25 +616,61 @@ class HasuraConfigurator(
                                     }
                                 }                                
                             """
-                    customRelationshipNameJSONBuilder.append(objectRel)
+                        customRelationshipNameJSONBuilder.append(objectRel)
 
-                    val oneToOne = f.getAnnotation(OneToOne::class.java)
-                    oneToOne?.let {
-                        jsonSchemaGenerator.addSpecValue(f,
-                                HasuraSpecPropValues(relation="one-to-one", mappedBy=oneToOne.mappedBy))
+                        val oneToOne = f.getAnnotation(OneToOne::class.java)
+                        oneToOne?.let {
+                            jsonSchemaGenerator.addSpecValue(f,
+                                    HasuraSpecPropValues(relation="one-to-one", mappedBy=oneToOne.mappedBy))
 
+                        }
+                    }
+
+                }
+            } else if (columnName != propName) {
+                if (propAdded) {
+                    customFieldNameJSONBuilder.append(",\n")
+                }
+                customFieldNameJSONBuilder.append("\t\t\t\t\"$columnName\": \"$propName\"")
+                return true
+            }
+            return false
+        }
+
+        // In case of @Embedded class there will be a single property with multiple property column names
+        val type = classMetadata.toType(propName)
+        if (type is ComponentType) {
+            val componentType = type as ComponentType
+            val tup = (type as ComponentType).componentTuplizer
+            val propNames = classMetadata.getPropertyColumnNames(propName)
+            var result = false
+            propNames.forEachIndexed { index, columnName ->
+                val field = tup.getGetter(index).getMember()
+                if (field is Field) {
+                    // Reset propName to the embedded field name
+                    propName = (field as Field).name
+                    // TODO: why do we have separate columnType and propType?
+                    val columnType = componentType.subtypes[index]
+                    val propType = componentType.subtypes[index]
+                    println("$columnName --> ${field.name}")
+                    val ret = doAddCustomFieldNameOrRef(field, columnName, columnType, propType)
+                    if (ret) {
+                        result = ret
                     }
                 }
-
+                else {
+                    throw HasuraConfiguratorException("Unable to handle embeded class ${entity} and getter ${field} ")
+                }
             }
-        } else if (columnName != propName) {
-            if (propAdded) {
-                customFieldNameJSONBuilder.append(",\n")
-            }
-            customFieldNameJSONBuilder.append("\t\t\t\t\"$columnName\": \"$propName\"")
-            return true
+            return result
         }
-        return false
+        else {
+            val columnName = classMetadata.getPropertyColumnNames(propName)[0]
+            // TODO: why do we have separate columnType and propType?
+            val columnType = classMetadata.getPropertyType(propName)
+            val propType = classMetadata.getPropertyType(propName)
+            return doAddCustomFieldNameOrRef(f, columnName, columnType, propType)
+        }
     }
 
     private fun jsonSchemaTypeFor(columnType: Type, classMetadata: AbstractEntityPersister): String {
