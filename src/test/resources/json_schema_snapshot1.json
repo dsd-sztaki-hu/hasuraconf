@@ -648,18 +648,99 @@
         }
       }
     },
-    "UserCalendar" : {
+    "Series" : {
       "type" : "object",
       "properties" : {
-        "theCalendarId" : {
+        "createdAt" : {
+          "type" : "string",
+          "format" : "date-time"
+        },
+        "id" : {
           "type" : "integer",
           "hasura" : {
             "graphqlType" : "bigint"
+          },
+          "readOnly" : true
+        },
+        "tag" : {
+          "type" : "string",
+          "readOnly" : true,
+          "hasura" : {
+            "allowWriteAtCreation" : true
           }
         },
-        "calendar" : {
-          "$ref" : "#/$defs/Calendar"
+        "title" : {
+          "type" : "string"
         },
+        "updatedAt" : {
+          "type" : "string",
+          "format" : "date-time"
+        }
+      },
+      "hasura" : {
+        "graphqlType" : "series",
+        "idProp" : "id",
+        "rootFieldNames" : {
+          "delete" : "deleteSerieses",
+          "deleteByPk" : "deleteSeries",
+          "insert" : "createSerieses",
+          "insertOne" : "createSeries",
+          "select" : "serieses",
+          "selectAggregate" : "seriesAggregate",
+          "selectByPk" : "series",
+          "update" : "updateSerieses",
+          "updateByPk" : "updateSeries"
+        }
+      }
+    },
+    "BookSeries" : {
+      "type" : "object",
+      "properties" : {
+        "createdAt" : {
+          "type" : "string",
+          "format" : "date-time"
+        },
+        "id" : {
+          "type" : "integer",
+          "hasura" : {
+            "graphqlType" : "bigint"
+          },
+          "readOnly" : true
+        },
+        "tag" : {
+          "type" : "string",
+          "readOnly" : true,
+          "hasura" : {
+            "allowWriteAtCreation" : true
+          }
+        },
+        "title" : {
+          "type" : "string"
+        },
+        "updatedAt" : {
+          "type" : "string",
+          "format" : "date-time"
+        }
+      },
+      "hasura" : {
+        "graphqlType" : "book_series",
+        "idProp" : "id",
+        "rootFieldNames" : {
+          "delete" : "deleteBookSeriesMulti",
+          "deleteByPk" : "deleteBookSeries",
+          "insert" : "createBookSeriesMulti",
+          "insertOne" : "createBookSeries",
+          "select" : "bookSeriesMulti",
+          "selectAggregate" : "bookSeriesAggregate",
+          "selectByPk" : "bookSeries",
+          "update" : "updateBookSeriesMulti",
+          "updateByPk" : "updateBookSeries"
+        }
+      }
+    },
+    "UserCalendar" : {
+      "type" : "object",
+      "properties" : {
         "theUserId" : {
           "type" : "integer",
           "hasura" : {
@@ -668,6 +749,15 @@
         },
         "calendarUser" : {
           "$ref" : "#/$defs/CalendarUser"
+        },
+        "theCalendarId" : {
+          "type" : "integer",
+          "hasura" : {
+            "graphqlType" : "bigint"
+          }
+        },
+        "calendar" : {
+          "$ref" : "#/$defs/Calendar"
         },
         "calendarOrder" : {
           "type" : "integer",

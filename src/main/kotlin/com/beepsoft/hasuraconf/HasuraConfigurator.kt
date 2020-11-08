@@ -829,6 +829,35 @@ class HasuraConfigurator(
                 delete = "${if (rootFields != null && rootFields.delete.isNotBlank()) rootFields.delete else "delete"+English.plural(entityName)}",
                 deleteByPk = "${if (rootFields != null && rootFields.deleteByPk.isNotBlank()) rootFields.deleteByPk else "delete"+entityName}"
         )
+
+        // If the original field name was plural then we may have name clashes.
+        // Eg. for a class named BookSeries we would have bookSeries for both select and selectByPk.
+        // We fix that by adding an "es" to the plural operations.
+        if (rootFieldNames.select == rootFieldNames.selectByPk) {
+            LOG.warn("Generated plural name for select and selectByPk names '${rootFieldNames.select}' clash, "+
+                     "adding '-es' postfix to 'select'. " +
+                     "Consider using @HasuraRootFields on class ${entityName}")
+            rootFieldNames.select += "es"
+        }
+        if (rootFieldNames.insert == rootFieldNames.insertOne) {
+            LOG.warn("Generated plural name for insert and insertOne names '${rootFieldNames.insert}' clash, "+
+                    "adding '-es' postfix to 'insert'. " +
+                    "Consider using @HasuraRootFields on class ${entityName}")
+            rootFieldNames.insert += "es"
+        }
+        if (rootFieldNames.update == rootFieldNames.updateByPk) {
+            LOG.warn("Generated plural name for update and updateByPk names '${rootFieldNames.update}' clash, "+
+                    "adding '-es' postfix to 'update'. " +
+                    "Consider using @HasuraRootFields on class ${entityName}")
+            rootFieldNames.update += "es"
+        }
+        if (rootFieldNames.delete == rootFieldNames.deleteByPk) {
+            LOG.warn("Generated plural name for delete and deleteByPk names '${rootFieldNames.delete}' clash, "+
+                    "adding '-es' postfix to 'delete'. " +
+                    "Consider using @HasuraRootFields on class ${entityName}")
+            rootFieldNames.delete += "es"
+        }
+
         return rootFieldNames;
     }
 
@@ -895,15 +924,15 @@ class HasuraConfigurator(
  * Root field aliases for a specific type
  */
 class RootFieldNames(
-        val select : String,
-        val selectByPk : String,
-        val selectAggregate : String,
-        val insert : String,
-        val insertOne : String,
-        val update : String,
-        val updateByPk : String,
-        val delete : String,
-        val deleteByPk : String
+        var select : String,
+        var selectByPk : String,
+        var selectAggregate : String,
+        var insert : String,
+        var insertOne : String,
+        var update : String,
+        var updateByPk : String,
+        var delete : String,
+        var deleteByPk : String
 )
 
 /**
