@@ -608,7 +608,7 @@ class HasuraConfigurator(
                         return true
                     } else { // TO_PARENT, ie. assocition is mapped by the other side
                         val join = assocType.getAssociatedJoinable(sessionFactoryImpl as SessionFactoryImpl?)
-//                    val keyColumn = join.keyColumnNames[0]
+                        val keyColumn = join.keyColumnNames[0]
                         val objectRel =
                                 """
                                 {
@@ -626,7 +626,7 @@ class HasuraConfigurator(
                                                     "schema": "${schemaName}"
                                                 },
                                                 "column_mapping": {
-                                                    "id": "${tableName}_id"
+                                                    "id": "${tableName}_${keyColumn}"
                                                 }
                                             }
                                         }
