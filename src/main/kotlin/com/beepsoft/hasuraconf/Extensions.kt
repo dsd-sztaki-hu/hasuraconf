@@ -10,7 +10,6 @@ import javax.persistence.InheritanceType
 import javax.persistence.metamodel.EntityType
 import kotlin.reflect.KCallable
 import kotlin.reflect.full.allSuperclasses
-import kotlin.reflect.full.hasAnnotation
 
 
 fun Annotation.getProp(name: String): KCallable<*>? {
@@ -38,6 +37,9 @@ fun <T> Annotation.valueOf(name: String): T {
 
 private val objectMapper = ObjectMapper()
 
+/**
+ * Beautifies the JSON string with proper indentations
+ */
 fun String.reformatJson(): String {
     // Reformat json
     objectMapper.configure(SerializationFeature.INDENT_OUTPUT, true)
@@ -45,9 +47,16 @@ fun String.reformatJson(): String {
     return objectMapper.writeValueAsString(tree)
 }
 
+/**
+ * Converts list to a JSON string
+ */
 fun List<String>.toJson() : String =
         objectMapper.writeValueAsString(this)
 
+/**
+ * Returns true if any parent of the class managed by EntityType has
+ * @Inheritance(strategy = InheritanceType.SINGLE_TABLE).
+ */
 @UseExperimental(ExperimentalStdlibApi::class)
 fun EntityType<*>.parentHasSingleTableInheritance() : Boolean {
     this.javaType.kotlin.allSuperclasses.forEach {superClass ->
@@ -62,12 +71,11 @@ fun EntityType<*>.parentHasSingleTableInheritance() : Boolean {
 }
 
 /**
- * Collects all class metadata handlers for a given EntityType. In most cases it will be a single
- * AbstractEntityPersister in the return list, however, if `entity` has
- * @Inheritance(strategy = InheritanceType.SINGLE_TABLE) annotation, then fields of all of its subclasses will
- * be handled under this Entity as all subclasses store their fields in the table generated for the `entity`
+ * Collects all EntityTypes related to the target EntityType. In most cases it will be a single EntityType, the target
+ * EntityType itself. In case the EntityType (the class it manages) has
+ * @Inheritance(strategy = InheritanceType.SINGLE_TABLE) annotation, then fields of all of its subclasses will be
+ * handled under this EntityType as all subclasses store their fields in the table generated for the target EntityType.
  */
-
 fun EntityType<*>.relatedEntities(entities: Set<EntityType<*>>) : List<EntityType<*>> {
     // If this entity has single table inheritance, then need to collect all subclass'es class metadata
     val relatedEntities = mutableListOf<EntityType<*>>()
