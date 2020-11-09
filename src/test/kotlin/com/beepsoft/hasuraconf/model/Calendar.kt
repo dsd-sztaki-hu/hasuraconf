@@ -17,27 +17,27 @@ import javax.persistence.*
         [
             HasuraPermission(
                     operation = HasuraOperation.INSERT,
-                    role="USER"),
+                    role = "USER"),
             HasuraPermission(
                     operation = HasuraOperation.SELECT,
-                    role="USER",
-                    json="{roles: { user_id: { _eq: 'X-Hasura-User-Id' } }}"),
+                    role = "USER",
+                    json = "{roles: { user_id: { _eq: 'X-Hasura-User-Id' } }}"),
             HasuraPermission(
                     operation = HasuraOperation.UPDATE,
-                    role="USER",
-                    jsonFile="/permissions/update_permission_fragment.json"),
+                    role = "USER",
+                    jsonFile = "/permissions/update_permission_fragment.json"),
             HasuraPermission(
                     operation = HasuraOperation.DELETE,
-                    role="USER",
+                    role = "USER",
                     excludeFields = ["tag", "localeLang", "previousVersion"],
-                    jsonFile="/permissions/delete_permission_fragment.json")
+                    jsonFile = "/permissions/delete_permission_fragment.json")
         ]
 )
 class Calendar : BaseObject() {
 
     /** Creator/owner of the calendar  */
     @OneToMany(mappedBy = "calendar", cascade = [CascadeType.ALL])
-    @OnDelete(action= OnDeleteAction.CASCADE)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     var roles: List<CalendarRole>? = null
 
     /** Title of the calendar  */
@@ -54,7 +54,7 @@ class Calendar : BaseObject() {
 
     /** Boxes making up the calendar  */
     @OneToMany(mappedBy = "calendar", cascade = [CascadeType.ALL])
-    @OnDelete(action= OnDeleteAction.CASCADE)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     var days = mutableListOf<Day>()
 
     /** Availability of the calendar.  */
@@ -88,10 +88,19 @@ class Calendar : BaseObject() {
     @ManyToMany
     // TODO: this should not be required, somehow we should collect definitions from both sides of the
     // relationship and merge those together into a single one
-    @OrderColumn(name="calendar_order", nullable = false)
-    @JoinTable(name="user_calendar", joinColumns=arrayOf(JoinColumn(name="the_calendar_id")), inverseJoinColumns=arrayOf(JoinColumn(name="the_user_id")))
-    @OnDelete(action=OnDeleteAction.CASCADE)
+    @OrderColumn(name = "calendar_order", nullable = false)
+    @JoinTable(name = "user_calendar", joinColumns = arrayOf(JoinColumn(name = "the_calendar_id")), inverseJoinColumns = arrayOf(JoinColumn(name = "the_user_id")))
+    @OnDelete(action = OnDeleteAction.CASCADE)
     var users: List<CalendarUser>? = null
+
+    // For testing edge case
+    @ManyToMany
+    //@HasuraAlias(joinColumnAlias = "theParents", inverseJoinColumnAlias = "theChildren")
+    var parents: List<Calendar> = mutableListOf()
+
+    @ManyToMany(mappedBy = "parents")
+    var children: List<Calendar> = mutableListOf()
+
 
     @Entity
     @Table(name = "calendar_availability")
@@ -106,6 +115,7 @@ class Calendar : BaseObject() {
         @Id
         @Column(columnDefinition = "TEXT")
         var value = toString()
-
     }
+
+
 }

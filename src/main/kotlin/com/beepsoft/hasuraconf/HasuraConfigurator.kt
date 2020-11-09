@@ -146,6 +146,7 @@ class HasuraConfigurator(
     private lateinit var cascadeDeleteFields: MutableSet<CascadeDeleteFields>
     private lateinit var jsonSchemaGenerator: HasuraJsonSchemaGenerator
     private lateinit var generatedRelationships:  MutableSet<String>
+    private lateinit var generatedCustomFieldNamesForManyToManyJoinTables:  MutableSet<String>
 
     // Acrtual postgresql types for some SQL types. Hibernate uses the key fields when generating
     // tables, however Postgresql uses the "values" of postgresqlNames and so does Hasura when
@@ -199,6 +200,7 @@ class HasuraConfigurator(
         cascadeDeleteFields = mutableSetOf<CascadeDeleteFields>()
         jsonSchemaGenerator = HasuraJsonSchemaGenerator(schemaVersion, customPropsFieldName)
         generatedRelationships = mutableSetOf<String>()
+        generatedCustomFieldNamesForManyToManyJoinTables = mutableSetOf<String>()
 
         val entities = metaModel.entities
         // Add custom field and relationship names for each table
@@ -210,7 +212,8 @@ class HasuraConfigurator(
             if (added) {
                 customColumNamesRelationships.append(",\n")
             }
-            customColumNamesRelationships.append(generateEntityCustomization(entity))
+            val custom = generateEntityCustomization(entity) ?: continue
+            customColumNamesRelationships.append(custom)
             customColumNamesRelationships.append(customFieldNameJSONBuilder)
             added = true
             // If it is an enum class that is mapped with a ManyToOne, then we consider it a Hasura enum table case
@@ -381,13 +384,12 @@ class HasuraConfigurator(
      * @param entity
      * @return JSON to initialize the entity in Hasura
      */
-    private fun generateEntityCustomization(entity: EntityType<*>): String {
+    private fun generateEntityCustomization(entity: EntityType<*>): String? {
         val classMetadata = metaModel.entityPersister(entity.javaType.typeName) as AbstractEntityPersister
         val tableName = classMetadata.tableName
         val keyKolumnName = classMetadata.keyColumnNames[0]
         tableNames.add(tableName)
         entityClasses.add(entity.javaType)
-
 
         val f = Utils.findDeclaredFieldUsingReflection(entity.javaType, classMetadata.identifierPropertyName)
         jsonSchemaGenerator.addSpecValue(f!!,
@@ -754,6 +756,13 @@ class HasuraConfigurator(
         var relatedColumnType = join.elementType
         var relatedColumnNameAlias = relatedColumnName.toCamelCase()
 
+        // Make sure we don't generate custom field name customization more than once for any table.
+        // This can happen in case of many-to-many join tables when generating for inverse join as well.
+        if (generatedCustomFieldNamesForManyToManyJoinTables.contains(tableName)) {
+            return null
+        }
+        generatedCustomFieldNamesForManyToManyJoinTables.add(tableName)
+
         // Get the HasuraAlias and may reset entityName
         var alias = field.getAnnotation(HasuraAlias::class.java);
         var rootFields = if(alias != null) alias.rootFieldAliases else null
@@ -883,6 +892,7 @@ class HasuraConfigurator(
                 },
                 rootFieldNames = rootFieldNames
         ))
+
 
 //        println(customFieldNameJSONBuilder)
         return customRootFieldColumnNameJSONBuilder.toString()

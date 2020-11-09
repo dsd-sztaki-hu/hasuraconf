@@ -1,11 +1,17 @@
 {
   "$defs" : {
-    "Series" : {
+    "Theme" : {
       "type" : "object",
       "properties" : {
         "createdAt" : {
           "type" : "string",
           "format" : "date-time"
+        },
+        "cssClassName" : {
+          "type" : "string"
+        },
+        "description" : {
+          "type" : "string"
         },
         "id" : {
           "type" : "integer",
@@ -14,11 +20,31 @@
           },
           "readOnly" : true
         },
+        "maxDayCount" : {
+          "type" : "integer"
+        },
+        "minDayCount" : {
+          "type" : "integer"
+        },
+        "mnemonic" : {
+          "type" : "string"
+        },
         "tag" : {
           "type" : "string",
           "readOnly" : true,
           "hasura" : {
             "allowWriteAtCreation" : true
+          }
+        },
+        "themeLayouts" : {
+          "hasura" : {
+            "relation" : "one-to-many",
+            "mappedBy" : "theme",
+            "parentReference" : "themeId"
+          },
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/Layout"
           }
         },
         "title" : {
@@ -30,18 +56,106 @@
         }
       },
       "hasura" : {
-        "graphqlType" : "series",
+        "graphqlType" : "theme",
         "idProp" : "id",
         "rootFieldNames" : {
-          "delete" : "deleteSerieses",
-          "deleteByPk" : "deleteSeries",
-          "insert" : "createSerieses",
-          "insertOne" : "createSeries",
-          "select" : "serieses",
-          "selectAggregate" : "seriesAggregate",
-          "selectByPk" : "series",
-          "update" : "updateSerieses",
-          "updateByPk" : "updateSeries"
+          "delete" : "deleteSomeThemes",
+          "deleteByPk" : "deleteOneTheme",
+          "insert" : "addSomeThemes",
+          "insertOne" : "addOneTheme",
+          "select" : "getThemes",
+          "selectAggregate" : "getThemeAgregate",
+          "selectByPk" : "getATheme",
+          "update" : "updateSomeThemes",
+          "updateByPk" : "updateOneTheme"
+        }
+      }
+    },
+    "Layout" : {
+      "type" : "object",
+      "properties" : {
+        "createdAt" : {
+          "type" : "string",
+          "format" : "date-time"
+        },
+        "data" : {
+          "type" : "array",
+          "items" : {
+            "type" : "integer"
+          }
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "integer",
+          "hasura" : {
+            "graphqlType" : "bigint"
+          },
+          "readOnly" : true
+        },
+        "maxHeight" : {
+          "type" : "integer"
+        },
+        "maxWidth" : {
+          "type" : "integer"
+        },
+        "mediaQuery" : {
+          "type" : "string"
+        },
+        "minHeight" : {
+          "type" : "integer"
+        },
+        "minWidth" : {
+          "type" : "integer"
+        },
+        "mnemonic" : {
+          "type" : "string"
+        },
+        "tag" : {
+          "type" : "string",
+          "readOnly" : true,
+          "hasura" : {
+            "allowWriteAtCreation" : true
+          }
+        },
+        "theme" : {
+          "$ref" : "#/$defs/Theme",
+          "hasura" : {
+            "relation" : "many-to-one",
+            "reference" : "themeId",
+            "referenceType" : "integer"
+          }
+        },
+        "title" : {
+          "type" : "string"
+        },
+        "updatedAt" : {
+          "type" : "string",
+          "format" : "date-time"
+        },
+        "userAgentRegexp" : {
+          "type" : "string"
+        }
+      },
+      "hasura" : {
+        "graphqlType" : "layout",
+        "idProp" : "id",
+        "rootFieldNames" : {
+          "delete" : "deleteLayouts",
+          "deleteByPk" : "deleteLayout",
+          "insert" : "createLayouts",
+          "insertOne" : "createLayout",
+          "select" : "layouts",
+          "selectAggregate" : "layoutAggregate",
+          "selectByPk" : "layout",
+          "update" : "updateLayouts",
+          "updateByPk" : "updateLayout"
+        },
+        "properties" : {
+          "themeId" : {
+            "type" : "integer"
+          }
         }
       }
     },
@@ -130,15 +244,6 @@
       "type" : "object",
       "properties" : {
         "calendars" : {
-          "hasura" : {
-            "relation" : "many-to-many",
-            "join" : {
-              "$ref" : "#/$defs/UserCalendar",
-              "reference" : "theCalendarId",
-              "item" : "calendar",
-              "parentReference" : "theUserId"
-            }
-          },
           "type" : "array",
           "items" : {
             "$ref" : "#/$defs/Calendar"
@@ -405,168 +510,9 @@
         }
       }
     },
-    "Layout" : {
-      "type" : "object",
-      "properties" : {
-        "createdAt" : {
-          "type" : "string",
-          "format" : "date-time"
-        },
-        "data" : {
-          "type" : "array",
-          "items" : {
-            "type" : "integer"
-          }
-        },
-        "description" : {
-          "type" : "string"
-        },
-        "id" : {
-          "type" : "integer",
-          "hasura" : {
-            "graphqlType" : "bigint"
-          },
-          "readOnly" : true
-        },
-        "maxHeight" : {
-          "type" : "integer"
-        },
-        "maxWidth" : {
-          "type" : "integer"
-        },
-        "mediaQuery" : {
-          "type" : "string"
-        },
-        "minHeight" : {
-          "type" : "integer"
-        },
-        "minWidth" : {
-          "type" : "integer"
-        },
-        "mnemonic" : {
-          "type" : "string"
-        },
-        "tag" : {
-          "type" : "string",
-          "readOnly" : true,
-          "hasura" : {
-            "allowWriteAtCreation" : true
-          }
-        },
-        "theme" : {
-          "$ref" : "#/$defs/Theme",
-          "hasura" : {
-            "relation" : "many-to-one",
-            "reference" : "themeId",
-            "referenceType" : "integer"
-          }
-        },
-        "title" : {
-          "type" : "string"
-        },
-        "updatedAt" : {
-          "type" : "string",
-          "format" : "date-time"
-        },
-        "userAgentRegexp" : {
-          "type" : "string"
-        }
-      },
-      "hasura" : {
-        "graphqlType" : "layout",
-        "idProp" : "id",
-        "rootFieldNames" : {
-          "delete" : "deleteLayouts",
-          "deleteByPk" : "deleteLayout",
-          "insert" : "createLayouts",
-          "insertOne" : "createLayout",
-          "select" : "layouts",
-          "selectAggregate" : "layoutAggregate",
-          "selectByPk" : "layout",
-          "update" : "updateLayouts",
-          "updateByPk" : "updateLayout"
-        },
-        "properties" : {
-          "themeId" : {
-            "type" : "integer"
-          }
-        }
-      }
-    },
     "RoleType" : {
       "type" : "string",
       "enum" : [ "OWNER", "EDITOR", "VIEWER" ]
-    },
-    "Theme" : {
-      "type" : "object",
-      "properties" : {
-        "createdAt" : {
-          "type" : "string",
-          "format" : "date-time"
-        },
-        "cssClassName" : {
-          "type" : "string"
-        },
-        "description" : {
-          "type" : "string"
-        },
-        "id" : {
-          "type" : "integer",
-          "hasura" : {
-            "graphqlType" : "bigint"
-          },
-          "readOnly" : true
-        },
-        "maxDayCount" : {
-          "type" : "integer"
-        },
-        "minDayCount" : {
-          "type" : "integer"
-        },
-        "mnemonic" : {
-          "type" : "string"
-        },
-        "tag" : {
-          "type" : "string",
-          "readOnly" : true,
-          "hasura" : {
-            "allowWriteAtCreation" : true
-          }
-        },
-        "themeLayouts" : {
-          "hasura" : {
-            "relation" : "one-to-many",
-            "mappedBy" : "theme",
-            "parentReference" : "themeId"
-          },
-          "type" : "array",
-          "items" : {
-            "$ref" : "#/$defs/Layout"
-          }
-        },
-        "title" : {
-          "type" : "string"
-        },
-        "updatedAt" : {
-          "type" : "string",
-          "format" : "date-time"
-        }
-      },
-      "hasura" : {
-        "graphqlType" : "theme",
-        "idProp" : "id",
-        "rootFieldNames" : {
-          "delete" : "deleteSomeThemes",
-          "deleteByPk" : "deleteOneTheme",
-          "insert" : "addSomeThemes",
-          "insertOne" : "addOneTheme",
-          "select" : "getThemes",
-          "selectAggregate" : "getThemeAgregate",
-          "selectByPk" : "getATheme",
-          "update" : "updateSomeThemes",
-          "updateByPk" : "updateOneTheme"
-        }
-      }
     },
     "Calendar" : {
       "type" : "object",
@@ -577,6 +523,21 @@
             "relation" : "many-to-one",
             "reference" : "availabilityValue",
             "referenceType" : "string"
+          }
+        },
+        "children" : {
+          "hasura" : {
+            "relation" : "many-to-many",
+            "join" : {
+              "$ref" : "#/$defs/CalendarParents",
+              "reference" : "childrenId",
+              "item" : "calendar",
+              "parentReference" : "parentsId"
+            }
+          },
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/Calendar"
           }
         },
         "createdAt" : {
@@ -616,6 +577,12 @@
             "relation" : "one-to-one",
             "reference" : "nextVersionId",
             "referenceType" : "integer"
+          }
+        },
+        "parents" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/$defs/Calendar"
           }
         },
         "previousVersion" : {
@@ -714,51 +681,6 @@
         }
       }
     },
-    "BookSeries" : {
-      "type" : "object",
-      "properties" : {
-        "createdAt" : {
-          "type" : "string",
-          "format" : "date-time"
-        },
-        "id" : {
-          "type" : "integer",
-          "hasura" : {
-            "graphqlType" : "bigint"
-          },
-          "readOnly" : true
-        },
-        "tag" : {
-          "type" : "string",
-          "readOnly" : true,
-          "hasura" : {
-            "allowWriteAtCreation" : true
-          }
-        },
-        "title" : {
-          "type" : "string"
-        },
-        "updatedAt" : {
-          "type" : "string",
-          "format" : "date-time"
-        }
-      },
-      "hasura" : {
-        "graphqlType" : "book_series",
-        "idProp" : "id",
-        "rootFieldNames" : {
-          "delete" : "deleteBookSeriesMulti",
-          "deleteByPk" : "deleteBookSeries",
-          "insert" : "createBookSeriesMulti",
-          "insertOne" : "createBookSeries",
-          "select" : "bookSeriesMulti",
-          "selectAggregate" : "bookSeriesAggregate",
-          "selectByPk" : "bookSeries",
-          "update" : "updateBookSeriesMulti",
-          "updateByPk" : "updateBookSeries"
-        }
-      }
-    },
     "SpecialDay" : {
       "type" : "object",
       "properties" : {
@@ -846,6 +768,131 @@
           "calendarId" : {
             "type" : "integer"
           }
+        }
+      }
+    },
+    "BookSeries" : {
+      "type" : "object",
+      "properties" : {
+        "createdAt" : {
+          "type" : "string",
+          "format" : "date-time"
+        },
+        "id" : {
+          "type" : "integer",
+          "hasura" : {
+            "graphqlType" : "bigint"
+          },
+          "readOnly" : true
+        },
+        "tag" : {
+          "type" : "string",
+          "readOnly" : true,
+          "hasura" : {
+            "allowWriteAtCreation" : true
+          }
+        },
+        "title" : {
+          "type" : "string"
+        },
+        "updatedAt" : {
+          "type" : "string",
+          "format" : "date-time"
+        }
+      },
+      "hasura" : {
+        "graphqlType" : "book_series",
+        "idProp" : "id",
+        "rootFieldNames" : {
+          "delete" : "deleteBookSeriesMulti",
+          "deleteByPk" : "deleteBookSeries",
+          "insert" : "createBookSeriesMulti",
+          "insertOne" : "createBookSeries",
+          "select" : "bookSeriesMulti",
+          "selectAggregate" : "bookSeriesAggregate",
+          "selectByPk" : "bookSeries",
+          "update" : "updateBookSeriesMulti",
+          "updateByPk" : "updateBookSeries"
+        }
+      }
+    },
+    "Series" : {
+      "type" : "object",
+      "properties" : {
+        "createdAt" : {
+          "type" : "string",
+          "format" : "date-time"
+        },
+        "id" : {
+          "type" : "integer",
+          "hasura" : {
+            "graphqlType" : "bigint"
+          },
+          "readOnly" : true
+        },
+        "tag" : {
+          "type" : "string",
+          "readOnly" : true,
+          "hasura" : {
+            "allowWriteAtCreation" : true
+          }
+        },
+        "title" : {
+          "type" : "string"
+        },
+        "updatedAt" : {
+          "type" : "string",
+          "format" : "date-time"
+        }
+      },
+      "hasura" : {
+        "graphqlType" : "series",
+        "idProp" : "id",
+        "rootFieldNames" : {
+          "delete" : "deleteSerieses",
+          "deleteByPk" : "deleteSeries",
+          "insert" : "createSerieses",
+          "insertOne" : "createSeries",
+          "select" : "serieses",
+          "selectAggregate" : "seriesAggregate",
+          "selectByPk" : "series",
+          "update" : "updateSerieses",
+          "updateByPk" : "updateSeries"
+        }
+      }
+    },
+    "CalendarParents" : {
+      "type" : "object",
+      "properties" : {
+        "parentsId" : {
+          "type" : "integer",
+          "hasura" : {
+            "graphqlType" : "bigint"
+          }
+        },
+        "calendar" : {
+          "$ref" : "#/$defs/Calendar"
+        },
+        "childrenId" : {
+          "type" : "integer",
+          "hasura" : {
+            "graphqlType" : "bigint"
+          }
+        }
+      },
+      "hasura" : {
+        "graphqlType" : "calendar_parents",
+        "joinType" : true,
+        "rootFieldNames" : {
+          "delete" : "deleteCalendarParentses",
+          "deleteByPk" : "deleteCalendarParents",
+          "insert" : "createCalendarParentses",
+          "insertOne" : "createCalendarParents",
+          "select" : "calendarParentses",
+          "selectAggregate" : "calendarParentsAggregate",
+          "selectByPk" : "calendarParents",
+          "update" : "updateCalendarParentses",
+          "updateByPk" : "updateCalendarParents"
         }
       }
     },
