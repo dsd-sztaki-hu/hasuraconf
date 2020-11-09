@@ -244,7 +244,7 @@ data class PermissionData (
                 "role": "${role}",
                 "permission": {
                   "set": {},
-                  "columns": ${if (columns.size == 0) "\"*\"" else columns.toJson()},
+                  "columns": ${if (columns.size == 0) "\"*\"" else columns.distinct().toJson()},
                   "allow_aggregations": true,
                   ${filterOrCheckJson}
                 }
