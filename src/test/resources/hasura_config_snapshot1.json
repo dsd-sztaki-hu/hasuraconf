@@ -582,7 +582,8 @@
         "condition_class" : "conditionClass",
         "condition_params" : "conditionParams",
         "complex_field_name" : "complexFieldName",
-        "theme_config" : "themeConfig"
+        "theme_config" : "themeConfig",
+        "is_special_day" : "isSpecialDay"
       }
     }
   }, {
@@ -725,34 +726,6 @@
       "custom_column_names" : {
         "created_at" : "createdAt",
         "updated_at" : "updatedAt"
-      }
-    }
-  }, {
-    "type" : "set_table_custom_fields",
-    "version" : 2,
-    "args" : {
-      "table" : "day",
-      "schema" : "public",
-      "custom_root_fields" : {
-        "select" : "specialDays",
-        "select_by_pk" : "specialDay",
-        "select_aggregate" : "specialDayAggregate",
-        "insert" : "createSpecialDays",
-        "insert_one" : "createSpecialDay",
-        "update" : "updateSpecialDays",
-        "update_by_pk" : "updateSpecialDay",
-        "delete" : "deleteSpecialDays",
-        "delete_by_pk" : "deleteSpecialDay"
-      },
-      "custom_column_names" : {
-        "created_at" : "createdAt",
-        "updated_at" : "updatedAt",
-        "calendar_id" : "calendarId",
-        "condition_class" : "conditionClass",
-        "condition_params" : "conditionParams",
-        "complex_field_name" : "complexFieldName",
-        "theme_config" : "themeConfig",
-        "is_special_day" : "isSpecialDay"
       }
     }
   }, {

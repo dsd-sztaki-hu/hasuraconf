@@ -23,6 +23,7 @@ import javax.persistence.EntityManagerFactory
 import javax.persistence.OneToMany
 import javax.persistence.OneToOne
 import javax.persistence.metamodel.EntityType
+import kotlin.Comparator
 
 /**
  * Creates JSON to initialize Hasura. The JSON:
@@ -211,11 +212,17 @@ class HasuraConfigurator(
         val permissions = StringBuilder()
         var added = false
         for (entity in entities) {
+            // Ignore subclasses of classes with @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
+            // In this case all subclasse's fields will be stored in the parent's table and therefore subclasses
+            // cannot have root operations.
+            if (entity.parentHasSingleTableInheritance()) {
+                continue
+            }
             val customFieldNameJSONBuilder = StringBuilder()
             if (added) {
                 customColumNamesRelationships.append(",\n")
             }
-            val custom = generateEntityCustomization(entity) ?: continue
+            val custom = generateEntityCustomization(entity, entities) ?: continue
             customColumNamesRelationships.append(custom)
             customColumNamesRelationships.append(customFieldNameJSONBuilder)
             added = true
@@ -387,16 +394,19 @@ class HasuraConfigurator(
      * @param entity
      * @return JSON to initialize the entity in Hasura
      */
-    private fun generateEntityCustomization(entity: EntityType<*>): String? {
-        val classMetadata = metaModel.entityPersister(entity.javaType.typeName) as AbstractEntityPersister
-        val tableName = classMetadata.tableName
-        val keyKolumnName = classMetadata.keyColumnNames[0]
+    private fun generateEntityCustomization(entity: EntityType<*>, entities: Set<EntityType<*>>): String? {
+        // entity and all related entities.
+        val relatedEntities = entity.relatedEntities(entities)
+        val targetEntityClassMetadata = metaModel.entityPersister(entity.javaType.typeName) as AbstractEntityPersister
+        val tableName = targetEntityClassMetadata.tableName
+        val keyKolumnName = targetEntityClassMetadata.keyColumnNames[0]
         tableNames.add(tableName)
         entityClasses.add(entity.javaType)
 
-        val f = Utils.findDeclaredFieldUsingReflection(entity.javaType, classMetadata.identifierPropertyName)
+        // Add ID field
+        val f = Utils.findDeclaredFieldUsingReflection(entity.javaType, targetEntityClassMetadata.identifierPropertyName)
         jsonSchemaGenerator.addSpecValue(f!!,
-                HasuraSpecPropValues(graphqlType = graphqlTypeFor(classMetadata.identifierType, classMetadata)))
+                HasuraSpecPropValues(graphqlType = graphqlTypeFor(targetEntityClassMetadata.identifierType, targetEntityClassMetadata)))
 
         var entityName = entity.name
 
@@ -427,12 +437,26 @@ class HasuraConfigurator(
                 """
         )
         val customRelationshipNameJSONBuilder = StringBuilder()
-        val propNames = classMetadata.propertyNames
+        // Iterate over all entities that need to be handled together with this entity and add property customization
+        // for each related entity as well. We have more than one elem in relatedEntities if entity has
+        // @Inheritance(strategy = InheritanceType.SINGLE_TABLE) and so we need to handle all subclass entities in the
+        // context of this entity
         var propAdded = false
-        for (propName in propNames) {
-            val added = addCustomFieldNameOrRef(entity, propAdded, classMetadata, tableName, propName, customRootFieldColumnNameJSONBuilder, customRelationshipNameJSONBuilder)
-            if (propAdded != true && added == true) {
-                propAdded = true
+        relatedEntities.forEach {anEntity ->
+            val entityClassMetadata = metaModel.entityPersister(anEntity.javaType.typeName) as AbstractEntityPersister
+            val propNames = entityClassMetadata.propertyNames
+            for (propName in propNames) {
+                val added = addCustomFieldNameOrRef(
+                        anEntity,
+                        entityClassMetadata,
+                        propAdded,
+                        tableName,
+                        propName,
+                        customRootFieldColumnNameJSONBuilder,
+                        customRelationshipNameJSONBuilder)
+                if (propAdded != true && added == true) {
+                    propAdded = true
+                }
             }
         }
         customRootFieldColumnNameJSONBuilder.append(
@@ -461,8 +485,8 @@ class HasuraConfigurator(
      */
     private fun addCustomFieldNameOrRef(
             entity: EntityType<*>,
-            propAdded: Boolean,
             classMetadata: AbstractEntityPersister,
+            propAdded: Boolean,
             tableName: String,
             propNameIn: String,
             customFieldNameJSONBuilder: StringBuilder,
