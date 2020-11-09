@@ -202,7 +202,10 @@ class HasuraConfigurator(
         generatedRelationships = mutableSetOf<String>()
         generatedCustomFieldNamesForManyToManyJoinTables = mutableSetOf<String>()
 
-        val entities = metaModel.entities
+        // Get metaModel.entities sorted by name. We do this sorting to make result more predictable (eg. for testing)
+        val entities = sortedSetOf(
+                Comparator { o1, o2 ->  o1.name.compareTo(o2.name)},
+                *metaModel.entities.toTypedArray() )
         // Add custom field and relationship names for each table
         val customColumNamesRelationships = StringBuilder()
         val permissions = StringBuilder()
