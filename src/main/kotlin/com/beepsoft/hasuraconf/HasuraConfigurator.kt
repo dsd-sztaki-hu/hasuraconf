@@ -1039,7 +1039,7 @@ interface RootFieldNameProvider {
     fun rootFieldFor(fieldName: String, entityName: String, entityNameLower: String, tableName: String) : String
 }
 
-class DefaultRootFieldNameProvider : RootFieldNameProvider
+open class DefaultRootFieldNameProvider : RootFieldNameProvider
 {
     override fun rootFieldFor(fieldName: String, entityName: String, entityNameLower: String, tableName: String) : String {
         return when(fieldName) {
