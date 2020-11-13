@@ -120,7 +120,8 @@ class HasuraConfigurator(
         var schemaFile: String?,
         var schemaVersion: String,
         var customPropsFieldName: String,
-        var ignoreJsonSchema: Boolean = false
+        var ignoreJsonSchema: Boolean = false,
+        var rootFieldNameProvider: RootFieldNameProvider = DefaultRootFieldNameProvider()
 ) {
 
     companion object {
@@ -422,7 +423,7 @@ class HasuraConfigurator(
         // Copy
         var entityNameLower = entityName.toString()
         entityNameLower = Character.toLowerCase(entityNameLower[0]).toString() + entityNameLower.substring(1)
-        val rootFieldNames = generateRootFieldNames(rootFields, entityName, entityNameLower)
+        val rootFieldNames = generateRootFieldNames(rootFields, entityName, entityNameLower, tableName)
 
         jsonSchemaGenerator.addSpecValue(entity.javaType,
                 HasuraSpecTypeValues(
@@ -834,7 +835,7 @@ class HasuraConfigurator(
         val keyTableName = classMetadata.tableName
         val keyFieldName = keyTableName.toCamelCase()
 
-        val rootFieldNames = generateRootFieldNames(rootFields, entityName, entityNameLower)
+        val rootFieldNames = generateRootFieldNames(rootFields, entityName, entityNameLower, tableName)
 
         val objectRel = """
                     {
@@ -928,18 +929,19 @@ class HasuraConfigurator(
     private fun generateRootFieldNames(
             rootFields: HasuraRootFields?,
             entityName: String,
-            entityNameLower: String) : RootFieldNames
+            entityNameLower: String,
+            tableName: String) : RootFieldNames
     {
         val rootFieldNames = RootFieldNames(
-                select = "${if (rootFields != null && rootFields.select.isNotBlank()) rootFields.select else English.plural(entityNameLower)}",
-                selectByPk = "${if (rootFields != null && rootFields.selectByPk.isNotBlank()) rootFields.selectByPk else entityNameLower}",
-                selectAggregate = "${if (rootFields != null && rootFields.selectAggregate.isNotBlank()) rootFields.selectAggregate else entityNameLower+"Aggregate"}",
-                insert = "${if (rootFields != null && rootFields.insert.isNotBlank()) rootFields.insert else "create"+English.plural(entityName)}",
-                insertOne =  "${if (rootFields != null && rootFields.insertOne.isNotBlank()) rootFields.insertOne else "create"+entityName}",
-                update = "${if (rootFields != null && rootFields.update.isNotBlank()) rootFields.update else "update"+English.plural(entityName)}",
-                updateByPk = "${if (rootFields != null && rootFields.updateByPk.isNotBlank()) rootFields.updateByPk else "update"+entityName}",
-                delete = "${if (rootFields != null && rootFields.delete.isNotBlank()) rootFields.delete else "delete"+English.plural(entityName)}",
-                deleteByPk = "${if (rootFields != null && rootFields.deleteByPk.isNotBlank()) rootFields.deleteByPk else "delete"+entityName}"
+                select = "${if (rootFields != null && rootFields.select.isNotBlank()) rootFields.select else rootFieldNameProvider.rootFieldFor("select", entityName, entityNameLower, tableName)}",
+                selectByPk = "${if (rootFields != null && rootFields.selectByPk.isNotBlank()) rootFields.selectByPk else rootFieldNameProvider.rootFieldFor("selectByPk", entityName, entityNameLower, tableName)}",
+                selectAggregate = "${if (rootFields != null && rootFields.selectAggregate.isNotBlank()) rootFields.selectAggregate else rootFieldNameProvider.rootFieldFor("selectAggregate", entityName, entityNameLower, tableName)}",
+                insert = "${if (rootFields != null && rootFields.insert.isNotBlank()) rootFields.insert else rootFieldNameProvider.rootFieldFor("insert", entityName, entityNameLower, tableName)}",
+                insertOne =  "${if (rootFields != null && rootFields.insertOne.isNotBlank()) rootFields.insertOne else rootFieldNameProvider.rootFieldFor("insertOne", entityName, entityNameLower, tableName)}",
+                update = "${if (rootFields != null && rootFields.update.isNotBlank()) rootFields.update else rootFieldNameProvider.rootFieldFor("update", entityName, entityNameLower, tableName)}",
+                updateByPk = "${if (rootFields != null && rootFields.updateByPk.isNotBlank()) rootFields.updateByPk else rootFieldNameProvider.rootFieldFor("updateByPk", entityName, entityNameLower, tableName)}",
+                delete = "${if (rootFields != null && rootFields.delete.isNotBlank()) rootFields.delete else rootFieldNameProvider.rootFieldFor("delete", entityName, entityNameLower, tableName)}",
+                deleteByPk = "${if (rootFields != null && rootFields.deleteByPk.isNotBlank()) rootFields.deleteByPk else rootFieldNameProvider.rootFieldFor("deleteByPk", entityName, entityNameLower, tableName)}"
         )
 
         // If the original field name was plural then we may have name clashes.
@@ -1031,6 +1033,28 @@ class HasuraConfigurator(
 //        );
     }
 
+}
+
+interface RootFieldNameProvider {
+    fun rootFieldFor(fieldName: String, entityName: String, entityNameLower: String, tableName: String) : String
+}
+
+class DefaultRootFieldNameProvider : RootFieldNameProvider
+{
+    override fun rootFieldFor(fieldName: String, entityName: String, entityNameLower: String, tableName: String) : String {
+        return when(fieldName) {
+            "select" -> English.plural(entityNameLower)
+            "selectByPk" -> entityNameLower
+            "selectAggregate" -> entityNameLower+"Aggregate"
+            "insert" -> "create"+English.plural(entityName)
+            "insertOne" -> "create"+entityName
+            "update" -> "update"+English.plural(entityName)
+            "updateByPk" -> "update"+entityName
+            "delete" -> "delete"+English.plural(entityName)
+            "deleteByPk" -> "delete"+entityName
+            else -> throw HasuraConfiguratorException("Unknown root field name: $fieldName")
+        }
+    }
 }
 
 /**

@@ -6,7 +6,7 @@
 
 Configuration of Hasura is usually done via the Hasura console, however during development the database schema may change a lot and it is tedious to always set table and relationship tracking, permissions etc. on a newly generated database. 
 
-With `HasuraConfigurator` when the data model changes in Java the Hasura configurations can be regenerated and automatically loaded into Hasura thus the data model and the Hasura configuration will always be in sync. 
+With `HasuraConfigurator` when the data model changes in Java/Kotlin the Hasura configurations can be regenerated and automatically loaded into Hasura thus the data model and the Hasura configuration will always be in sync. 
 
 Configurations this tool handles:
 * Tracking for tables that are defined as JPA entities.
@@ -24,7 +24,9 @@ Configurations this tool handles:
     * select_by_pk → someEntity
     * select_aggregate → someEntityAggregate
 
-* Root field names can be redefined using the `@HasuraRootFields` annotation. Here you can define either a `baseName`, which will be used instead of the default base name (`SomeEntity` above) derived from the class name, or you can sepcify a custom name for each of the root fields with the matching field of the `@HasuraRootFields` annotation.
+* Root field names can be redefined individually using the `@HasuraRootFields` annotation. Here you can define either a `baseName`, which will be used instead of the default base name (`SomeEntity` above) derived from the class name, or you can sepcify a custom name for each of the root fields with the matching field of the `@HasuraRootFields` annotation.
+
+* Root field name generation can be globally redefined by providing an implementation of  `RootFieldNameProvider` as a @Bean. (Its default implementation `DefaultRootFieldNameProvider` provides the names `createSomeEntites`, `createSomeEntity`, etc. listed above).
 
 * Custom column name definition for fields so that they appear in Hasura generated graphql schema the same way as they are defined in the Java models. Hasura, by default, generates names in the graphql schema based on the Postgresql field names which are in snake_case. The custom column name definitions converts these back to camelCase. Ie. If there's a field in Java called `veryLongPropertyName`, it becomes `very_long_property_name` in the database, but `HasuraConfigurator` generates a configuration json to make it appear as `veryLongPropertyName` again in the graphql schema
 
@@ -382,7 +384,7 @@ The easiest way to use it in a Maven project is via jitpack
     <dependency>
         <groupId>com.github.beepsoft</groupId>
         <artifactId>hasuraconf</artifactId>
-        <version>0.3.10</version>
+        <version>0.4.0</version>
     </dependency>
 </dependencies>
 ```
@@ -393,7 +395,39 @@ Then you should use `HasuraConfigurator` like this:
 @Autowired HasuraConfigurator hasuraConf;
 ...
 hasuraConf.configure();
-String json = hasuraConf.getConfJson();
+String confJson = hasuraConf.getConfJson();
+String jsonSchema = hasuraConf.getJsonSchema();
+
+```
+
+To provide global root field naming create a bean of type RootFieldNameProvider. For example:
+
+```kotlin
+@Configuration
+class MyConfiguration {
+    class MyRootFieldNameProvider : RootFieldNameProvider {
+        override fun rootFieldFor(fieldName: String, entityName: String, entityNameLower: String, tableName: String) : String {
+            return when(fieldName) {
+                "select" -> "my_select_$tableName"
+                "selectByPk" -> "my_selectByPk_$tableName"
+                "selectAggregate" -> "my_selectAggregate_$tableName"
+                "insert" -> "my_insert_$tableName"
+                "insertOne" -> "my_insertOne_$tableName"
+                "update" -> "my_update_$tableName"
+                "updateByPk" -> "my_updateByPk_$tableName"
+                "delete" -> "my_delete_$tableName"
+                "deleteByPk" -> "my_deleteByPk_$tableName"
+                else -> throw HasuraConfiguratorException("Unknown root field name: $fieldName")
+            }
+        }
+    }
+
+    @Bean
+    fun customProvider(): RootFieldNameProvider
+    {
+        return MyRootFieldNameProvider()
+    }
+}
 ```
 
 ## Configuration properties (application.properties values)

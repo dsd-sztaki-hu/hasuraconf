@@ -22,7 +22,8 @@ class AutoConfiguration
             @Value("\${hasuraconf.jsonSchema.schemaFile:hasura-json-schema.json}") schemaFile: String?,
             @Value("\${hasuraconf.jsonSchema.schemaVersion:DRAFT_2019_09}") schemaVersion: String,
             @Value("\${hasuraconf.jsonSchema.customPropsFieldName:hasura}") customPropsFieldName: String,
-            @Value("\${hasuraconf.jsonSchema.ignore:false}") ignoreJsonSchema: Boolean
+            @Value("\${hasuraconf.jsonSchema.ignore:false}") ignoreJsonSchema: Boolean,
+            rootFieldNameProvider: RootFieldNameProvider
     ): HasuraConfigurator {
         return HasuraConfigurator(
                 entityManagerFactory,
@@ -34,7 +35,17 @@ class AutoConfiguration
                 schemaFile,
                 schemaVersion,
                 customPropsFieldName,
-                ignoreJsonSchema)
+                ignoreJsonSchema,
+                rootFieldNameProvider)
+    }
+
+    /**
+     * Provide default implementation of RootFieldNameProvider.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    fun rootFieldNameProvider(): RootFieldNameProvider {
+        return DefaultRootFieldNameProvider()
     }
 
 //    @Bean
