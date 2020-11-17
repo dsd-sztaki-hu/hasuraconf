@@ -384,7 +384,7 @@ The easiest way to use it in a Maven project is via jitpack
     <dependency>
         <groupId>com.github.beepsoft</groupId>
         <artifactId>hasuraconf</artifactId>
-        <version>0.4.0</version>
+        <version>0.4.1</version>
     </dependency>
 </dependencies>
 ```
