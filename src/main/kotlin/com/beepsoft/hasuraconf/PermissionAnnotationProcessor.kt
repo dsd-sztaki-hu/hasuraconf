@@ -234,6 +234,9 @@ data class PermissionData (
                     put("allow_aggregations", true)
                 }
 
+                if (operation == HasuraOperation.UPDATE) {
+                    put("check", JsonNull)
+                }
                 if (operation == HasuraOperation.INSERT) {
                     if (json.isNotEmpty()) {
                         put("check", Json.parseToJsonElement(json))

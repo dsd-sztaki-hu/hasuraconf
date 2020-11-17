@@ -553,7 +553,7 @@ class HasuraConfigurator(
         val customColumnNames = buildJsonObject {
             processProperties(relatedEntities) { params ->
                 if (!params.columnType.isAssociationType && params.propName != params.columnName) {
-                    put(params.propName, params.columnName)
+                    put(params.columnName, params.propName)
                 }
                 // Special case: for many-to-one or one-to-one, generate alias for the ID fields as well
                 if (params.columnType.isAssociationType && !params.columnType.isCollectionType) {

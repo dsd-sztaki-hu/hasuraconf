@@ -149,7 +149,7 @@ class HasuraConfiguratorIntegrationTests {
 		conf.configureNew()
 		var snapshot = readFileUsingGetResource("/metadata_snapshot1.json")
 		println("Metadata JSON generated:\n${conf.metadataJson}")
-		JSONAssert.assertEquals(conf.metadataJson, snapshot, false)
+		JSONAssert.assertEquals(snapshot, conf.metadataJson, false)
 	}
 
 	@DisplayName("Test generated hasura conf JSON by loading into Hasura")
