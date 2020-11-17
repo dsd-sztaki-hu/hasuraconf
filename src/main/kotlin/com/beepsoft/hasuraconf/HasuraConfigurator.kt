@@ -14,7 +14,6 @@ import org.hibernate.internal.SessionFactoryImpl
 import org.hibernate.metamodel.spi.MetamodelImplementor
 import org.hibernate.persister.collection.BasicCollectionPersister
 import org.hibernate.persister.entity.AbstractEntityPersister
-import org.hibernate.persister.entity.Joinable
 import org.hibernate.type.*
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.client.WebClient
@@ -141,7 +140,10 @@ class HasuraConfigurator(
     var jsonSchema: String? = null
         private set // the setter is private and has the default implementation
 
-    var resultJson: JsonObject = JsonObject(mutableMapOf())
+    var metadataJsonObject: JsonObject = JsonObject(mutableMapOf())
+        private set // the setter is private and has the default implementation
+
+    var metadataJson: String? = null
         private set // the setter is private and has the default implementation
 
     private var sessionFactoryImpl: SessionFactory
@@ -226,7 +228,11 @@ class HasuraConfigurator(
             }
         }
 
-        println(Json.encodeToString(tables))
+        metadataJsonObject = buildJsonObject {
+            put("version", 2)
+            put("tables", tables)
+        }
+        metadataJson = Json.encodeToString(metadataJsonObject).reformatJson()
     }
 
     private fun configureEntity(entity: EntityType<*>, entities: Set<EntityType<*>>) : JsonObject
@@ -285,9 +291,46 @@ class HasuraConfigurator(
             if (Enum::class.java.isAssignableFrom(entityClass) && entityClass.isAnnotationPresent(HasuraEnum::class.java)) {
                 put("is_enum", true)
             }
+
+            configurePermissions(entity, this)
         }
 
         return tableJson
+    }
+
+    private fun configurePermissions(entity: EntityType<*>, builder: JsonObjectBuilder)
+    {
+        builder.apply {
+            val permissions = permissionAnnotationProcessor.process(entity)
+
+            val inserts = permissions.filter { it.operation==HasuraOperation.INSERT }.map { permissionData ->
+                permissionData.toJsonObject()
+            }
+            if (!inserts.isEmpty()) {
+                put("insert_permissions", JsonArray(inserts))
+            }
+
+            val selects = permissions.filter { it.operation==HasuraOperation.SELECT }.map { permissionData ->
+                permissionData.toJsonObject()
+            }
+            if (!selects.isEmpty()) {
+                put("select_permissions", JsonArray(selects))
+            }
+
+            val updates = permissions.filter { it.operation==HasuraOperation.UPDATE }.map { permissionData ->
+                permissionData.toJsonObject()
+            }
+            if (!updates.isEmpty()) {
+                put("update_permissions", JsonArray(updates))
+            }
+
+            val deletes = permissions.filter { it.operation==HasuraOperation.DELETE }.map { permissionData ->
+                permissionData.toJsonObject()
+            }
+            if (!deletes.isEmpty()) {
+                put("delete_permissions", JsonArray(deletes))
+            }
+        }
     }
 
     private fun configureRootFieldNames(rootFieldNames: RootFieldNames) : JsonObject

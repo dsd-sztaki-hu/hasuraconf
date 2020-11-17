@@ -1,6 +1,8 @@
 package com.beepsoft.hasuraconf
 
+import com.google.gson.JsonParser
 import org.apache.commons.lang3.SystemUtils
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -32,7 +34,7 @@ import reactor.core.publisher.Mono
 			"spring.datasource.initialization-mode=always",
 			"spring.datasource.data=classpath:/sql/postgresql/data_import_values.sql",
 			"spring.jpa.hibernate.ddl-auto=update"
-		//	"logging.level.org.hibernate=DEBUG"
+			//	"logging.level.org.hibernate=DEBUG"
 		],
 		classes = [TestApp::class]
 )
@@ -142,9 +144,12 @@ class HasuraConfiguratorIntegrationTests {
 
 	@DisplayName("Test generated hasura conf JSON validity with snapshot")
 	@Test
-	fun testNewConfigurrationAlgorithm() {
+	fun testNewConfigurationAlgorithm() {
 		conf.loadConf = false
 		conf.configureNew()
+		var snapshot = readFileUsingGetResource("/metadata_snapshot1.json")
+		println("Metadata JSON generated:\n${conf.metadataJson}")
+		JSONAssert.assertEquals(conf.metadataJson, snapshot, false)
 	}
 
 	@DisplayName("Test generated hasura conf JSON by loading into Hasura")

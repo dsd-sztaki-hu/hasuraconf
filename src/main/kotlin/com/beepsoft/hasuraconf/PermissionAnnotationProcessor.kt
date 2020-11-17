@@ -3,7 +3,6 @@ package com.beepsoft.hasuraconf
 import blue.endless.jankson.Jankson
 import blue.endless.jankson.impl.SyntaxError
 import com.beepsoft.hasuraconf.annotation.*
-import org.hibernate.SessionFactory
 import org.hibernate.internal.SessionFactoryImpl
 import org.hibernate.metamodel.spi.MetamodelImplementor
 import org.hibernate.persister.entity.AbstractEntityPersister
@@ -11,6 +10,7 @@ import javax.persistence.EntityManagerFactory
 import javax.persistence.metamodel.EntityType
 import kotlin.reflect.KClass
 import kotlin.reflect.full.isSubclassOf
+import kotlinx.serialization.json.*
 
 
 /**
@@ -215,6 +215,43 @@ data class PermissionData (
     val json: String,
     val columns: List<String>
 ) {
+    fun toJsonObject(schema: String = "public"): JsonObject {
+        return buildJsonObject {
+            put("role", role)
+            putJsonObject("permission") {
+                // No columns for delete
+                if (operation != HasuraOperation.DELETE) {
+                    if (columns.isEmpty()) {
+                        put("columns", "*")
+                    } else {
+                        putJsonArray("columns") {
+                            columns.distinct().forEach { add(it) }
+                        }
+                    }
+                }
+
+                if (operation == HasuraOperation.SELECT) {
+                    put("allow_aggregations", true)
+                }
+
+                if (operation == HasuraOperation.INSERT) {
+                    if (json.isNotEmpty()) {
+                        put("check", Json.parseToJsonElement(json))
+                    } else {
+                        put("check", Json.parseToJsonElement("{}"))
+                    }
+                }
+                else {
+                    if (json.isNotEmpty()) {
+                        put("filter", Json.parseToJsonElement(json))
+                    } else {
+                        put("filter", Json.parseToJsonElement("{}"))
+                    }
+                }
+            }
+        }
+    }
+
     fun toHasuraJson(schema: String = "public"): String {
         val filterOrCheckJson: String
 
