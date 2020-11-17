@@ -61,7 +61,7 @@ class HasuraConfiguratorIntegrationTests {
 			postgresqlContainer.start()
 			postgresqlContainer.followOutput(logConsumer)
 
-			hasuraContainer = GenericContainer<Nothing>("hasura/graphql-engine:v1.2.0-beta.3")
+			hasuraContainer = GenericContainer<Nothing>("hasura/graphql-engine:v1.3.3")
 				.apply {
 					//dependsOn(postgresqlContainer)
 					val postgresUrl = "postgres://hasuraconf:hasuraconf@${host}:${postgresqlContainer.getMappedPort(PostgreSQLContainer.POSTGRESQL_PORT)}/hasuraconf"
