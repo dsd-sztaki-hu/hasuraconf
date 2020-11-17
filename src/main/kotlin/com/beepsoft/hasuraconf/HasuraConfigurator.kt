@@ -2,6 +2,8 @@ package com.beepsoft.hasuraconf
 
 import com.beepsoft.hasuraconf.annotation.*
 import com.google.common.net.HttpHeaders
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.*
 import net.pearx.kasechange.CaseFormat
 import net.pearx.kasechange.toCamelCase
 import net.pearx.kasechange.toCase
@@ -12,6 +14,7 @@ import org.hibernate.internal.SessionFactoryImpl
 import org.hibernate.metamodel.spi.MetamodelImplementor
 import org.hibernate.persister.collection.BasicCollectionPersister
 import org.hibernate.persister.entity.AbstractEntityPersister
+import org.hibernate.persister.entity.Joinable
 import org.hibernate.type.*
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.client.WebClient
@@ -138,6 +141,9 @@ class HasuraConfigurator(
     var jsonSchema: String? = null
         private set // the setter is private and has the default implementation
 
+    var resultJson: JsonObject = JsonObject(mutableMapOf())
+        private set // the setter is private and has the default implementation
+
     private var sessionFactoryImpl: SessionFactory
     private var metaModel: MetamodelImplementor
     private var permissionAnnotationProcessor: PermissionAnnotationProcessor
@@ -149,6 +155,8 @@ class HasuraConfigurator(
     private lateinit var jsonSchemaGenerator: HasuraJsonSchemaGenerator
     private lateinit var generatedRelationships:  MutableSet<String>
     private lateinit var generatedCustomFieldNamesForManyToManyJoinTables:  MutableSet<String>
+
+    private lateinit var manyToManyEntities: MutableSet<ManyToManyEntity>
 
     // Acrtual postgresql types for some SQL types. Hibernate uses the key fields when generating
     // tables, however Postgresql uses the "values" of postgresqlNames and so does Hasura when
@@ -188,6 +196,460 @@ class HasuraConfigurator(
 //        permissionAnnotationProcessor = PermissionAnnotationProcessor(entityManagerFactory)
 //    }
 
+    @Throws(HasuraConfiguratorException::class)
+    fun configureNew()
+    {
+        jsonSchemaGenerator = HasuraJsonSchemaGenerator(schemaVersion, customPropsFieldName)
+        manyToManyEntities = mutableSetOf()
+        generatedCustomFieldNamesForManyToManyJoinTables = mutableSetOf()
+
+        // Get metaModel.entities sorted by name. We do this sorting to make result more predictable (eg. for testing)
+        val entities = sortedSetOf(
+                Comparator { o1, o2 ->  o1.name.compareTo(o2.name)},
+                *metaModel.entities.toTypedArray() )
+
+        val tables = buildJsonArray {
+            for (entity in entities) {
+                // Ignore subclasses of classes with @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
+                // In this case all subclasse's fields will be stored in the parent's table and therefore subclasses
+                // cannot have root operations.
+                if (entity.parentHasSingleTableInheritance()) {
+                    continue
+                }
+
+                add(configureEntity(entity, entities))
+            }
+            for (m2m in manyToManyEntities) {
+                configureManyToManyEntity(m2m)?.let {
+                    add(it)
+                }
+            }
+        }
+
+        println(Json.encodeToString(tables))
+    }
+
+    private fun configureEntity(entity: EntityType<*>, entities: Set<EntityType<*>>) : JsonObject
+    {
+        val relatedEntities = entity.relatedEntities(entities)
+        val targetEntityClassMetadata = metaModel.entityPersister(entity.javaType.typeName) as AbstractEntityPersister
+        val tableName = targetEntityClassMetadata.tableName
+        val keyKolumnName = targetEntityClassMetadata.keyColumnNames[0]
+
+        // Add ID field
+        val f = Utils.findDeclaredFieldUsingReflection(entity.javaType, targetEntityClassMetadata.identifierPropertyName)
+        jsonSchemaGenerator.addSpecValue(f!!,
+                HasuraSpecPropValues(graphqlType = graphqlTypeFor(targetEntityClassMetadata.identifierType, targetEntityClassMetadata)))
+
+        var entityName = entity.name
+        // Remove inner $ from the name of inner classes
+        entityName = entityName.replace("\\$".toRegex(), "")
+        var entityNameLower = entityName.toString()
+        entityNameLower = Character.toLowerCase(entityNameLower[0]).toString() + entityNameLower.substring(1)
+
+        // Get the HasuraRootFields and may reset entityName
+        var rootFields = entity.javaType.getAnnotation(HasuraRootFields::class.java)
+        if (rootFields != null && rootFields.baseName.isNotBlank()) {
+            entityName = rootFields.baseName
+        }
+
+        val rootFieldNames = generateRootFieldNames(rootFields, entityName, entityNameLower, tableName)
+
+        jsonSchemaGenerator.addSpecValue(entity.javaType,
+                HasuraSpecTypeValues(
+                        graphqlType=tableName,
+                        idProp=keyKolumnName,
+                        rootFieldNames = rootFieldNames))
+
+
+
+        val tableJson = buildJsonObject {
+            put("table", buildJsonObject {
+                put("schema", schemaName)
+                put("name", tableName)
+            })
+            put("configuration", buildJsonObject{
+                put("custom_root_fields", configureRootFieldNames(rootFieldNames))
+                put("custom_column_names", configureCustomColumnNames(relatedEntities))
+            })
+            val objRel = configureObjectRelationships(relatedEntities)
+            if (!objRel.isEmpty()) {
+                put("object_relationships", objRel)
+            }
+            val arrRel = configureArrayRelationships(relatedEntities)
+            if (!arrRel.isEmpty()) {
+                put("array_relationships", arrRel)
+            }
+
+            val entityClass = entity.javaType
+            if (Enum::class.java.isAssignableFrom(entityClass) && entityClass.isAnnotationPresent(HasuraEnum::class.java)) {
+                put("is_enum", true)
+            }
+        }
+
+        return tableJson
+    }
+
+    private fun configureRootFieldNames(rootFieldNames: RootFieldNames) : JsonObject
+    {
+        return buildJsonObject {
+            put("select",           "${rootFieldNames.select}")
+            put("select_by_pk",     "${rootFieldNames.selectByPk}")
+            put("select_aggregate", "${rootFieldNames.selectAggregate}")
+            put("insert",           "${rootFieldNames.insert}")
+            put("insert_one",       "${rootFieldNames.insertOne}")
+            put("update",           "${rootFieldNames.update}")
+            put("update_by_pk",     "${rootFieldNames.updateByPk}")
+            put("delete",           "${rootFieldNames.delete}")
+            put("delete_by_pk",     "${rootFieldNames.deleteByPk}")
+        }
+    }
+
+    private fun configureManyToManyEntity(m2m: ManyToManyEntity) : JsonObject?
+    {
+        val tableName = m2m.join.tableName
+        var entityName = tableName.toCase(CaseFormat.CAPITALIZED_CAMEL);
+        var keyColumn = m2m.join.keyColumnNames[0]
+        var keyColumnType = m2m.join.keyType
+        var keyColumnAlias = keyColumn.toCamelCase();
+        var relatedColumnName = m2m.join.elementColumnNames[0]
+        var relatedColumnType = m2m.join.elementType
+        var relatedColumnNameAlias = relatedColumnName.toCamelCase()
+
+        // Make sure we don't generate custom field name customization more than once for any table.
+        // This can happen in case of many-to-many join tables when generating for inverse join as well.
+        if (generatedCustomFieldNamesForManyToManyJoinTables.contains(tableName)) {
+            return null
+        }
+        generatedCustomFieldNamesForManyToManyJoinTables.add(tableName)
+
+        // Get the HasuraAlias and may reset entityName
+        var alias = m2m.field.getAnnotation(HasuraAlias::class.java);
+        var rootFields = if(alias != null) alias.rootFieldAliases else null
+        if (rootFields != null) {
+            if (rootFields.baseName.isNotBlank()) {
+                entityName = rootFields.baseName
+            }
+        }
+        if (alias != null) {
+            if (alias.keyColumnAlias.isNotBlank()) {
+                keyColumnAlias = alias.keyColumnAlias
+            }
+            else if (alias.joinColumnAlias.isNotBlank()) {
+                keyColumnAlias = alias.joinColumnAlias
+            }
+
+            if (alias.relatedColumnAlias.isNotBlank()) {
+                relatedColumnNameAlias = alias.relatedColumnAlias
+            }
+            else if (alias.inverseJoinColumnAlias.isNotBlank()) {
+                relatedColumnNameAlias = alias.inverseJoinColumnAlias
+            }
+        }
+
+        // Remove inner $ from the name of inner classes
+        entityName = entityName.replace("\\$".toRegex(), "")
+        // Copy
+        var entityNameLower = entityName.toString()
+        entityNameLower = Character.toLowerCase(entityNameLower[0]).toString() + entityNameLower.substring(1)
+
+        // arrayRel only allows accessing the join table ID fields. Now add navigation to the
+        // related entity
+        val relatedTableName = (m2m.join.elementType as ManyToOneType).getAssociatedJoinable(sessionFactoryImpl as SessionFactoryImpl?).tableName;
+        var joinFieldName = relatedTableName.toCamelCase();
+        if (alias != null && alias.joinFieldAlias.isNotBlank()) {
+            joinFieldName = alias.joinFieldAlias;
+        }
+
+        val classMetadata = metaModel.entityPersister(m2m.entity.javaType.typeName) as AbstractEntityPersister
+        val keyTableName = classMetadata.tableName
+        val keyFieldName = keyTableName.toCamelCase()
+
+        val rootFieldNames = generateRootFieldNames(rootFields, entityName, entityNameLower, tableName)
+
+        val tableJson = buildJsonObject {
+            put("table", buildJsonObject {
+                put("schema", schemaName)
+                put("name", tableName)
+            })
+            put("configuration", buildJsonObject{
+                put("custom_root_fields", configureRootFieldNames(rootFieldNames))
+                putJsonObject("custom_column_names") {
+                    put(keyColumn, keyColumnAlias)
+                    put(relatedColumnName, relatedColumnNameAlias)
+                    // Add index columns names, ie. @OrderColumns
+                    m2m.join.indexColumnNames?.forEach {
+                        put(it, it.toCamelCase())
+                    }
+                }
+            })
+            putJsonArray("object_relationships") {
+                addJsonObject {
+                    put("name",  joinFieldName)
+                    putJsonObject("using") {
+                        put("foreign_key_constraint_on", relatedColumnName)
+                    }
+                }
+            }
+        }
+
+        with(m2m) {
+            jsonSchemaGenerator.addSpecValue(field,
+                    HasuraSpecPropValues(
+                            relation = "many-to-many",
+                            type = tableName.toCase(CaseFormat.CAPITALIZED_CAMEL),
+                            reference = relatedColumnNameAlias,
+                            parentReference = keyColumnAlias,
+                            item = joinFieldName)
+            )
+
+            jsonSchemaGenerator.addJoinType(JoinType(
+                    name = tableName.toCase(CaseFormat.CAPITALIZED_CAMEL),
+                    tableName = tableName,
+                    fromIdName = keyColumnAlias,
+                    fromIdType = jsonSchemaTypeFor(join.keyType, classMetadata),
+                    fromIdGraphqlType = graphqlTypeFor(join.keyType, classMetadata),
+                    fromAccessor = keyFieldName,
+                    fromAccessorType = entity.name,
+                    toIdName = relatedColumnNameAlias,
+                    toIdType = jsonSchemaTypeFor(relatedColumnType, classMetadata),
+                    toIdGraphqlType = graphqlTypeFor(relatedColumnType, classMetadata),
+                    toAccessor = joinFieldName,
+                    toAccessorType = relatedTableName.toCase(CaseFormat.CAPITALIZED_CAMEL),
+                    orderField = join.indexColumnNames?.let {
+                        it[0].toCamelCase()
+                    },
+                    orderFieldType = join.indexColumnNames?.let {
+                        jsonSchemaTypeFor(join.indexType, classMetadata)
+                    },
+                    orderFieldGraphqlType = join.indexColumnNames?.let {
+                        graphqlTypeFor(join.indexType, classMetadata)
+                    },
+                    rootFieldNames = rootFieldNames
+            ))
+        }
+
+        return tableJson
+    }
+
+    data class ProcessorParams(
+            val entity: EntityType<*>,
+            val classMetadata: AbstractEntityPersister,
+            val field: Field,
+            val columnName: String,
+            val columnType: Type,
+            val propName: String
+    )
+
+    data class ManyToManyEntity(
+            val entity: EntityType<*>,
+            val join: BasicCollectionPersister,
+            val field: Field,
+    )
+
+
+    private fun processProperties(relatedEntities: List<EntityType<*>>, processor: (params: ProcessorParams) -> Unit)
+    {
+        relatedEntities.forEach { anEntity ->
+            val classMetadata = metaModel.entityPersister(anEntity.javaType.typeName) as AbstractEntityPersister
+            val propNames = classMetadata.propertyNames
+            for (propName in propNames) {
+                // Handle @HasuraIgnoreRelationship annotation on field
+                val f = Utils.findDeclaredFieldUsingReflection(anEntity.javaType, propName)
+                if (f!!.isAnnotationPresent(HasuraIgnoreRelationship::class.java)) {
+                    continue
+                }
+
+                var finalPropName = propName
+
+                // Only look for simple (non component types)
+                val type = classMetadata.toType(propName)
+                if (type is ComponentType) {
+                    val componentType = type as ComponentType
+                    val tup = (type as ComponentType).componentTuplizer
+                    val propNames = classMetadata.getPropertyColumnNames(propName)
+                    var result = false
+                    propNames.forEachIndexed { index, columnName ->
+                        val field = tup.getGetter(index).getMember()
+                        if (field is Field) {
+                            // Reset propName to the embedded field name
+                            finalPropName = (field as Field).name
+                            // Now we may alias field name according to @HasuraAlias annotation
+                            var hasuraAlias = f.getAnnotation(HasuraAlias::class.java)
+                            if (hasuraAlias != null && hasuraAlias.fieldAlias.isNotBlank()) {
+                                finalPropName = hasuraAlias.fieldAlias
+                            }
+
+                            val columnType = componentType.subtypes[index]
+                            //println("$columnName --> ${field.name}")
+                            processor(ProcessorParams(anEntity, classMetadata, field, columnName, columnType, finalPropName))
+                        }
+                        else {
+                            throw HasuraConfiguratorException("Unable to handle embeded class ${anEntity} and getter ${field} ")
+                        }
+                    }
+                }
+                else {
+                    // Now we may alias field name according to @HasuraAlias annotation
+                    var hasuraAlias = f.getAnnotation(com.beepsoft.hasuraconf.annotation.HasuraAlias::class.java)
+                    if (hasuraAlias != null && hasuraAlias.fieldAlias.isNotBlank()) {
+                        finalPropName = hasuraAlias.fieldAlias
+                    }
+
+                    val columnName = classMetadata.getPropertyColumnNames(propName)[0]
+                    val columnType = classMetadata.getPropertyType(propName)
+                    processor(ProcessorParams(anEntity, classMetadata, f, columnName, columnType, finalPropName))
+                }
+            }
+        }
+
+    }
+
+    private fun configureCustomColumnNames(relatedEntities: List<EntityType<*>>): JsonElement
+    {
+        val customColumnNames = buildJsonObject {
+            processProperties(relatedEntities) { params ->
+                if (!params.columnType.isAssociationType && params.propName != params.columnName) {
+                    put(params.propName, params.columnName)
+                }
+                // Special case: for many-to-one or one-to-one, generate alias for the ID fields as well
+                if (params.columnType.isAssociationType && !params.columnType.isCollectionType) {
+                    val assocType = params.columnType as AssociationType
+                    val fkDir = assocType.foreignKeyDirection
+                    if (fkDir === ForeignKeyDirection.FROM_PARENT) {
+                        // Also add customization for the ID field name
+                        val camelCasedIdName = CaseUtils.toCamelCase(params.columnName, false, '_')
+                        put(params.columnName, camelCasedIdName)
+                    }
+                }
+
+            }
+        }
+        return customColumnNames
+    }
+
+    private fun configureObjectRelationships(relatedEntities: List<EntityType<*>>): JsonArray
+    {
+        val objectRelationships = buildJsonArray {
+            processProperties(relatedEntities) { params ->
+                if (params.columnType.isAssociationType && !params.columnType.isCollectionType) {
+                    val assocType = params.columnType as AssociationType
+                    val fkDir = assocType.foreignKeyDirection
+                    if (fkDir === ForeignKeyDirection.FROM_PARENT) {
+                        add(buildJsonObject {
+                            put("name", params.propName)
+                            putJsonObject("using") {
+                                put("foreign_key_constraint_on", params.columnName)
+                            }
+                        })
+                        val camelCasedIdName = CaseUtils.toCamelCase(params.columnName, false, '_')
+                        jsonSchemaGenerator.addSpecValue(params.entity.javaType,
+                                HasuraSpecTypeValues(
+                                        referenceProp = HasuraReferenceProp(name=camelCasedIdName, type=jsonSchemaTypeFor(params.columnType, params.classMetadata)),
+                                        rootFieldNames = EmptyRootFieldNames
+                                ))
+
+                        if (assocType is ManyToOneType && !assocType.isLogicalOneToOne) {
+                            jsonSchemaGenerator.addSpecValue(params.field,
+                                    HasuraSpecPropValues(relation = "many-to-one",
+                                            reference = camelCasedIdName,
+                                            referenceType = jsonSchemaTypeFor(params.columnType, params.classMetadata)
+                                    )
+                            )
+                        }
+                        else {
+                            jsonSchemaGenerator.addSpecValue(params.field,
+                                    HasuraSpecPropValues(relation = "one-to-one",
+                                            reference = camelCasedIdName,
+                                            referenceType = jsonSchemaTypeFor(params.columnType, params.classMetadata)
+                                    )
+                            )
+                        }
+                    }
+                    else { // TO_PARENT, ie. assocition is mapped by the other side
+                        val join = assocType.getAssociatedJoinable(sessionFactoryImpl as SessionFactoryImpl?)
+                        val keyColumn = join.keyColumnNames[0]
+                        val mappedBy = assocType.rhsUniqueKeyPropertyName
+                        // In reality mappedBy should always be set. It is either the implicit name or a specific
+                        // mappedBy=<foreign property name> and so it cannot be null. I'm not sure about it so I
+                        // leave here a fallback of the default Hiberante tableName_keyColumn foreign key.
+                        val mappedId = if (mappedBy != null) (join as AbstractEntityPersister).getPropertyColumnNames(mappedBy)[0]
+                                        else "${params.classMetadata.tableName}_${keyColumn}"
+                        add(buildJsonObject {
+                            put("name", params.propName)
+                            putJsonObject("using") {
+                                putJsonObject("manual_configuration") {
+                                    putJsonObject("remote_table") {
+                                        put("name", join.tableName)
+                                        put("schema", schemaName)
+                                    }
+                                    putJsonObject("column_mapping") {
+                                        put(keyColumn, mappedId)
+                                    }
+                                }
+                            }
+                        })
+
+                        val oneToOne = params.field.getAnnotation(OneToOne::class.java)
+                        oneToOne?.let {
+                            jsonSchemaGenerator.addSpecValue(params.field,
+                                    HasuraSpecPropValues(relation="one-to-one", mappedBy=oneToOne.mappedBy))
+
+                        }
+
+                    }
+                }
+            }
+        }
+        return objectRelationships
+    }
+
+    private fun configureArrayRelationships(relatedEntities: List<EntityType<*>>): JsonArray
+    {
+        val arrayRelationships = buildJsonArray {
+            processProperties(relatedEntities) { params ->
+                if (params.columnType.isCollectionType) {
+                    val collType = params.columnType as CollectionType
+                    val join = collType.getAssociatedJoinable(sessionFactoryImpl as SessionFactoryImpl?)
+                    val keyColumn = join.keyColumnNames[0]
+                    //tableNames.add(join.tableName)
+
+                    add(buildJsonObject {
+                        put("name", params.propName)
+                        putJsonObject("using") {
+                            putJsonObject("foreign_key_constraint_on") {
+                                put("column", keyColumn)
+                                putJsonObject("table") {
+                                    put("name", join.tableName)
+                                    put("schema", schemaName)
+                                }
+                            }
+                        }
+                    })
+
+                    // BasicCollectionPersister - despite the name - is for many-to-many associations
+                    if (join is BasicCollectionPersister) {
+                        if (join.isManyToMany) {
+                            // Collect many-to-many join tables and process them later
+                            manyToManyEntities.add(ManyToManyEntity(params.entity, join, params.field))
+                        }
+                    }
+                    if (params.field.isAnnotationPresent(OneToMany::class.java)) {
+                        val oneToMany = params.field.getAnnotation(OneToMany::class.java)
+                        val parentRef = CaseUtils.toCamelCase(keyColumn, false, '_')
+                        jsonSchemaGenerator.addSpecValue(params.field,
+                                HasuraSpecPropValues(
+                                        relation="one-to-many",
+                                        mappedBy=oneToMany.mappedBy,
+                                        parentReference=parentRef))
+
+                    }
+                }
+            }
+        }
+        return arrayRelationships
+    }
+
     /**
      * Creates hasura-conf.json containing table tracking and field/relationship name customizations
      * at bean creation time automatically.
@@ -203,6 +665,7 @@ class HasuraConfigurator(
         jsonSchemaGenerator = HasuraJsonSchemaGenerator(schemaVersion, customPropsFieldName)
         generatedRelationships = mutableSetOf<String>()
         generatedCustomFieldNamesForManyToManyJoinTables = mutableSetOf<String>()
+
 
         // Get metaModel.entities sorted by name. We do this sorting to make result more predictable (eg. for testing)
         val entities = sortedSetOf(

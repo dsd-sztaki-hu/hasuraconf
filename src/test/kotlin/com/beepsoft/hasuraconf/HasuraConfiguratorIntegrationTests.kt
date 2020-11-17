@@ -10,12 +10,17 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.util.TestPropertyValues
 import org.springframework.context.ApplicationContextInitializer
 import org.springframework.context.ConfigurableApplicationContext
+import org.springframework.http.HttpHeaders
+import org.springframework.http.MediaType
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.context.junit.jupiter.SpringExtension
+import org.springframework.web.reactive.function.client.WebClient
+import org.springframework.web.reactive.function.client.WebClientResponseException
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.containers.output.Slf4jLogConsumer
 import org.testcontainers.junit.jupiter.Testcontainers
+import reactor.core.publisher.Mono
 
 /**
  * Tests HasuraConfigurator with Postgresql + Hasura
@@ -135,6 +140,13 @@ class HasuraConfiguratorIntegrationTests {
 		JSONAssert.assertEquals(conf.jsonSchema, snapshot, false)
 	}
 
+	@DisplayName("Test generated hasura conf JSON validity with snapshot")
+	@Test
+	fun testNewConfigurrationAlgorithm() {
+		conf.loadConf = false
+		conf.configureNew()
+	}
+
 	@DisplayName("Test generated hasura conf JSON by loading into Hasura")
 	@Test
 	fun testLoadingIntoHasura() {
@@ -142,5 +154,31 @@ class HasuraConfiguratorIntegrationTests {
 		conf.hasuraEndpoint = "http://localhost:${hasuraContainer.getMappedPort(8080)}/v1/query"
 		conf.hasuraAdminSecret = "hasuraconf"
 		conf.configure()
+
+		val meta = exportMetadata(conf.hasuraEndpoint, conf.hasuraAdminSecret!!)
+		println("**** export_meta result: $meta")
 	}
+
+	// 		// curl -d'{"type": "export_metadata", "args": {}}' http://localhost:8870/v1/query -o hasura_metadata.json -H 'X-Hasura-Admin-Secret: hasuraconf'
+	private fun exportMetadata(hasuraEndpoint: String, hasuraAdminSecret: String) : String {
+		val client = WebClient
+				.builder()
+				.baseUrl(hasuraEndpoint)
+				.defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+				.defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+				.defaultHeader("X-Hasura-Admin-Secret", hasuraAdminSecret)
+				.build()
+		val request = client.post()
+				.body<String, Mono<String>>(Mono.just("""{"type": "export_metadata", "args": {}}"""), String::class.java)
+				.retrieve()
+				.bodyToMono(String::class.java)
+		// Make it synchronous for now
+		try {
+			val result = request.block()
+			return result!!
+		} catch (ex: WebClientResponseException) {
+			throw ex
+		}
+	}
+
 }
