@@ -176,7 +176,7 @@ class HasuraConfigurator(
     );
 
     init {
-        sessionFactoryImpl = entityManagerFactory.unwrap(SessionFactory::class.java) as SessionFactoryImpl
+        sessionFactoryImpl = entityManagerFactory.unwrap(SessionFactoryImpl::class.java)
         metaModel = sessionFactoryImpl.metamodel as MetamodelImplementor
         permissionAnnotationProcessor = PermissionAnnotationProcessor(entityManagerFactory)
     }

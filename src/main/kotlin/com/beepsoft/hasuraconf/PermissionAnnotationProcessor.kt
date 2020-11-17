@@ -29,7 +29,7 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
     private var metaModel: MetamodelImplementor
 
     init {
-        val sessionFactoryImpl = entityManagerFactory.unwrap(SessionFactory::class.java) as SessionFactoryImpl
+        val sessionFactoryImpl = entityManagerFactory.unwrap(SessionFactoryImpl::class.java)
         metaModel = sessionFactoryImpl.metamodel as MetamodelImplementor
     }
 
