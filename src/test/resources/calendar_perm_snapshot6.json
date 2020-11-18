@@ -8,7 +8,6 @@
     "role" : "USER",
     "permission" : {
       "set" : { },
-      "columns" : [ "created_at", "updated_at", "availability_value", "id", "description", "locale_country", "next_version_id", "published", "theme_id", "theme_config", "title", "version" ],
       "allow_aggregations" : true,
       "filter" : {
         "_and" : [ {

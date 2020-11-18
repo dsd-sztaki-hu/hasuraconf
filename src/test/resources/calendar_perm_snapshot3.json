@@ -9,7 +9,6 @@
     "permission" : {
       "set" : { },
       "columns" : "*",
-      "allow_aggregations" : true,
       "check" : { }
     }
   }

@@ -7,9 +7,21 @@
     },
     "role" : "USER",
     "permission" : {
-      "set" : { },
-      "columns" : "*",
-      "allow_aggregations" : true,
+      "check": null,
+      "columns" : [
+        "created_at",
+        "updated_at",
+        "availability_value",
+        "id",
+        "description",
+        "locale_country",
+        "next_version_id",
+        "published",
+        "theme_id",
+        "theme_config",
+        "title",
+        "version"
+      ],
       "filter" : {
         "_and" : [ {
           "roles" : {

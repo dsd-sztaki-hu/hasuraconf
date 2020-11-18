@@ -199,6 +199,8 @@ class HasuraConfigurator(
 //        permissionAnnotationProcessor = PermissionAnnotationProcessor(entityManagerFactory)
 //    }
 
+    fun configure() = configureNew()
+
     @Throws(HasuraConfiguratorException::class)
     fun configureNew()
     {
@@ -206,6 +208,7 @@ class HasuraConfigurator(
         cascadeDeleteFields = mutableSetOf<CascadeDeleteFields>()
         manyToManyEntities = mutableSetOf()
         generatedCustomFieldNamesForManyToManyJoinTables = mutableSetOf()
+        entityClasses = mutableSetOf<Class<out Any>>()
 
         // Get metaModel.entities sorted by name. We do this sorting to make result more predictable (eg. for testing)
         val entities = sortedSetOf(
@@ -236,6 +239,7 @@ class HasuraConfigurator(
         }
         metadataJson = Json.encodeToString(metadataJsonObject).reformatJson()
 
+        // This creates confJson
         createMetadataApiJson()
 
         confFile?.let {
@@ -244,6 +248,14 @@ class HasuraConfigurator(
                 loadConfScriptIntoHasura()
             }
         }
+
+        if (!ignoreJsonSchema) {
+            jsonSchema = jsonSchemaGenerator.generateSchema(*entityClasses.toTypedArray()).toString().reformatJson()
+            schemaFile?.let {
+                PrintWriter(it).use { out -> out.println(jsonSchema) }
+            }
+        }
+
     }
 
     /**
@@ -551,6 +563,8 @@ class HasuraConfigurator(
         val f = Utils.findDeclaredFieldUsingReflection(entity.javaType, targetEntityClassMetadata.identifierPropertyName)
         jsonSchemaGenerator.addSpecValue(f!!,
                 HasuraSpecPropValues(graphqlType = graphqlTypeFor(targetEntityClassMetadata.identifierType, targetEntityClassMetadata)))
+
+        entityClasses.add(entity.javaType)
 
         var entityName = entity.name
         // Remove inner $ from the name of inner classes
@@ -1048,7 +1062,7 @@ class HasuraConfigurator(
      * at bean creation time automatically.
      */
     @Throws(HasuraConfiguratorException::class)
-    fun configure() {
+    fun configureOld() {
         confJson = null
         jsonSchema = null
         tableNames = mutableSetOf<String>()
@@ -1241,7 +1255,7 @@ class HasuraConfigurator(
             if (index > 0) {
                 permissionJSONBuilder.append(",")
             }
-            permissionJSONBuilder.append(permissionData.toHasuraJson(schemaName))
+            permissionJSONBuilder.append(permissionData.toHasuraApiJson(schemaName))
         }
         return permissionJSONBuilder.toString()
     }

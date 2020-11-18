@@ -25,11 +25,11 @@ import javax.persistence.*
             HasuraPermission(
                     operation = HasuraOperation.UPDATE,
                     role = "USER",
+                    excludeFields = ["tag", "localeLang", "previousVersion"],
                     jsonFile = "/permissions/update_permission_fragment.json"),
             HasuraPermission(
                     operation = HasuraOperation.DELETE,
                     role = "USER",
-                    excludeFields = ["tag", "localeLang", "previousVersion"],
                     jsonFile = "/permissions/delete_permission_fragment.json")
         ]
 )

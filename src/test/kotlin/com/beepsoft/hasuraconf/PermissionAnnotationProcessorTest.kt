@@ -103,10 +103,10 @@ class PermissionAnnotationProcessorTest {
         JSONAssert.assertEquals("Update permission on Calendar", permissions[2].json, calSnapshot1, false)
         JSONAssert.assertEquals("Delete permission on Calendar", permissions[3].json, calSnapshot1, false)
 
-        JSONAssert.assertEquals("Insert permission Hasura JSON on Calendar", permissions[0].toHasuraJson(), calSnapshot3, false)
-        JSONAssert.assertEquals("Insert permission Hasura JSON on Calendar with other_schema", permissions[0].toHasuraJson("other_schema"), calSnapshot4, false)
-        JSONAssert.assertEquals("Update permission Hasura JSON on Calendar", permissions[2].toHasuraJson(), calSnapshot5, false)
-        JSONAssert.assertEquals("Delete permission Hasura JSON on Calendar with excluded fields", permissions[3].toHasuraJson(), calSnapshot6, false)
+        JSONAssert.assertEquals("Insert permission Hasura JSON on Calendar", permissions[0].toHasuraApiJson(), calSnapshot3, false)
+        JSONAssert.assertEquals("Insert permission Hasura JSON on Calendar with other_schema", permissions[0].toHasuraApiJson("other_schema"), calSnapshot4, false)
+        JSONAssert.assertEquals("Update permission Hasura JSON on Calendar", permissions[2].toHasuraApiJson(), calSnapshot5, false)
+        JSONAssert.assertEquals("Delete permission Hasura JSON on Calendar with excluded fields", permissions[3].toHasuraApiJson(), calSnapshot6, false)
 
         //
         // Day has 1 permission with a jsonFile including another file.

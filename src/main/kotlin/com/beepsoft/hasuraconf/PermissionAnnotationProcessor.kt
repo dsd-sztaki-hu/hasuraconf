@@ -3,6 +3,7 @@ package com.beepsoft.hasuraconf
 import blue.endless.jankson.Jankson
 import blue.endless.jankson.impl.SyntaxError
 import com.beepsoft.hasuraconf.annotation.*
+import kotlinx.serialization.encodeToString
 import org.hibernate.internal.SessionFactoryImpl
 import org.hibernate.metamodel.spi.MetamodelImplementor
 import org.hibernate.persister.entity.AbstractEntityPersister
@@ -255,41 +256,20 @@ data class PermissionData (
         }
     }
 
-    fun toHasuraJson(schema: String = "public"): String {
-        val filterOrCheckJson: String
-
-        if (operation == HasuraOperation.INSERT) {
-            if (json.length != 0) {
-                filterOrCheckJson = "\"check\": ${json}"
-            } else {
-                filterOrCheckJson = "\"check\": {}"
-            }
-        }
-        else {
-            if (json.length != 0) {
-                filterOrCheckJson = "\"filter\": ${json}"
-            } else {
-                filterOrCheckJson = "\"filter\": {}"
-            }
-        }
-
-        return """
-            {
-              "type": "create_${operation.name.toLowerCase()}_permission",
-              "args": {
-                "table": {
-                  "name": "${table}",
-                  "schema": "${schema}"
-                },
-                "role": "${role}",
-                "permission": {
-                  "columns": ${if (columns.size == 0) "\"*\"" else columns.distinct().toJson()},
-                  ${if(operation == HasuraOperation.SELECT) """"allow_aggregations": true,""" else ""}
-                  ${if(operation == HasuraOperation.UPDATE) """"check": null,""" else ""}
-                  ${filterOrCheckJson}
+    fun toHasuraApiJson(schema: String = "public") : String {
+        val jsonObj = buildJsonObject {
+            put("type", "create_${operation.name.toLowerCase()}_permission")
+            putJsonObject("args") {
+                putJsonObject("table") {
+                    put("name", table)
+                    put("schema", schema)
                 }
-              }
+                toJsonObject().forEach { k, v ->
+                    put(k, v)
+                }
             }
-        """.reformatJson()
+
+        }
+        return Json.encodeToString(jsonObj)
     }
 }

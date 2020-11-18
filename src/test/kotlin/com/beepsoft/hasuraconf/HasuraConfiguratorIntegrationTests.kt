@@ -135,33 +135,18 @@ class HasuraConfiguratorIntegrationTests {
 		println("Hasura conf generated:\n${conf.confJson}")
 		var snapshot = readFileUsingGetResource("/hasura_config_snapshot1.json")
 		JSONAssert.assertEquals(conf.confJson, snapshot, false)
+		JSONAssert.assertEquals(snapshot, conf.confJson, false)
 
 		println("JSON schema generated:\n${conf.jsonSchema}")
 		snapshot = readFileUsingGetResource("/json_schema_snapshot1.json")
 		JSONAssert.assertEquals(conf.jsonSchema, snapshot, false)
-	}
+		JSONAssert.assertEquals(snapshot, conf.jsonSchema, false)
 
-	@DisplayName("Test generated hasura conf JSON validity with snapshot")
-	@Test
-	fun testNewConfigurationAlgorithm() {
-		conf.loadConf = false
-		conf.configureNew()
-		var snapshot = readFileUsingGetResource("/metadata_snapshot1.json")
+		snapshot = readFileUsingGetResource("/metadata_snapshot1.json")
 		println("Metadata JSON generated:\n${conf.metadataJson}")
 		// Check in both directions
 		JSONAssert.assertEquals(snapshot, conf.metadataJson, false)
 		JSONAssert.assertEquals(conf.metadataJson, snapshot, false)
-
-		println("Metadata API JSON generated:\n${conf.confJson}")
-		snapshot = readFileUsingGetResource("/hasura_config_snapshot1.json")
-		// Check in both directions
-		JSONAssert.assertEquals(conf.confJson, snapshot, false)
-		JSONAssert.assertEquals(snapshot, conf.confJson , false)
-
-		conf.loadConf = true
-		conf.hasuraEndpoint = "http://localhost:${hasuraContainer.getMappedPort(8080)}/v1/query"
-		conf.hasuraAdminSecret = "hasuraconf"
-		conf.configureNew()
 	}
 
 	@DisplayName("Test generated hasura conf JSON by loading into Hasura")
@@ -172,8 +157,13 @@ class HasuraConfiguratorIntegrationTests {
 		conf.hasuraAdminSecret = "hasuraconf"
 		conf.configure()
 
+		// Load metadata again and compare with what we had with the previous algorithm
 		val meta = exportMetadata(conf.hasuraEndpoint, conf.hasuraAdminSecret!!)
 		println("**** export_meta result: $meta")
+		var snapshot = readFileUsingGetResource("/metadata_snapshot1.json")
+		JSONAssert.assertEquals(snapshot, conf.metadataJson, false)
+		JSONAssert.assertEquals(conf.metadataJson, snapshot, false)
+
 	}
 
 	// 		// curl -d'{"type": "export_metadata", "args": {}}' http://localhost:8870/v1/query -o hasura_metadata.json -H 'X-Hasura-Admin-Secret: hasuraconf'
