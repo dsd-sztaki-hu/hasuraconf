@@ -283,9 +283,9 @@ data class PermissionData (
                 },
                 "role": "${role}",
                 "permission": {
-                  "set": {},
                   "columns": ${if (columns.size == 0) "\"*\"" else columns.distinct().toJson()},
-                  "allow_aggregations": true,
+                  ${if(operation == HasuraOperation.SELECT) """"allow_aggregations": true,""" else ""}
+                  ${if(operation == HasuraOperation.UPDATE) """"check": null,""" else ""}
                   ${filterOrCheckJson}
                 }
               }

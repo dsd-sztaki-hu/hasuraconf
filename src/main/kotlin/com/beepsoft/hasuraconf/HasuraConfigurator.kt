@@ -2,6 +2,7 @@ package com.beepsoft.hasuraconf
 
 import com.beepsoft.hasuraconf.annotation.*
 import com.google.common.net.HttpHeaders
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import net.pearx.kasechange.CaseFormat
@@ -202,6 +203,7 @@ class HasuraConfigurator(
     fun configureNew()
     {
         jsonSchemaGenerator = HasuraJsonSchemaGenerator(schemaVersion, customPropsFieldName)
+        cascadeDeleteFields = mutableSetOf<CascadeDeleteFields>()
         manyToManyEntities = mutableSetOf()
         generatedCustomFieldNamesForManyToManyJoinTables = mutableSetOf()
 
@@ -233,7 +235,310 @@ class HasuraConfigurator(
             put("tables", tables)
         }
         metadataJson = Json.encodeToString(metadataJsonObject).reformatJson()
+
+        createMetadataApiJson()
+
+        confFile?.let {
+            PrintWriter(it).use { out -> out.println(confJson) }
+            if (loadConf) {
+                loadConfScriptIntoHasura()
+            }
+        }
     }
+
+    /**
+     * Takes the metadataJson and creates a Metadata API Json
+     */
+    private fun createMetadataApiJson()
+    {
+        val apiJson = buildJsonObject {
+            put("type", "bulk")
+            putJsonArray("args") {
+                // {
+                //    "type" : "clear_metadata",
+                //    "args" : { }
+                //  }
+                add(buildJsonObject {
+                    put("type", "clear_metadata")
+                    put("args", buildJsonObject{})
+                })
+
+                // track_table
+                // set_table_is_enum
+                (metadataJsonObject["tables"] as JsonArray).forEach { table ->
+                    val tableObject = table as JsonObject
+
+                    // {
+                    //    "type" : "track_table",
+                    //    "args" : {
+                    //      "schema" : "public",
+                    //      "name" : "calendar_availability"
+                    //    }
+                    //  }
+                    add(buildJsonObject {
+                        put("type", "track_table")
+                        put("args", tableObject["table"]!!.clone())
+                    })
+
+                    // {
+                    //    "type" : "set_table_is_enum",
+                    //    "args" : {
+                    //      "table" : {
+                    //        "schema" : "public",
+                    //        "name" : "calendar_availability"
+                    //      },
+                    //      "is_enum" : true
+                    //    }
+                    //  }
+                    // If it is an enum table set_table_is_enum
+                    if (table["is_enum"] != null && (table["is_enum"] as JsonPrimitive).boolean == true) {
+                        add(buildJsonObject {
+                            put("type", "set_table_is_enum")
+                            put("args", buildJsonObject {
+                                put("table", tableObject["table"]!!.clone())
+                                put("is_enum", true)
+                            })
+                        })
+                    }
+                }
+
+                // set_table_custom_fields
+                // create_object_relationship
+                // create_array_relationship
+                // create_insert_permission
+                // create_select_permission
+                // create_update_permission
+                // create_delete_permission
+                (metadataJsonObject["tables"] as JsonArray).forEach { table ->
+                    // {
+                    //    "type" : "set_table_custom_fields",
+                    //    "version" : 2,
+                    //    "args" : {
+                    //      "table" : "book_series",
+                    //      "schema" : "public",
+                    //      "custom_root_fields" : {
+                    //        "select" : "bookSeriesMulti",
+                    //        "select_by_pk" : "bookSeries",
+                    //        "select_aggregate" : "bookSeriesAggregate",
+                    //        "insert" : "createBookSeriesMulti",
+                    //        "insert_one" : "createBookSeries",
+                    //        "update" : "updateBookSeriesMulti",
+                    //        "update_by_pk" : "updateBookSeries",
+                    //        "delete" : "deleteBookSeriesMulti",
+                    //        "delete_by_pk" : "deleteBookSeries"
+                    //      },
+                    //      "custom_column_names" : {
+                    //        "created_at" : "createdAt",
+                    //        "updated_at" : "updatedAt"
+                    //      }
+                    //    }
+                    //  }
+                    val tableObject = table as JsonObject
+                    add(buildJsonObject {
+                        put("type", "set_table_custom_fields")
+                        put("version", 2)
+                        put("args", buildJsonObject {
+                            val nameAndSchema = tableObject["table"]!! as JsonObject
+                            put("table", nameAndSchema["name"]!!)
+                            put("schema", nameAndSchema["schema"]!!)
+
+                            // Copy custom_root_fields and custom_column_names from configuration to the
+                            // api operation
+                            val rootFieldsAndColumNames = tableObject["configuration"]!!.clone() as JsonObject
+                            rootFieldsAndColumNames.forEach { k, v ->
+                                this.put(k, v)
+                            }
+                        })
+                    })
+
+                    // Same logic for:
+                    // create_object_relationship
+                    // create_array_relationship
+                    // create_insert_permission
+                    // create_select_permission
+                    // create_update_permission
+                    // create_delete_permission
+                    fun addAllFromArray(metaJsonName: String, metaApiJsonName: String)
+                    {
+                        (tableObject[metaJsonName] as JsonArray?)?.let {elems ->
+                            elems.forEach {elem ->
+                                add(buildJsonObject {
+                                    put("type", metaApiJsonName)
+                                    put("args", buildJsonObject {
+                                        put("table", (table as JsonObject)["table"]!!.clone())
+                                        // add rrole, permission
+                                        val elemClone = elem.clone() as JsonObject
+                                        elemClone.forEach { k, v ->
+                                            this.put(k, v)
+                                        }
+
+                                    })
+
+                                })
+                            }
+                        }
+                    }
+
+                    // {
+                    //    "type" : "create_object_relationship",
+                    //    "args" : {
+                    //      "table" : {
+                    //        "name" : "calendar",
+                    //        "schema" : "public"
+                    //      },
+                    //      "name" : "availability",
+                    //      "using" : {
+                    //        "foreign_key_constraint_on" : "availability_value"
+                    //      }
+                    //    }
+                    //  }
+                    addAllFromArray("object_relationships", "create_object_relationship")
+
+
+                    // {
+                    //    "type" : "create_array_relationship",
+                    //    "args" : {
+                    //      "table" : {
+                    //        "name" : "calendar",
+                    //        "schema" : "public"
+                    //      },
+                    //      "name" : "children",
+                    //      "using" : {
+                    //        "foreign_key_constraint_on" : {
+                    //          "table" : {
+                    //            "name" : "calendar_parents",
+                    //            "schema" : "public"
+                    //          },
+                    //          "column" : "parents_id"
+                    //        }
+                    //      }
+                    //    }
+                    //  }
+                    addAllFromArray("array_relationships", "create_array_relationship")
+
+                    // {
+                    //    "type" : "create_insert_permission",
+                    //    "args" : {
+                    //      "table" : {
+                    //        "name" : "calendar",
+                    //        "schema" : "public"
+                    //      },
+                    //      "role" : "USER",
+                    //      "permission" : {
+                    //        "set" : { },
+                    //        "columns" : "*",
+                    //        "allow_aggregations" : true,
+                    //        "check" : { }
+                    //      }
+                    //    }
+                    //  }
+                    addAllFromArray("insert_permissions", "create_insert_permission")
+
+                    // {
+                    //    "type" : "create_select_permission",
+                    //    "args" : {
+                    //      "table" : {
+                    //        "name" : "calendar",
+                    //        "schema" : "public"
+                    //      },
+                    //      "role" : "USER",
+                    //      "permission" : {
+                    //        "set" : { },
+                    //        "columns" : "*",
+                    //        "allow_aggregations" : true,
+                    //        "filter" : {
+                    //          "roles" : {
+                    //            "user_id" : {
+                    //              "_eq" : "X-Hasura-User-Id"
+                    //            }
+                    //          }
+                    //        }
+                    //      }
+                    //    }
+                    //  }
+                    addAllFromArray("select_permissions", "create_select_permission")
+
+                    // {
+                    //    "type" : "create_update_permission",
+                    //    "args" : {
+                    //      "table" : {
+                    //        "name" : "calendar",
+                    //        "schema" : "public"
+                    //      },
+                    //      "role" : "USER",
+                    //      "permission" : {
+                    //        "set" : { },
+                    //        "columns" : "*",
+                    //        "allow_aggregations" : true,
+                    //        "filter" : {
+                    //          "_and" : [ {
+                    //            "roles" : {
+                    //              "user_id" : {
+                    //                "_eq" : "X-Hasura-User-Id"
+                    //              }
+                    //            }
+                    //          }, {
+                    //            "roles" : {
+                    //              "role_value" : {
+                    //                "_in" : [ "OWNER", "EDITOR" ]
+                    //              }
+                    //            }
+                    //          } ]
+                    //        }
+                    //      }
+                    //    }
+                    //  }
+                    addAllFromArray("update_permissions", "create_update_permission")
+
+                    // {
+                    //    "type" : "create_delete_permission",
+                    //    "args" : {
+                    //      "table" : {
+                    //        "name" : "calendar",
+                    //        "schema" : "public"
+                    //      },
+                    //      "role" : "USER",
+                    //      "permission" : {
+                    //        "set" : { },
+                    //        "columns" : [ "created_at", "updated_at", "availability_value", "id", "description", "locale_country", "next_version_id", "published", "theme_id", "theme_config", "title", "version" ],
+                    //        "allow_aggregations" : true,
+                    //        "filter" : {
+                    //          "_and" : [ {
+                    //            "roles" : {
+                    //              "user_id" : {
+                    //                "_eq" : "X-Hasura-User-Id"
+                    //              }
+                    //            }
+                    //          }, {
+                    //            "roles" : {
+                    //              "role_value" : {
+                    //                "_in" : [ "OWNER", "EDITOR" ]
+                    //              }
+                    //            }
+                    //          } ]
+                    //        }
+                    //      }
+                    //    }
+                    //  }
+                    addAllFromArray("delete_permissions", "create_delete_permission")
+                }
+
+                // {
+                //    "type" : "run_sql",
+                //    "args" : {
+                //      "sql" : "DROP TRIGGER IF EXISTS calendar_next_version_id_cascade_delete_trigger ON calendar;; DROP FUNCTION  IF EXISTS calendar_next_version_id_cascade_delete(); CREATE FUNCTION calendar_next_version_id_cascade_delete() RETURNS trigger AS $body$ BEGIN     IF TG_WHEN <> 'AFTER' OR TG_OP <> 'DELETE' THEN         RAISE EXCEPTION 'calendar_next_version_id_cascade_delete may only run as a AFTER DELETE trigger';     END IF;      DELETE FROM calendar where id=OLD.next_version_id;     RETURN OLD; END; $body$ LANGUAGE plpgsql;; CREATE TRIGGER calendar_next_version_id_cascade_delete_trigger AFTER DELETE ON calendar     FOR EACH ROW EXECUTE PROCEDURE calendar_next_version_id_cascade_delete();;                       "
+                //    }
+                //  }
+                configureCascadeDeleteTriggers().forEach {
+                    add(it)
+                }
+            }
+        }
+        confJson = Json.encodeToString(apiJson).reformatJson()
+    }
+
+    private fun JsonElement.clone(): JsonElement =
+            Json.decodeFromString(Json.encodeToString(this))
 
     private fun configureEntity(entity: EntityType<*>, entities: Set<EntityType<*>>) : JsonObject
     {
@@ -267,7 +572,7 @@ class HasuraConfigurator(
                         idProp=keyKolumnName,
                         rootFieldNames = rootFieldNames))
 
-
+        collectCascadeDeleteCandidates(entity)
 
         val tableJson = buildJsonObject {
             put("table", buildJsonObject {
@@ -331,6 +636,42 @@ class HasuraConfigurator(
                 put("delete_permissions", JsonArray(deletes))
             }
         }
+    }
+
+    private fun configureCascadeDeleteTriggers(): JsonArray
+    {
+        val triggers = buildJsonArray {
+            for (cdf in cascadeDeleteFields) {
+                val template =
+                        """
+                        DROP TRIGGER IF EXISTS ${cdf.table}_${cdf.field}_cascade_delete_trigger ON ${cdf.table};;
+                        DROP FUNCTION  IF EXISTS ${cdf.table}_${cdf.field}_cascade_delete();
+                        CREATE FUNCTION ${cdf.table}_${cdf.field}_cascade_delete() RETURNS trigger AS
+                        ${'$'}body${'$'}
+                        BEGIN
+                            IF TG_WHEN <> 'AFTER' OR TG_OP <> 'DELETE' THEN
+                                RAISE EXCEPTION '${cdf.table}_${cdf.field}_cascade_delete may only run as a AFTER DELETE trigger';
+                            END IF;
+                        
+                            DELETE FROM ${cdf.joinedTable} where id=OLD.${cdf.field};
+                            RETURN OLD;
+                        END;
+                        ${'$'}body${'$'}
+                        LANGUAGE plpgsql;;
+                        CREATE TRIGGER ${cdf.table}_${cdf.field}_cascade_delete_trigger AFTER DELETE ON ${cdf.table}
+                            FOR EACH ROW EXECUTE PROCEDURE ${cdf.table}_${cdf.field}_cascade_delete();;                       
+                    """.trimIndent()
+                val trigger = template.replace("\n", " ")
+
+                add(buildJsonObject {
+                    put("type", "run_sql")
+                    putJsonObject("args") {
+                        put("sql", trigger)
+                    }
+                })
+            }
+        }
+        return triggers
     }
 
     private fun configureRootFieldNames(rootFieldNames: RootFieldNames) : JsonObject

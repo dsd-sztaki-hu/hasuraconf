@@ -151,6 +151,17 @@ class HasuraConfiguratorIntegrationTests {
 		// Check in both directions
 		JSONAssert.assertEquals(snapshot, conf.metadataJson, false)
 		JSONAssert.assertEquals(conf.metadataJson, snapshot, false)
+
+		println("Metadata API JSON generated:\n${conf.confJson}")
+		snapshot = readFileUsingGetResource("/hasura_config_snapshot1.json")
+		// Check in both directions
+		JSONAssert.assertEquals(conf.confJson, snapshot, false)
+		JSONAssert.assertEquals(snapshot, conf.confJson , false)
+
+		conf.loadConf = true
+		conf.hasuraEndpoint = "http://localhost:${hasuraContainer.getMappedPort(8080)}/v1/query"
+		conf.hasuraAdminSecret = "hasuraconf"
+		conf.configureNew()
 	}
 
 	@DisplayName("Test generated hasura conf JSON by loading into Hasura")
