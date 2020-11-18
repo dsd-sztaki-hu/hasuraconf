@@ -51,10 +51,10 @@ Configurations this tool handles:
 
 * For JPA annotated relationships that you do not want to appear in the graphql add `@HasuraIgnoreRelationship`. (By default all relationships present in the model will automatically will be tracked and be present in the graphql model)
 
+* Starting from version `0.5.0` `HasuraConfigurator` now also generates [Hasura Metadata V2](https://github.com/hasura/graphql-engine/blob/master/contrib/metadata-types/src/metadata-schemas/HasuraMetadataV2.schema.json) JSON accessible as `HasuraConfigurator.metadataJson`. This JSON can be used as the `args` to the Hasura [replace_metadata](https://hasura.io/docs/1.0/graphql/core/api-reference/schema-metadata-api/manage-metadata.html#replace-metadata) API operation.
 
 TODO:
 * More documentation on use of `HasuraConfigurator` especially `@HasuraPermission`.
-
 
 * Annotation for generating trigger that sets default value for fields if a value is not already set. `@HasuraDefaultValueTrigger(value="defaultValue")`
 
@@ -384,7 +384,7 @@ The easiest way to use it in a Maven project is via jitpack
     <dependency>
         <groupId>com.github.beepsoft</groupId>
         <artifactId>hasuraconf</artifactId>
-        <version>0.4.1</version>
+        <version>0.5.0</version>
     </dependency>
 </dependencies>
 ```
@@ -396,6 +396,7 @@ Then you should use `HasuraConfigurator` like this:
 ...
 hasuraConf.configure();
 String confJson = hasuraConf.getConfJson();
+String metadataJson = hasuraConf.getMetadataJson();
 String jsonSchema = hasuraConf.getJsonSchema();
 
 ```
