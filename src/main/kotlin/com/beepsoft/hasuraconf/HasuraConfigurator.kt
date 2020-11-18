@@ -159,7 +159,7 @@ class HasuraConfigurator(
     private lateinit var generatedRelationships:  MutableSet<String>
     private lateinit var generatedCustomFieldNamesForManyToManyJoinTables:  MutableSet<String>
 
-    private lateinit var manyToManyEntities: MutableSet<ManyToManyEntity>
+    private lateinit var manyToManyEntities: MutableMap<String, ManyToManyEntity>
     private lateinit var extraTableNames: MutableSet<String>
 
     // Acrtual postgresql types for some SQL types. Hibernate uses the key fields when generating
@@ -212,8 +212,10 @@ class HasuraConfigurator(
 
     data class ManyToManyEntity(
             val entity: EntityType<*>,
-            val join: BasicCollectionPersister,
-            val field: Field,
+            val join1: BasicCollectionPersister,
+            var join2: BasicCollectionPersister? = null,
+            val field1: Field,
+            var field2: Field? = null,
     )
 
     fun configure() = configureNew()
@@ -223,7 +225,7 @@ class HasuraConfigurator(
     {
         jsonSchemaGenerator = HasuraJsonSchemaGenerator(schemaVersion, customPropsFieldName)
         cascadeDeleteFields = mutableSetOf<CascadeDeleteFields>()
-        manyToManyEntities = mutableSetOf()
+        manyToManyEntities = mutableMapOf()
         extraTableNames = mutableSetOf()
         tableNames = mutableSetOf()
         generatedCustomFieldNamesForManyToManyJoinTables = mutableSetOf()
@@ -248,7 +250,7 @@ class HasuraConfigurator(
             }
             // Add config for many-to-many join tables, which have no Java class representation but still
             // want to have access to them
-            for (m2m in manyToManyEntities) {
+            for (m2m in manyToManyEntities.values) {
                 configureManyToManyEntity(m2m)?.let {
                     add(it)
                 }
@@ -747,28 +749,42 @@ class HasuraConfigurator(
         }
     }
 
-    private fun configureManyToManyEntity(m2m: ManyToManyEntity) : JsonObject?
+    data class M2MData(
+            val join: BasicCollectionPersister,
+            val field: Field,
+            val tableName: String,
+            val entityName: String,
+            val entityNameLower: String,
+            val keyColumn: String,
+            val keyColumnAlias: String,
+            val keyColumnType: Type,
+            val relatedColumnName: String,
+            val relatedColumnNameAlias: String,
+            val relatedColumnType: Type,
+            val joinFieldName: String,
+            val relatedTableName: String,
+            val keyFieldName: String,
+            val rootFields: HasuraRootFields?
+    )
+
+    /**
+     * Calculates all kinds of ManyToManyEntity related values
+     */
+    fun ManyToManyEntity.toM2MData(field: Field, join: BasicCollectionPersister) : M2MData
     {
-        val tableName = m2m.join.tableName
+        val tableName = join.tableName
         var entityName = tableName.toCase(CaseFormat.CAPITALIZED_CAMEL);
-        var keyColumn = m2m.join.keyColumnNames[0]
-        //var keyColumnType = m2m.join.keyType
+        var keyColumn = join.keyColumnNames[0]
+        var keyColumnType = join.keyType
         var keyColumnAlias = keyColumn.toCamelCase();
-        var relatedColumnName = m2m.join.elementColumnNames[0]
-        var relatedColumnType = m2m.join.elementType
+        var relatedColumnName = join.elementColumnNames[0]
+        var relatedColumnType = join.elementType
         var relatedColumnNameAlias = relatedColumnName.toCamelCase()
 
         tableNames.add(tableName)
 
-        // Make sure we don't generate custom field name customization more than once for any table.
-        // This can happen in case of many-to-many join tables when generating for inverse join as well.
-        if (generatedCustomFieldNamesForManyToManyJoinTables.contains(tableName)) {
-            return null
-        }
-        generatedCustomFieldNamesForManyToManyJoinTables.add(tableName)
-
         // Get the HasuraAlias and may reset entityName
-        var alias = m2m.field.getAnnotation(HasuraAlias::class.java);
+        var alias = field.getAnnotation(HasuraAlias::class.java)
         var rootFields = if(alias != null) alias.rootFieldAliases else null
         if (rootFields != null) {
             if (rootFields.baseName.isNotBlank()) {
@@ -799,80 +815,137 @@ class HasuraConfigurator(
 
         // arrayRel only allows accessing the join table ID fields. Now add navigation to the
         // related entity
-        val relatedTableName = (m2m.join.elementType as ManyToOneType).getAssociatedJoinable(sessionFactoryImpl as SessionFactoryImpl?).tableName;
+        val relatedTableName = (join.elementType as ManyToOneType).getAssociatedJoinable(sessionFactoryImpl as SessionFactoryImpl?).tableName;
         var joinFieldName = relatedTableName.toCamelCase();
         if (alias != null && alias.joinFieldAlias.isNotBlank()) {
             joinFieldName = alias.joinFieldAlias;
         }
 
-        val classMetadata = metaModel.entityPersister(m2m.entity.javaType.typeName) as AbstractEntityPersister
+        val classMetadata = metaModel.entityPersister(this.entity.javaType.typeName) as AbstractEntityPersister
         val keyTableName = classMetadata.tableName
         val keyFieldName = keyTableName.toCamelCase()
 
-        val rootFieldNames = generateRootFieldNames(rootFields, entityName, entityNameLower, tableName)
+        return M2MData(
+                join,
+                field,
+                tableName,
+                entityName,
+                entityNameLower,
+                keyColumn,
+                keyColumnAlias,
+                keyColumnType,
+                relatedColumnName,
+                relatedColumnNameAlias,
+                relatedColumnType,
+                joinFieldName,
+                relatedTableName,
+                keyFieldName,
+                rootFields
+        )
+    }
 
+    /**
+     * Configures a ManyToManyEntity. Such entities have no Java representation but nevertheless we
+     * generate configuration for these join tables. These tables have two side and usually accessed from both
+     * ends. The difficulty to manage them is that we need to generate the object relationship for both sides
+     * and also generate JSON Schema for both sides while we need to generate the common parts once. The way
+     * we do it is that for the common part (custom_root_fields, custom_column_names) we generate M2MDate for
+     * ManyToManyEntity.field1 and ManyToManyEntity.join1. The @HasuraAlias on such join entities should be
+     * declared the same on both side (except for the joinFieldAlias), so it doesn't really matter for the
+     * common definitions which join side is field1/join1 or field2/join2. Now, once the common parts are
+     * defined we need to generate the object relationship for the two sides. For side1 we reuse the
+     * M2MData created for the common parts, and for field2/join2 we generate a new M2MData.
+     */
+    private fun configureManyToManyEntity(m2m: ManyToManyEntity) : JsonObject?
+    {
         val tableJson = buildJsonObject {
-            put("table", buildJsonObject {
-                put("schema", schemaName)
-                put("name", tableName)
-            })
-            put("configuration", buildJsonObject{
-                put("custom_root_fields", configureRootFieldNames(rootFieldNames))
-                putJsonObject("custom_column_names") {
-                    put(keyColumn, keyColumnAlias)
-                    put(relatedColumnName, relatedColumnNameAlias)
-                    // Add index columns names, ie. @OrderColumns
-                    m2m.join.indexColumnNames?.forEach {
-                        put(it, it.toCamelCase())
+            // Get M2MData for the common definition parts
+            var m2mData = m2m.toM2MData(m2m.field1, m2m.join1)
+            with(m2mData) {
+                val rootFieldNames = generateRootFieldNames(rootFields, entityName, entityNameLower, tableName)
+
+                put("table", buildJsonObject {
+                    put("schema", schemaName)
+                    put("name", tableName)
+                })
+                put("configuration", buildJsonObject {
+                    put("custom_root_fields", configureRootFieldNames(rootFieldNames))
+                    putJsonObject("custom_column_names") {
+                        put(keyColumn, keyColumnAlias)
+                        put(relatedColumnName, relatedColumnNameAlias)
+                        // Add index columns names, ie. @OrderColumns
+                        m2m.join1.indexColumnNames?.forEach {
+                            put(it, it.toCamelCase())
+                        }
+                        if (m2m.join2 != null) {
+                            m2m.join2!!.indexColumnNames?.forEach {
+                                put(it, it.toCamelCase())
+                            }
+                        }
                     }
+                })
+            }
+
+            // Generate a object_relationships element and also add necessary HasuraSpecPropValues
+            // and JoinType to jsonSchemaGenerator using this m2mData
+            fun addObjRel(m2mData: M2MData, jsonArrayBuilder: JsonArrayBuilder) {
+                with(m2mData) {
+                    jsonArrayBuilder.add(buildJsonObject {
+                            put("name",  joinFieldName)
+                            putJsonObject("using") {
+                                put("foreign_key_constraint_on", relatedColumnName)
+                            }
+                        }
+                    )
+
+                    val rootFieldNames = generateRootFieldNames(rootFields, entityName, entityNameLower, tableName)
+                    val classMetadata = metaModel.entityPersister(m2m.entity.javaType.typeName) as AbstractEntityPersister
+
+                    jsonSchemaGenerator.addSpecValue(field,
+                            HasuraSpecPropValues(
+                                    relation = "many-to-many",
+                                    type = tableName.toCase(CaseFormat.CAPITALIZED_CAMEL),
+                                    reference = relatedColumnNameAlias,
+                                    parentReference = keyColumnAlias,
+                                    item = joinFieldName)
+                    )
+
+                    jsonSchemaGenerator.addJoinType(JoinType(
+                            name = tableName.toCase(CaseFormat.CAPITALIZED_CAMEL),
+                            tableName = tableName,
+                            fromIdName = keyColumnAlias,
+                            fromIdType = jsonSchemaTypeFor(join.keyType, classMetadata),
+                            fromIdGraphqlType = graphqlTypeFor(join.keyType, classMetadata),
+                            fromAccessor = keyFieldName,
+                            fromAccessorType = m2m.entity.name,
+                            toIdName = relatedColumnNameAlias,
+                            toIdType = jsonSchemaTypeFor(relatedColumnType, classMetadata),
+                            toIdGraphqlType = graphqlTypeFor(relatedColumnType, classMetadata),
+                            toAccessor = joinFieldName,
+                            toAccessorType = relatedTableName.toCase(CaseFormat.CAPITALIZED_CAMEL),
+                            orderField = join.indexColumnNames?.let {
+                                it[0].toCamelCase()
+                            },
+                            orderFieldType = join.indexColumnNames?.let {
+                                jsonSchemaTypeFor(join.indexType, classMetadata)
+                            },
+                            orderFieldGraphqlType = join.indexColumnNames?.let {
+                                graphqlTypeFor(join.indexType, classMetadata)
+                            },
+                            rootFieldNames = rootFieldNames
+                    ))
                 }
-            })
+            }
+
             putJsonArray("object_relationships") {
-                addJsonObject {
-                    put("name",  joinFieldName)
-                    putJsonObject("using") {
-                        put("foreign_key_constraint_on", relatedColumnName)
-                    }
+                // Add for field1 (note: we reuse m2mData use for common partts as well)
+                addObjRel(m2mData, this)
+                // Add for field2
+                if (m2m.field2 != null) {
+                    addObjRel(m2m.toM2MData(m2m.field2!!, m2m.join2!!), this)
                 }
             }
         }
-
-        with(m2m) {
-            jsonSchemaGenerator.addSpecValue(field,
-                    HasuraSpecPropValues(
-                            relation = "many-to-many",
-                            type = tableName.toCase(CaseFormat.CAPITALIZED_CAMEL),
-                            reference = relatedColumnNameAlias,
-                            parentReference = keyColumnAlias,
-                            item = joinFieldName)
-            )
-
-            jsonSchemaGenerator.addJoinType(JoinType(
-                    name = tableName.toCase(CaseFormat.CAPITALIZED_CAMEL),
-                    tableName = tableName,
-                    fromIdName = keyColumnAlias,
-                    fromIdType = jsonSchemaTypeFor(join.keyType, classMetadata),
-                    fromIdGraphqlType = graphqlTypeFor(join.keyType, classMetadata),
-                    fromAccessor = keyFieldName,
-                    fromAccessorType = entity.name,
-                    toIdName = relatedColumnNameAlias,
-                    toIdType = jsonSchemaTypeFor(relatedColumnType, classMetadata),
-                    toIdGraphqlType = graphqlTypeFor(relatedColumnType, classMetadata),
-                    toAccessor = joinFieldName,
-                    toAccessorType = relatedTableName.toCase(CaseFormat.CAPITALIZED_CAMEL),
-                    orderField = join.indexColumnNames?.let {
-                        it[0].toCamelCase()
-                    },
-                    orderFieldType = join.indexColumnNames?.let {
-                        jsonSchemaTypeFor(join.indexType, classMetadata)
-                    },
-                    orderFieldGraphqlType = join.indexColumnNames?.let {
-                        graphqlTypeFor(join.indexType, classMetadata)
-                    },
-                    rootFieldNames = rootFieldNames
-            ))
-        }
-
         return tableJson
     }
 
@@ -1068,7 +1141,17 @@ class HasuraConfigurator(
                     if (join is BasicCollectionPersister) {
                         if (join.isManyToMany) {
                             // Collect many-to-many join tables and process them later
-                            manyToManyEntities.add(ManyToManyEntity(params.entity, join, params.field))
+                            // If there's already a ManyToManyEntity for this table, then we just found the
+                            // other end of the join, add this as join2
+                            val existing = manyToManyEntities.get(join.tableName)
+                            if (existing != null) {
+                                existing.join2 = join
+                                existing.field2 = params.field
+                            }
+                            else {
+                                manyToManyEntities.put(join.tableName, ManyToManyEntity(params.entity, join, null, params.field, null))
+
+                            }
                         }
                     }
                     if (params.field.isAnnotationPresent(OneToMany::class.java)) {

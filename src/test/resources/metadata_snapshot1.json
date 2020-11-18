@@ -8,19 +8,19 @@
       },
       "configuration": {
         "custom_root_fields": {
-          "insert": "createBookSeriesMulti",
-          "select_aggregate": "bookSeriesAggregate",
-          "insert_one": "createBookSeries",
-          "select_by_pk": "bookSeries",
           "select": "bookSeriesMulti",
-          "delete": "deleteBookSeriesMulti",
+          "select_by_pk": "bookSeries",
+          "select_aggregate": "bookSeriesAggregate",
+          "insert": "createBookSeriesMulti",
+          "insert_one": "createBookSeries",
           "update": "updateBookSeriesMulti",
-          "delete_by_pk": "deleteBookSeries",
-          "update_by_pk": "updateBookSeries"
+          "update_by_pk": "updateBookSeries",
+          "delete": "deleteBookSeriesMulti",
+          "delete_by_pk": "deleteBookSeries"
         },
         "custom_column_names": {
-          "updated_at": "updatedAt",
-          "created_at": "createdAt"
+          "created_at": "createdAt",
+          "updated_at": "updatedAt"
         }
       }
     },
@@ -31,26 +31,26 @@
       },
       "configuration": {
         "custom_root_fields": {
-          "insert": "createCalendars",
-          "select_aggregate": "calendarAggregate",
-          "insert_one": "createCalendar",
-          "select_by_pk": "calendar",
           "select": "calendars",
-          "delete": "deleteCalendars",
+          "select_by_pk": "calendar",
+          "select_aggregate": "calendarAggregate",
+          "insert": "createCalendars",
+          "insert_one": "createCalendar",
           "update": "updateCalendars",
-          "delete_by_pk": "deleteCalendar",
-          "update_by_pk": "updateCalendar"
+          "update_by_pk": "updateCalendar",
+          "delete": "deleteCalendars",
+          "delete_by_pk": "deleteCalendar"
         },
         "custom_column_names": {
-          "locale_country": "localeCountry",
-          "availability_value": "availabilityValue",
-          "theme_id": "themeId",
-          "locale_lang": "localeLang",
-          "theme_config": "themeConfig",
-          "updated_at": "updatedAt",
           "created_at": "createdAt",
+          "updated_at": "updatedAt",
+          "availability_value": "availabilityValue",
+          "locale_country": "localeCountry",
+          "locale_lang": "localeLang",
           "next_version_id": "nextVersionId",
-          "previous_version_id": "previousVersionId"
+          "previous_version_id": "previousVersionId",
+          "theme_id": "themeId",
+          "theme_config": "themeConfig"
         }
       },
       "object_relationships": [
@@ -86,8 +86,8 @@
             "foreign_key_constraint_on": {
               "column": "parents_id",
               "table": {
-                "schema": "public",
-                "name": "calendar_parents"
+                "name": "calendar_parents",
+                "schema": "public"
               }
             }
           }
@@ -98,8 +98,8 @@
             "foreign_key_constraint_on": {
               "column": "calendar_id",
               "table": {
-                "schema": "public",
-                "name": "day"
+                "name": "day",
+                "schema": "public"
               }
             }
           }
@@ -110,8 +110,8 @@
             "foreign_key_constraint_on": {
               "column": "children_id",
               "table": {
-                "schema": "public",
-                "name": "calendar_parents"
+                "name": "calendar_parents",
+                "schema": "public"
               }
             }
           }
@@ -122,8 +122,8 @@
             "foreign_key_constraint_on": {
               "column": "calendar_id",
               "table": {
-                "schema": "public",
-                "name": "calendar_role"
+                "name": "calendar_role",
+                "schema": "public"
               }
             }
           }
@@ -134,8 +134,8 @@
             "foreign_key_constraint_on": {
               "column": "the_calendar_id",
               "table": {
-                "schema": "public",
-                "name": "user_calendar"
+                "name": "user_calendar",
+                "schema": "public"
               }
             }
           }
@@ -145,9 +145,9 @@
         {
           "role": "USER",
           "permission": {
+            "columns": "*",
             "check": {
-            },
-            "columns": "*"
+            }
           }
         }
       ],
@@ -156,14 +156,14 @@
           "role": "USER",
           "permission": {
             "columns": "*",
+            "allow_aggregations": true,
             "filter": {
               "roles": {
                 "user_id": {
                   "_eq": "X-Hasura-User-Id"
                 }
               }
-            },
-            "allow_aggregations": true
+            }
           }
         }
       ],
@@ -185,6 +185,7 @@
               "title",
               "version"
             ],
+            "check": null,
             "filter": {
               "_and": [
                 {
@@ -205,8 +206,7 @@
                   }
                 }
               ]
-            },
-            "check": null
+            }
           }
         }
       ],
@@ -244,53 +244,22 @@
         "schema": "public",
         "name": "calendar_availability"
       },
-      "is_enum": true,
       "configuration": {
         "custom_root_fields": {
-          "insert": "createCalendarAvailabilities",
-          "select_aggregate": "calendarAvailabilityAggregate",
-          "insert_one": "createCalendarAvailability",
-          "select_by_pk": "calendarAvailability",
           "select": "calendarAvailabilities",
-          "delete": "deleteCalendarAvailabilities",
+          "select_by_pk": "calendarAvailability",
+          "select_aggregate": "calendarAvailabilityAggregate",
+          "insert": "createCalendarAvailabilities",
+          "insert_one": "createCalendarAvailability",
           "update": "updateCalendarAvailabilities",
-          "delete_by_pk": "deleteCalendarAvailability",
-          "update_by_pk": "updateCalendarAvailability"
+          "update_by_pk": "updateCalendarAvailability",
+          "delete": "deleteCalendarAvailabilities",
+          "delete_by_pk": "deleteCalendarAvailability"
         },
         "custom_column_names": {
         }
-      }
-    },
-    {
-      "table": {
-        "schema": "public",
-        "name": "calendar_parents"
       },
-      "configuration": {
-        "custom_root_fields": {
-          "insert": "createCalendarParentses",
-          "select_aggregate": "calendarParentsAggregate",
-          "insert_one": "createCalendarParents",
-          "select_by_pk": "calendarParents",
-          "select": "calendarParentses",
-          "delete": "deleteCalendarParentses",
-          "update": "updateCalendarParentses",
-          "delete_by_pk": "deleteCalendarParents",
-          "update_by_pk": "updateCalendarParents"
-        },
-        "custom_column_names": {
-          "parents_id": "parentsId",
-          "children_id": "childrenId"
-        }
-      },
-      "object_relationships": [
-        {
-          "name": "calendar",
-          "using": {
-            "foreign_key_constraint_on": "children_id"
-          }
-        }
-      ]
+      "is_enum": true
     },
     {
       "table": {
@@ -299,19 +268,19 @@
       },
       "configuration": {
         "custom_root_fields": {
-          "insert": "createCalendarRoles",
-          "select_aggregate": "calendarRoleAggregate",
-          "insert_one": "createCalendarRole",
-          "select_by_pk": "calendarRole",
           "select": "calendarRoles",
-          "delete": "deleteCalendarRoles",
+          "select_by_pk": "calendarRole",
+          "select_aggregate": "calendarRoleAggregate",
+          "insert": "createCalendarRoles",
+          "insert_one": "createCalendarRole",
           "update": "updateCalendarRoles",
-          "delete_by_pk": "deleteCalendarRole",
-          "update_by_pk": "updateCalendarRole"
+          "update_by_pk": "updateCalendarRole",
+          "delete": "deleteCalendarRoles",
+          "delete_by_pk": "deleteCalendarRole"
         },
         "custom_column_names": {
-          "updated_at": "updatedAt",
           "created_at": "createdAt",
+          "updated_at": "updatedAt",
           "calendar_id": "calendarId",
           "role_value": "roleValue",
           "user_id": "userId"
@@ -343,22 +312,22 @@
         "schema": "public",
         "name": "calendar_role_type"
       },
-      "is_enum": true,
       "configuration": {
         "custom_root_fields": {
-          "insert": "createCalendarRoleRoleTypes",
-          "select_aggregate": "calendarRoleRoleTypeAggregate",
-          "insert_one": "createCalendarRoleRoleType",
-          "select_by_pk": "calendarRoleRoleType",
           "select": "calendarRoleRoleTypes",
-          "delete": "deleteCalendarRoleRoleTypes",
+          "select_by_pk": "calendarRoleRoleType",
+          "select_aggregate": "calendarRoleRoleTypeAggregate",
+          "insert": "createCalendarRoleRoleTypes",
+          "insert_one": "createCalendarRoleRoleType",
           "update": "updateCalendarRoleRoleTypes",
-          "delete_by_pk": "deleteCalendarRoleRoleType",
-          "update_by_pk": "updateCalendarRoleRoleType"
+          "update_by_pk": "updateCalendarRoleRoleType",
+          "delete": "deleteCalendarRoleRoleTypes",
+          "delete_by_pk": "deleteCalendarRoleRoleType"
         },
         "custom_column_names": {
         }
-      }
+      },
+      "is_enum": true
     },
     {
       "table": {
@@ -367,23 +336,23 @@
       },
       "configuration": {
         "custom_root_fields": {
-          "insert": "createCalendarUsers",
-          "select_aggregate": "calendarUserAggregate",
-          "insert_one": "createCalendarUser",
-          "select_by_pk": "calendarUser",
           "select": "calendarUsers",
-          "delete": "deleteCalendarUsers",
+          "select_by_pk": "calendarUser",
+          "select_aggregate": "calendarUserAggregate",
+          "insert": "createCalendarUsers",
+          "insert_one": "createCalendarUser",
           "update": "updateCalendarUsers",
-          "delete_by_pk": "deleteCalendarUser",
-          "update_by_pk": "updateCalendarUser"
+          "update_by_pk": "updateCalendarUser",
+          "delete": "deleteCalendarUsers",
+          "delete_by_pk": "deleteCalendarUser"
         },
         "custom_column_names": {
-          "first_name": "firstName",
-          "firebase_user_id": "firebaseUserId",
-          "password": "superSecretPassword",
+          "created_at": "createdAt",
           "updated_at": "updatedAt",
+          "firebase_user_id": "firebaseUserId",
+          "first_name": "firstName",
           "last_name": "lastName",
-          "created_at": "createdAt"
+          "password": "superSecretPassword"
         }
       },
       "array_relationships": [
@@ -393,8 +362,8 @@
             "foreign_key_constraint_on": {
               "column": "the_user_id",
               "table": {
-                "schema": "public",
-                "name": "user_calendar"
+                "name": "user_calendar",
+                "schema": "public"
               }
             }
           }
@@ -405,41 +374,10 @@
             "foreign_key_constraint_on": {
               "column": "calendar_user_id",
               "table": {
-                "schema": "public",
-                "name": "calendar_user_friends"
+                "name": "calendar_user_friends",
+                "schema": "public"
               }
             }
-          }
-        }
-      ]
-    },
-    {
-      "table": {
-        "schema": "public",
-        "name": "calendar_user_friends"
-      },
-      "configuration": {
-        "custom_root_fields": {
-          "insert": "addMyDearFriends",
-          "select_aggregate": "baseDearFriendAggregate",
-          "insert_one": "addOneDearFriend",
-          "select_by_pk": "baseDearFriend",
-          "select": "myDearFriends",
-          "delete": "deleteBaseDearFriends",
-          "update": "updateBaseDearFriends",
-          "delete_by_pk": "deleteBaseDearFriend",
-          "update_by_pk": "updateBaseDearFriend"
-        },
-        "custom_column_names": {
-          "friends_id": "myFriendUserId",
-          "calendar_user_id": "myUserId"
-        }
-      },
-      "object_relationships": [
-        {
-          "name": "myFriend",
-          "using": {
-            "foreign_key_constraint_on": "friends_id"
           }
         }
       ]
@@ -451,25 +389,25 @@
       },
       "configuration": {
         "custom_root_fields": {
-          "insert": "createDays",
-          "select_aggregate": "dayAggregate",
-          "insert_one": "createDay",
-          "select_by_pk": "day",
           "select": "days",
-          "delete": "deleteDays",
+          "select_by_pk": "day",
+          "select_aggregate": "dayAggregate",
+          "insert": "createDays",
+          "insert_one": "createDay",
           "update": "updateDays",
-          "delete_by_pk": "deleteDay",
-          "update_by_pk": "updateDay"
+          "update_by_pk": "updateDay",
+          "delete": "deleteDays",
+          "delete_by_pk": "deleteDay"
         },
         "custom_column_names": {
-          "is_special_day": "isSpecialDay",
-          "condition_params": "conditionParams",
-          "theme_config": "themeConfig",
-          "updated_at": "updatedAt",
-          "condition_class": "conditionClass",
           "created_at": "createdAt",
+          "updated_at": "updatedAt",
+          "calendar_id": "calendarId",
+          "condition_class": "conditionClass",
+          "condition_params": "conditionParams",
           "complex_field_name": "complexFieldName",
-          "calendar_id": "calendarId"
+          "theme_config": "themeConfig",
+          "is_special_day": "isSpecialDay"
         }
       },
       "object_relationships": [
@@ -487,8 +425,8 @@
             "foreign_key_constraint_on": {
               "column": "day_id",
               "table": {
-                "schema": "public",
-                "name": "event"
+                "name": "event",
+                "schema": "public"
               }
             }
           }
@@ -498,9 +436,9 @@
         {
           "role": "user",
           "permission": {
+            "columns": "*",
             "check": {
-            },
-            "columns": "*"
+            }
           }
         }
       ],
@@ -509,6 +447,7 @@
           "role": "user",
           "permission": {
             "columns": "*",
+            "allow_aggregations": true,
             "filter": {
               "calendar": {
                 "roles": {
@@ -517,8 +456,7 @@
                   }
                 }
               }
-            },
-            "allow_aggregations": true
+            }
           }
         }
       ],
@@ -527,6 +465,7 @@
           "role": "user",
           "permission": {
             "columns": "*",
+            "check": null,
             "filter": {
               "calendar": {
                 "_and": [
@@ -549,8 +488,7 @@
                   }
                 ]
               }
-            },
-            "check": null
+            }
           }
         }
       ],
@@ -592,22 +530,22 @@
       },
       "configuration": {
         "custom_root_fields": {
-          "insert": "createEvents",
-          "select_aggregate": "eventAggregate",
-          "insert_one": "createEvent",
-          "select_by_pk": "event",
           "select": "events",
-          "delete": "deleteEvents",
+          "select_by_pk": "event",
+          "select_aggregate": "eventAggregate",
+          "insert": "createEvents",
+          "insert_one": "createEvent",
           "update": "updateEvents",
-          "delete_by_pk": "deleteEvent",
-          "update_by_pk": "updateEvent"
+          "update_by_pk": "updateEvent",
+          "delete": "deleteEvents",
+          "delete_by_pk": "deleteEvent"
         },
         "custom_column_names": {
-          "content_type": "contentType",
-          "day_id": "dayId",
-          "updated_at": "updatedAt",
           "created_at": "createdAt",
-          "calendar_id": "calendarId"
+          "updated_at": "updatedAt",
+          "calendar_id": "calendarId",
+          "content_type": "contentType",
+          "day_id": "dayId"
         }
       },
       "object_relationships": [
@@ -628,9 +566,9 @@
         {
           "role": "user",
           "permission": {
+            "columns": "*",
             "check": {
-            },
-            "columns": "*"
+            }
           }
         }
       ],
@@ -639,6 +577,7 @@
           "role": "user",
           "permission": {
             "columns": "*",
+            "allow_aggregations": true,
             "filter": {
               "calendar": {
                 "roles": {
@@ -647,8 +586,7 @@
                   }
                 }
               }
-            },
-            "allow_aggregations": true
+            }
           }
         }
       ],
@@ -657,6 +595,7 @@
           "role": "user",
           "permission": {
             "columns": "*",
+            "check": null,
             "filter": {
               "calendar": {
                 "_and": [
@@ -679,8 +618,7 @@
                   }
                 ]
               }
-            },
-            "check": null
+            }
           }
         }
       ],
@@ -722,25 +660,25 @@
       },
       "configuration": {
         "custom_root_fields": {
-          "insert": "createLayouts",
-          "select_aggregate": "layoutAggregate",
-          "insert_one": "createLayout",
-          "select_by_pk": "layout",
           "select": "layouts",
-          "delete": "deleteLayouts",
+          "select_by_pk": "layout",
+          "select_aggregate": "layoutAggregate",
+          "insert": "createLayouts",
+          "insert_one": "createLayout",
           "update": "updateLayouts",
-          "delete_by_pk": "deleteLayout",
-          "update_by_pk": "updateLayout"
+          "update_by_pk": "updateLayout",
+          "delete": "deleteLayouts",
+          "delete_by_pk": "deleteLayout"
         },
         "custom_column_names": {
-          "min_height": "minHeight",
-          "theme_id": "themeId",
-          "min_width": "minWidth",
-          "media_query": "mediaQuery",
-          "max_height": "maxHeight",
-          "updated_at": "updatedAt",
           "created_at": "createdAt",
+          "updated_at": "updatedAt",
+          "max_height": "maxHeight",
           "max_width": "maxWidth",
+          "media_query": "mediaQuery",
+          "min_height": "minHeight",
+          "min_width": "minWidth",
+          "theme_id": "themeId",
           "user_agent_regexp": "userAgentRegexp"
         }
       },
@@ -756,25 +694,99 @@
     {
       "table": {
         "schema": "public",
+        "name": "operation"
+      },
+      "configuration": {
+        "custom_root_fields": {
+          "select": "operations",
+          "select_by_pk": "operation",
+          "select_aggregate": "operationAggregate",
+          "insert": "createOperations",
+          "insert_one": "createOperation",
+          "update": "updateOperations",
+          "update_by_pk": "updateOperation",
+          "delete": "deleteOperations",
+          "delete_by_pk": "deleteOperation"
+        },
+        "custom_column_names": {
+          "created_at": "createdAt",
+          "updated_at": "updatedAt"
+        }
+      },
+      "array_relationships": [
+        {
+          "name": "tasks",
+          "using": {
+            "foreign_key_constraint_on": {
+              "column": "operation_id",
+              "table": {
+                "name": "task_operation",
+                "schema": "public"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "table": {
+        "schema": "public",
         "name": "series"
       },
       "configuration": {
         "custom_root_fields": {
-          "insert": "createSerieses",
-          "select_aggregate": "seriesAggregate",
-          "insert_one": "createSeries",
-          "select_by_pk": "series",
           "select": "serieses",
-          "delete": "deleteSerieses",
+          "select_by_pk": "series",
+          "select_aggregate": "seriesAggregate",
+          "insert": "createSerieses",
+          "insert_one": "createSeries",
           "update": "updateSerieses",
-          "delete_by_pk": "deleteSeries",
-          "update_by_pk": "updateSeries"
+          "update_by_pk": "updateSeries",
+          "delete": "deleteSerieses",
+          "delete_by_pk": "deleteSeries"
         },
         "custom_column_names": {
-          "updated_at": "updatedAt",
-          "created_at": "createdAt"
+          "created_at": "createdAt",
+          "updated_at": "updatedAt"
         }
       }
+    },
+    {
+      "table": {
+        "schema": "public",
+        "name": "task"
+      },
+      "configuration": {
+        "custom_root_fields": {
+          "select": "tasks",
+          "select_by_pk": "task",
+          "select_aggregate": "taskAggregate",
+          "insert": "createTasks",
+          "insert_one": "createTask",
+          "update": "updateTasks",
+          "update_by_pk": "updateTask",
+          "delete": "deleteTasks",
+          "delete_by_pk": "deleteTask"
+        },
+        "custom_column_names": {
+          "created_at": "createdAt",
+          "updated_at": "updatedAt"
+        }
+      },
+      "array_relationships": [
+        {
+          "name": "operations",
+          "using": {
+            "foreign_key_constraint_on": {
+              "column": "task_id",
+              "table": {
+                "name": "task_operation",
+                "schema": "public"
+              }
+            }
+          }
+        }
+      ]
     },
     {
       "table": {
@@ -783,22 +795,22 @@
       },
       "configuration": {
         "custom_root_fields": {
-          "insert": "addSomeThemes",
-          "select_aggregate": "getThemeAgregate",
-          "insert_one": "addOneTheme",
-          "select_by_pk": "getATheme",
           "select": "getThemes",
-          "delete": "deleteSomeThemes",
+          "select_by_pk": "getATheme",
+          "select_aggregate": "getThemeAgregate",
+          "insert": "addSomeThemes",
+          "insert_one": "addOneTheme",
           "update": "updateSomeThemes",
-          "delete_by_pk": "deleteOneTheme",
-          "update_by_pk": "updateOneTheme"
+          "update_by_pk": "updateOneTheme",
+          "delete": "deleteSomeThemes",
+          "delete_by_pk": "deleteOneTheme"
         },
         "custom_column_names": {
-          "css_class_name": "cssClassName",
-          "min_day_count": "minDayCount",
-          "updated_at": "updatedAt",
           "created_at": "createdAt",
-          "max_day_count": "maxDayCount"
+          "updated_at": "updatedAt",
+          "css_class_name": "cssClassName",
+          "max_day_count": "maxDayCount",
+          "min_day_count": "minDayCount"
         }
       },
       "array_relationships": [
@@ -808,8 +820,8 @@
             "foreign_key_constraint_on": {
               "column": "theme_id",
               "table": {
-                "schema": "public",
-                "name": "theme_names"
+                "name": "theme_names",
+                "schema": "public"
               }
             }
           }
@@ -820,8 +832,8 @@
             "foreign_key_constraint_on": {
               "column": "theme_id",
               "table": {
-                "schema": "public",
-                "name": "layout"
+                "name": "layout",
+                "schema": "public"
               }
             }
           }
@@ -831,8 +843,39 @@
     {
       "table": {
         "schema": "public",
-        "name": "theme_names"
-      }
+        "name": "calendar_parents"
+      },
+      "configuration": {
+        "custom_root_fields": {
+          "select": "calendarParentses",
+          "select_by_pk": "calendarParents",
+          "select_aggregate": "calendarParentsAggregate",
+          "insert": "createCalendarParentses",
+          "insert_one": "createCalendarParents",
+          "update": "updateCalendarParentses",
+          "update_by_pk": "updateCalendarParents",
+          "delete": "deleteCalendarParentses",
+          "delete_by_pk": "deleteCalendarParents"
+        },
+        "custom_column_names": {
+          "parents_id": "theParent",
+          "children_id": "theChild"
+        }
+      },
+      "object_relationships": [
+        {
+          "name": "child",
+          "using": {
+            "foreign_key_constraint_on": "children_id"
+          }
+        },
+        {
+          "name": "parent",
+          "using": {
+            "foreign_key_constraint_on": "parents_id"
+          }
+        }
+      ]
     },
     {
       "table": {
@@ -841,20 +884,20 @@
       },
       "configuration": {
         "custom_root_fields": {
-          "insert": "createUserCalendars",
-          "select_aggregate": "userCalendarAggregate",
-          "insert_one": "createUserCalendar",
-          "select_by_pk": "userCalendar",
           "select": "userCalendars",
-          "delete": "deleteUserCalendars",
+          "select_by_pk": "userCalendar",
+          "select_aggregate": "userCalendarAggregate",
+          "insert": "createUserCalendars",
+          "insert_one": "createUserCalendar",
           "update": "updateUserCalendars",
-          "delete_by_pk": "deleteUserCalendar",
-          "update_by_pk": "updateUserCalendar"
+          "update_by_pk": "updateUserCalendar",
+          "delete": "deleteUserCalendars",
+          "delete_by_pk": "deleteUserCalendar"
         },
         "custom_column_names": {
+          "the_calendar_id": "theCalendarId",
           "the_user_id": "theUserId",
-          "calendar_order": "calendarOrder",
-          "the_calendar_id": "theCalendarId"
+          "calendar_order": "calendarOrder"
         }
       },
       "object_relationships": [
@@ -863,8 +906,89 @@
           "using": {
             "foreign_key_constraint_on": "the_user_id"
           }
+        },
+        {
+          "name": "calendar",
+          "using": {
+            "foreign_key_constraint_on": "the_calendar_id"
+          }
         }
       ]
+    },
+    {
+      "table": {
+        "schema": "public",
+        "name": "calendar_user_friends"
+      },
+      "configuration": {
+        "custom_root_fields": {
+          "select": "myDearFriends",
+          "select_by_pk": "baseDearFriend",
+          "select_aggregate": "baseDearFriendAggregate",
+          "insert": "addMyDearFriends",
+          "insert_one": "addOneDearFriend",
+          "update": "updateBaseDearFriends",
+          "update_by_pk": "updateBaseDearFriend",
+          "delete": "deleteBaseDearFriends",
+          "delete_by_pk": "deleteBaseDearFriend"
+        },
+        "custom_column_names": {
+          "calendar_user_id": "myUserId",
+          "friends_id": "myFriendUserId"
+        }
+      },
+      "object_relationships": [
+        {
+          "name": "myFriend",
+          "using": {
+            "foreign_key_constraint_on": "friends_id"
+          }
+        }
+      ]
+    },
+    {
+      "table": {
+        "schema": "public",
+        "name": "task_operation"
+      },
+      "configuration": {
+        "custom_root_fields": {
+          "select": "taskOperations",
+          "select_by_pk": "taskOperation",
+          "select_aggregate": "taskOperationAggregate",
+          "insert": "createTaskOperations",
+          "insert_one": "createTaskOperation",
+          "update": "updateTaskOperations",
+          "update_by_pk": "updateTaskOperation",
+          "delete": "deleteTaskOperations",
+          "delete_by_pk": "deleteTaskOperation"
+        },
+        "custom_column_names": {
+          "operation_id": "operationId",
+          "task_id": "taskId",
+          "order_in_task": "orderInTask"
+        }
+      },
+      "object_relationships": [
+        {
+          "name": "task",
+          "using": {
+            "foreign_key_constraint_on": "task_id"
+          }
+        },
+        {
+          "name": "operation",
+          "using": {
+            "foreign_key_constraint_on": "operation_id"
+          }
+        }
+      ]
+    },
+    {
+      "table": {
+        "schema": "public",
+        "name": "theme_names"
+      }
     }
   ]
 }

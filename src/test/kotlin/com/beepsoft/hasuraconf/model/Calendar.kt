@@ -95,10 +95,13 @@ class Calendar : BaseObject() {
 
     // For testing edge case
     @ManyToMany
-    //@HasuraAlias(joinColumnAlias = "theParents", inverseJoinColumnAlias = "theChildren")
+    // If joinColumnAlias or inverseJoinColumnAlias is used, it must be also specifed at the other end of the
+    // join. See at children
+    @HasuraAlias(joinColumnAlias = "theParent", inverseJoinColumnAlias = "theChild", joinFieldAlias = "parent")
     var parents: List<Calendar> = mutableListOf()
 
     @ManyToMany(mappedBy = "parents")
+    @HasuraAlias(joinColumnAlias = "theParent", inverseJoinColumnAlias = "theChild", joinFieldAlias = "child")
     var children: List<Calendar> = mutableListOf()
 
 

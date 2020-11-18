@@ -134,8 +134,8 @@ class HasuraConfiguratorIntegrationTests {
 
 		println("Hasura conf generated:\n${conf.confJson}")
 		var snapshot = readFileUsingGetResource("/hasura_config_snapshot1.json")
-		JSONAssert.assertEquals(conf.confJson, snapshot, false)
 		JSONAssert.assertEquals(snapshot, conf.confJson, false)
+		JSONAssert.assertEquals(conf.confJson, snapshot, false)
 
 		println("JSON schema generated:\n${conf.jsonSchema}")
 		snapshot = readFileUsingGetResource("/json_schema_snapshot1.json")
