@@ -803,6 +803,18 @@
       },
       "array_relationships": [
         {
+          "name": "names",
+          "using": {
+            "foreign_key_constraint_on": {
+              "column": "theme_id",
+              "table": {
+                "schema": "public",
+                "name": "theme_names"
+              }
+            }
+          }
+        },
+        {
           "name": "themeLayouts",
           "using": {
             "foreign_key_constraint_on": {
@@ -815,6 +827,12 @@
           }
         }
       ]
+    },
+    {
+      "table": {
+        "schema": "public",
+        "name": "theme_names"
+      }
     },
     {
       "table": {

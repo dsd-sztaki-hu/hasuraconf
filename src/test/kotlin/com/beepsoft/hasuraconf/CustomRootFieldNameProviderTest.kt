@@ -161,6 +161,7 @@ class CustomRootFieldNameProviderTest {
 		println("Hasura conf generated:\n${conf.confJson}")
 		var snapshot = readFileUsingGetResource("/hasura_config_snapshot2.json")
 		JSONAssert.assertEquals(conf.confJson, snapshot, false)
+		JSONAssert.assertEquals(snapshot, conf.confJson, false)
 	}
 
 	@DisplayName("Test hasura conf JSON with custom root names by loading into Hasura")

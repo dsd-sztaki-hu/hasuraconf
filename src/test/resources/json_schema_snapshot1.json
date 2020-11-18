@@ -517,6 +517,12 @@
         "mnemonic" : {
           "type" : "string"
         },
+        "names" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
         "tag" : {
           "type" : "string",
           "readOnly" : true,

@@ -34,4 +34,6 @@ class Theme : BaseObject() {
     @OneToMany(mappedBy = "theme")
     var themeLayouts: List<Layout>? = null
 
+    @ElementCollection
+    private val names: List<String>? = null
 }

@@ -160,6 +160,7 @@ class HasuraConfigurator(
     private lateinit var generatedCustomFieldNamesForManyToManyJoinTables:  MutableSet<String>
 
     private lateinit var manyToManyEntities: MutableSet<ManyToManyEntity>
+    private lateinit var extraTableNames: MutableSet<String>
 
     // Acrtual postgresql types for some SQL types. Hibernate uses the key fields when generating
     // tables, however Postgresql uses the "values" of postgresqlNames and so does Hasura when
@@ -199,6 +200,22 @@ class HasuraConfigurator(
 //        permissionAnnotationProcessor = PermissionAnnotationProcessor(entityManagerFactory)
 //    }
 
+
+    data class ProcessorParams(
+            val entity: EntityType<*>,
+            val classMetadata: AbstractEntityPersister,
+            val field: Field,
+            val columnName: String,
+            val columnType: Type,
+            val propName: String
+    )
+
+    data class ManyToManyEntity(
+            val entity: EntityType<*>,
+            val join: BasicCollectionPersister,
+            val field: Field,
+    )
+
     fun configure() = configureNew()
 
     @Throws(HasuraConfiguratorException::class)
@@ -207,6 +224,8 @@ class HasuraConfigurator(
         jsonSchemaGenerator = HasuraJsonSchemaGenerator(schemaVersion, customPropsFieldName)
         cascadeDeleteFields = mutableSetOf<CascadeDeleteFields>()
         manyToManyEntities = mutableSetOf()
+        extraTableNames = mutableSetOf()
+        tableNames = mutableSetOf()
         generatedCustomFieldNamesForManyToManyJoinTables = mutableSetOf()
         entityClasses = mutableSetOf<Class<out Any>>()
 
@@ -216,6 +235,7 @@ class HasuraConfigurator(
                 *metaModel.entities.toTypedArray() )
 
         val tables = buildJsonArray {
+            // Add config for entities that have Jave class mappings
             for (entity in entities) {
                 // Ignore subclasses of classes with @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
                 // In this case all subclasse's fields will be stored in the parent's table and therefore subclasses
@@ -226,10 +246,28 @@ class HasuraConfigurator(
 
                 add(configureEntity(entity, entities))
             }
+            // Add config for many-to-many join tables, which have no Java class representation but still
+            // want to have access to them
             for (m2m in manyToManyEntities) {
                 configureManyToManyEntity(m2m)?.let {
                     add(it)
                 }
+            }
+
+            // Add tracking to extra table names. For now these could be join tables of array relations
+            for (tableName in extraTableNames) {
+                // if tableName is also present in standard tableNames, it means it was either a Java mappes
+                // entity or an m2m join table which we handle previously
+                if (tableNames.contains(tableName)) {
+                    continue
+                }
+                // It is really an extra table name, add it
+                add(buildJsonObject {
+                    putJsonObject("table") {
+                        put("schema", schemaName)
+                        put("name", tableName)
+                    }
+                })
             }
         }
 
@@ -346,22 +384,25 @@ class HasuraConfigurator(
                     //    }
                     //  }
                     val tableObject = table as JsonObject
-                    add(buildJsonObject {
-                        put("type", "set_table_custom_fields")
-                        put("version", 2)
-                        put("args", buildJsonObject {
-                            val nameAndSchema = tableObject["table"]!! as JsonObject
-                            put("table", nameAndSchema["name"]!!)
-                            put("schema", nameAndSchema["schema"]!!)
 
-                            // Copy custom_root_fields and custom_column_names from configuration to the
-                            // api operation
-                            val rootFieldsAndColumNames = tableObject["configuration"]!!.clone() as JsonObject
-                            rootFieldsAndColumNames.forEach { k, v ->
-                                this.put(k, v)
-                            }
+                    if (tableObject["configuration"] != null) {
+                        add(buildJsonObject {
+                            put("type", "set_table_custom_fields")
+                            put("version", 2)
+                            put("args", buildJsonObject {
+                                val nameAndSchema = tableObject["table"]!! as JsonObject
+                                put("table", nameAndSchema["name"]!!)
+                                put("schema", nameAndSchema["schema"]!!)
+
+                                // Copy custom_root_fields and custom_column_names from configuration to the
+                                // api operation
+                                val rootFieldsAndColumNames = tableObject["configuration"]!!.clone() as JsonObject
+                                rootFieldsAndColumNames.forEach { k, v ->
+                                    this.put(k, v)
+                                }
+                            })
                         })
-                    })
+                    }
 
                     // Same logic for:
                     // create_object_relationship
@@ -559,6 +600,8 @@ class HasuraConfigurator(
         val tableName = targetEntityClassMetadata.tableName
         val keyKolumnName = targetEntityClassMetadata.keyColumnNames[0]
 
+        tableNames.add(tableName)
+
         // Add ID field
         val f = Utils.findDeclaredFieldUsingReflection(entity.javaType, targetEntityClassMetadata.identifierPropertyName)
         jsonSchemaGenerator.addSpecValue(f!!,
@@ -714,6 +757,8 @@ class HasuraConfigurator(
         var relatedColumnType = m2m.join.elementType
         var relatedColumnNameAlias = relatedColumnName.toCamelCase()
 
+        tableNames.add(tableName)
+
         // Make sure we don't generate custom field name customization more than once for any table.
         // This can happen in case of many-to-many join tables when generating for inverse join as well.
         if (generatedCustomFieldNamesForManyToManyJoinTables.contains(tableName)) {
@@ -829,22 +874,6 @@ class HasuraConfigurator(
 
         return tableJson
     }
-
-    data class ProcessorParams(
-            val entity: EntityType<*>,
-            val classMetadata: AbstractEntityPersister,
-            val field: Field,
-            val columnName: String,
-            val columnType: Type,
-            val propName: String
-    )
-
-    data class ManyToManyEntity(
-            val entity: EntityType<*>,
-            val join: BasicCollectionPersister,
-            val field: Field,
-    )
-
 
     private fun processProperties(relatedEntities: List<EntityType<*>>, processor: (params: ProcessorParams) -> Unit)
     {
@@ -1019,7 +1048,7 @@ class HasuraConfigurator(
                     val collType = params.columnType as CollectionType
                     val join = collType.getAssociatedJoinable(sessionFactoryImpl as SessionFactoryImpl?)
                     val keyColumn = join.keyColumnNames[0]
-                    //tableNames.add(join.tableName)
+                    extraTableNames.add(join.tableName)
 
                     add(buildJsonObject {
                         put("name", params.propName)
