@@ -1,6 +1,5 @@
 package com.beepsoft.hasuraconf
 
-import com.google.gson.JsonParser
 import org.apache.commons.lang3.SystemUtils
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.DisplayName
@@ -149,7 +148,9 @@ class HasuraConfiguratorIntegrationTests {
 		conf.configureNew()
 		var snapshot = readFileUsingGetResource("/metadata_snapshot1.json")
 		println("Metadata JSON generated:\n${conf.metadataJson}")
+		// Check in both directions
 		JSONAssert.assertEquals(snapshot, conf.metadataJson, false)
+		JSONAssert.assertEquals(conf.metadataJson, snapshot, false)
 	}
 
 	@DisplayName("Test generated hasura conf JSON by loading into Hasura")

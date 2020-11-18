@@ -353,7 +353,7 @@ class HasuraConfigurator(
         val tableName = m2m.join.tableName
         var entityName = tableName.toCase(CaseFormat.CAPITALIZED_CAMEL);
         var keyColumn = m2m.join.keyColumnNames[0]
-        var keyColumnType = m2m.join.keyType
+        //var keyColumnType = m2m.join.keyType
         var keyColumnAlias = keyColumn.toCamelCase();
         var relatedColumnName = m2m.join.elementColumnNames[0]
         var relatedColumnType = m2m.join.elementType
@@ -508,15 +508,14 @@ class HasuraConfigurator(
                 // Only look for simple (non component types)
                 val type = classMetadata.toType(propName)
                 if (type is ComponentType) {
-                    val componentType = type as ComponentType
-                    val tup = (type as ComponentType).componentTuplizer
-                    val propNames = classMetadata.getPropertyColumnNames(propName)
-                    var result = false
-                    propNames.forEachIndexed { index, columnName ->
+                    val componentType = type
+                    val tup = type.componentTuplizer
+                    val columnNames = classMetadata.getPropertyColumnNames(propName)
+                    columnNames.forEachIndexed { index, columnName ->
                         val field = tup.getGetter(index).getMember()
                         if (field is Field) {
                             // Reset propName to the embedded field name
-                            finalPropName = (field as Field).name
+                            finalPropName = field.name
                             // Now we may alias field name according to @HasuraAlias annotation
                             var hasuraAlias = f.getAnnotation(HasuraAlias::class.java)
                             if (hasuraAlias != null && hasuraAlias.fieldAlias.isNotBlank()) {
@@ -574,7 +573,12 @@ class HasuraConfigurator(
     private fun configureObjectRelationships(relatedEntities: List<EntityType<*>>): JsonArray
     {
         val objectRelationships = buildJsonArray {
+            val added = mutableSetOf<String>()
             processProperties(relatedEntities) { params ->
+                if (added.contains(params.propName)) {
+                    return@processProperties
+                }
+                added.add(params.propName)
                 if (params.columnType.isAssociationType && !params.columnType.isCollectionType) {
                     val assocType = params.columnType as AssociationType
                     val fkDir = assocType.foreignKeyDirection
@@ -650,7 +654,12 @@ class HasuraConfigurator(
     private fun configureArrayRelationships(relatedEntities: List<EntityType<*>>): JsonArray
     {
         val arrayRelationships = buildJsonArray {
+            val added = mutableSetOf<String>()
             processProperties(relatedEntities) { params ->
+                if (added.contains(params.propName)) {
+                    return@processProperties
+                }
+                added.add(params.propName)
                 if (params.columnType.isCollectionType) {
                     val collType = params.columnType as CollectionType
                     val join = collType.getAssociatedJoinable(sessionFactoryImpl as SessionFactoryImpl?)
@@ -1261,7 +1270,6 @@ class HasuraConfigurator(
         else {
             return toJsonSchmeType(columnType)
         }
-        return "<UNKNOWN TYPE>";
     }
 
     private fun graphqlTypeFor(columnType: Type, classMetadata: AbstractEntityPersister): String {

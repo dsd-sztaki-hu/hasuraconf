@@ -47,9 +47,6 @@ class HasuraJsonSchemaGenerator(
     fun generateSchema(vararg forClass: Class<out Any>): String
     {
         var schemaVersionEnum = SchemaVersion.valueOf(schemaVersion)
-        if (schemaVersionEnum == null) {
-            schemaVersionEnum = SchemaVersion.DRAFT_2019_09;
-        }
         defsName = defsNames[schemaVersionEnum]!!
 
         val configBuilder = SchemaGeneratorConfigBuilder(schemaVersionEnum, OptionPreset.PLAIN_JSON)

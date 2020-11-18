@@ -215,7 +215,7 @@ data class PermissionData (
     val json: String,
     val columns: List<String>
 ) {
-    fun toJsonObject(schema: String = "public"): JsonObject {
+    fun toJsonObject(): JsonObject {
         return buildJsonObject {
             put("role", role)
             putJsonObject("permission") {
