@@ -610,16 +610,17 @@ class HasuraConfigurator(
         entityClasses.add(entity.javaType)
 
         var entityName = entity.name
-        // Remove inner $ from the name of inner classes
-        entityName = entityName.replace("\\$".toRegex(), "")
-        var entityNameLower = entityName.toString()
-        entityNameLower = Character.toLowerCase(entityNameLower[0]).toString() + entityNameLower.substring(1)
 
         // Get the HasuraRootFields and may reset entityName
         var rootFields = entity.javaType.getAnnotation(HasuraRootFields::class.java)
         if (rootFields != null && rootFields.baseName.isNotBlank()) {
             entityName = rootFields.baseName
         }
+
+        // Remove inner $ from the name of inner classes
+        entityName = entityName.replace("\\$".toRegex(), "")
+        var entityNameLower = entityName.toString()
+        entityNameLower = Character.toLowerCase(entityNameLower[0]).toString() + entityNameLower.substring(1)
 
         val rootFieldNames = generateRootFieldNames(rootFields, entityName, entityNameLower, tableName)
 
