@@ -130,6 +130,8 @@ class HasuraConfiguratorIntegrationTests {
 	@Test
 	fun testJsonWithSnapshot() {
 		conf.loadConf = false
+		conf.loadMetadata = false
+		conf.loadCascadeDelete = false
 		conf.configure()
 
 		println("Hasura conf generated:\n${conf.confJson}")
@@ -137,16 +139,23 @@ class HasuraConfiguratorIntegrationTests {
 		JSONAssert.assertEquals(snapshot, conf.confJson, false)
 		JSONAssert.assertEquals(conf.confJson, snapshot, false)
 
-		println("JSON schema generated:\n${conf.jsonSchema}")
-		snapshot = readFileUsingGetResource("/json_schema_snapshot1.json")
-		JSONAssert.assertEquals(conf.jsonSchema, snapshot, false)
-		JSONAssert.assertEquals(snapshot, conf.jsonSchema, false)
-
 		snapshot = readFileUsingGetResource("/metadata_snapshot1.json")
 		println("Metadata JSON generated:\n${conf.metadataJson}")
 		// Check in both directions
 		JSONAssert.assertEquals(snapshot, conf.metadataJson, false)
 		JSONAssert.assertEquals(conf.metadataJson, snapshot, false)
+
+		snapshot = readFileUsingGetResource("/cascade_delete_snapshot1.json")
+		println("Cascade delete JSON generated:\n${conf.cascadeDeleteJson}")
+		// Check in both directions
+		JSONAssert.assertEquals(snapshot, conf.cascadeDeleteJson, false)
+		JSONAssert.assertEquals(conf.cascadeDeleteJson, snapshot, false)
+
+		println("JSON schema generated:\n${conf.jsonSchema}")
+		snapshot = readFileUsingGetResource("/json_schema_snapshot1.json")
+		JSONAssert.assertEquals(conf.jsonSchema, snapshot, false)
+		JSONAssert.assertEquals(snapshot, conf.jsonSchema, false)
+
 	}
 
 	@DisplayName("Test generated hasura conf JSON by loading into Hasura")
@@ -154,6 +163,7 @@ class HasuraConfiguratorIntegrationTests {
 	fun testLoadingConfJsonIntoHasura() {
 		conf.loadConf = true
 		conf.loadMetadata = false
+		conf.loadCascadeDelete = false
 		conf.hasuraEndpoint = "http://localhost:${hasuraContainer.getMappedPort(8080)}/v1/query"
 		conf.hasuraAdminSecret = "hasuraconf"
 		conf.configure()
@@ -171,6 +181,7 @@ class HasuraConfiguratorIntegrationTests {
 	fun testLoadingMetadataJsonIntoHasura() {
 		conf.loadConf = false
 		conf.loadMetadata = true
+		conf.loadCascadeDelete = true
 		conf.hasuraEndpoint = "http://localhost:${hasuraContainer.getMappedPort(8080)}/v1/query"
 		conf.hasuraAdminSecret = "hasuraconf"
 		conf.configure()

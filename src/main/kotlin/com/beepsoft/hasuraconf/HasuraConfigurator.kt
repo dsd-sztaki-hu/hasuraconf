@@ -116,10 +116,12 @@ import kotlin.Comparator
 class HasuraConfigurator(
         var entityManagerFactory: EntityManagerFactory,
         var confFile: String?,
-        var metadataJsonFile: String?,
-        var schemaName: String,
         var loadConf: Boolean,
+        var metadataJsonFile: String?,
         var loadMetadata: Boolean,
+        var cascadeDeleteJsonFile: String?,
+        var loadCascadeDelete: Boolean,
+        var schemaName: String,
         var hasuraEndpoint: String,
         var hasuraAdminSecret: String?,
         var schemaFile: String?,
@@ -147,6 +149,9 @@ class HasuraConfigurator(
         private set // the setter is private and has the default implementation
 
     var metadataJson: String? = null
+        private set // the setter is private and has the default implementation
+
+    var cascadeDeleteJson: String? = null
         private set // the setter is private and has the default implementation
 
     private var sessionFactoryImpl: SessionFactory
@@ -273,19 +278,34 @@ class HasuraConfigurator(
 
         metadataJsonFile?.let {
             PrintWriter(it).use { out -> out.println(metadataJson) }
-            if (loadMetadata) {
-                loadMetadataIntoHasura()
+        }
+        if (loadMetadata && metadataJson != null) {
+            loadMetadataIntoHasura()
+        }
+
+        if (cascadeDeleteFields.isNotEmpty()) {
+            cascadeDeleteJson = Json.encodeToString(buildJsonObject {
+                put("type", "bulk")
+                put("args", configureCascadeDeleteTriggers())
+            }).reformatJson()
+
+            cascadeDeleteJsonFile?.let {
+                PrintWriter(it).use { out -> out.println(cascadeDeleteJson) }
+            }
+
+            if (loadCascadeDelete && cascadeDeleteJson != null) {
+                loadCascadeDeleteIntoHasura()
             }
         }
 
         // This creates confJson
-        createMetadataApiJson()
+        createBulkConfJson()
 
         confFile?.let {
             PrintWriter(it).use { out -> out.println(confJson) }
-            if (loadConf) {
-                loadConfIntoHasura()
-            }
+        }
+        if (loadConf && confJson != null) {
+            loadConfIntoHasura()
         }
 
         if (!ignoreJsonSchema) {
@@ -300,7 +320,7 @@ class HasuraConfigurator(
     /**
      * Takes the metadataJson and creates a Metadata API Json
      */
-    private fun createMetadataApiJson()
+    private fun createBulkConfJson()
     {
         val apiJson = buildJsonObject {
             put("type", "bulk")
@@ -1271,11 +1291,7 @@ class HasuraConfigurator(
         return rootFieldNames;
     }
 
-    /**
-     *
-     */
-    private fun loadConfIntoHasura() {
-        LOG.info("Executing Hasura initialization JSON from {}. This may take a while ...", confFile)
+    private fun loadIntoHasura(json: String) {
         val client = WebClient
                 .builder()
                 .baseUrl(hasuraEndpoint)
@@ -1284,7 +1300,7 @@ class HasuraConfigurator(
                 .defaultHeader("X-Hasura-Admin-Secret", hasuraAdminSecret)
                 .build()
         val request = client.post()
-                .body<String, Mono<String>>(Mono.just(confJson!!), String::class.java)
+                .body<String, Mono<String>>(Mono.just(json), String::class.java)
                 .retrieve()
                 .bodyToMono(String::class.java)
         // Make it synchronous for now
@@ -1303,8 +1319,13 @@ class HasuraConfigurator(
 //        );
     }
 
+    private fun loadConfIntoHasura() {
+        LOG.info("Executing Hasura bulk initialization JSON. This operation could be slow, consider using metadataJson instead ...")
+        loadIntoHasura(confJson!!)
+    }
+
     private fun loadMetadataIntoHasura() {
-        LOG.info("Executing replace_metadata with metadata JSON from {}. This may take a while ...", metadataJsonFile)
+        LOG.info("Executing replace_metadata with metadata JSON.")
 
         val replaceMetadata = Json.encodeToString(buildJsonObject {
             // replace_metadata
@@ -1312,31 +1333,12 @@ class HasuraConfigurator(
             put("args", metadataJsonObject)
         })
 
-        val client = WebClient
-                .builder()
-                .baseUrl(hasuraEndpoint)
-                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
-                .defaultHeader("X-Hasura-Admin-Secret", hasuraAdminSecret)
-                .build()
-        val request = client.post()
-                .body<String, Mono<String>>(Mono.just(replaceMetadata), String::class.java)
-                .retrieve()
-                .bodyToMono(String::class.java)
-        // Make it synchronous for now
-        try {
-            val result = request.block()
-            LOG.info("Hasura initialization done {}", result)
-        } catch (ex: WebClientResponseException) {
-            LOG.error("Hasura initialization failed", ex)
-            LOG.error("Response text: {}", ex.responseBodyAsString)
-            throw ex
-        }
-        //        result.subscribe(
-//                value -> System.out.println(value),
-//                error -> error.printStackTrace(),
-//                () -> System.out.println("completed without a value")
-//        );
+        loadIntoHasura(replaceMetadata!!)
+    }
+
+    private fun loadCascadeDeleteIntoHasura() {
+        LOG.info("Executing Hasura cascade delete JSON.")
+        loadIntoHasura(cascadeDeleteJson!!)
     }
 
 }
