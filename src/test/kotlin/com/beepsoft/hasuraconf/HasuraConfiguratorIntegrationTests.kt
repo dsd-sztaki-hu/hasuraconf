@@ -151,8 +151,9 @@ class HasuraConfiguratorIntegrationTests {
 
 	@DisplayName("Test generated hasura conf JSON by loading into Hasura")
 	@Test
-	fun testLoadingIntoHasura() {
+	fun testLoadingConfJsonIntoHasura() {
 		conf.loadConf = true
+		conf.loadMetadata = false
 		conf.hasuraEndpoint = "http://localhost:${hasuraContainer.getMappedPort(8080)}/v1/query"
 		conf.hasuraAdminSecret = "hasuraconf"
 		conf.configure()
@@ -163,7 +164,23 @@ class HasuraConfiguratorIntegrationTests {
 		var snapshot = readFileUsingGetResource("/metadata_snapshot1.json")
 		JSONAssert.assertEquals(snapshot, conf.metadataJson, false)
 		JSONAssert.assertEquals(conf.metadataJson, snapshot, false)
+	}
 
+	@DisplayName("Test generated metadata JSON by loading into Hasura")
+	@Test
+	fun testLoadingMetadataJsonIntoHasura() {
+		conf.loadConf = false
+		conf.loadMetadata = true
+		conf.hasuraEndpoint = "http://localhost:${hasuraContainer.getMappedPort(8080)}/v1/query"
+		conf.hasuraAdminSecret = "hasuraconf"
+		conf.configure()
+
+		// Load metadata again and compare with what we had with the previous algorithm
+		val meta = exportMetadata(conf.hasuraEndpoint, conf.hasuraAdminSecret!!)
+		println("**** export_meta result: $meta")
+		var snapshot = readFileUsingGetResource("/metadata_snapshot1.json")
+		JSONAssert.assertEquals(snapshot, conf.metadataJson, false)
+		JSONAssert.assertEquals(conf.metadataJson, snapshot, false)
 	}
 
 	// 		// curl -d'{"type": "export_metadata", "args": {}}' http://localhost:8870/v1/query -o hasura_metadata.json -H 'X-Hasura-Admin-Secret: hasuraconf'

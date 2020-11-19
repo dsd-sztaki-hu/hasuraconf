@@ -15,8 +15,10 @@ class AutoConfiguration
     fun hasuraConfigurator(
             entityManagerFactory: EntityManagerFactory,
             @Value("\${hasuraconf.confFile:hasura-conf.json}") confFile: String?,
+            @Value("\${hasuraconf.metadataFile:metadata.json}") metadataJsonFile: String?,
             @Value("\${hasuraconf.schemaName:public}") schemaName: String,
             @Value("\${hasuraconf.loadConf:false}") loadConf: Boolean,
+            @Value("\${hasuraconf.loadMetadata:false}") loadMetadata: Boolean,
             @Value("\${hasuraconf.hasuraEndpoint:http://localhost:8080/v1/query}") hasuraEndpoint: String,
             @Value("\${hasuraconf.hasuraAdminSecret:#{null}}") hasuraAdminSecret: String?,
             @Value("\${hasuraconf.jsonSchema.schemaFile:hasura-json-schema.json}") schemaFile: String?,
@@ -28,8 +30,10 @@ class AutoConfiguration
         return HasuraConfigurator(
                 entityManagerFactory,
                 confFile,
+                metadataJsonFile,
                 schemaName,
                 loadConf,
+                loadMetadata,
                 hasuraEndpoint,
                 hasuraAdminSecret,
                 schemaFile,
