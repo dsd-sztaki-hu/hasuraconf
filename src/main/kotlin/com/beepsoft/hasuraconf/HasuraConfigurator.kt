@@ -761,7 +761,7 @@ class HasuraConfigurator(
             val relatedColumnName: String,
             val relatedColumnNameAlias: String,
             val relatedColumnType: Type,
-            val joinFieldName: String,
+            var joinFieldName: String,
             val relatedTableName: String,
             val keyFieldName: String,
             val rootFields: HasuraRootFields?
@@ -940,9 +940,15 @@ class HasuraConfigurator(
             putJsonArray("object_relationships") {
                 // Add for field1 (note: we reuse m2mData use for common partts as well)
                 addObjRel(m2mData, this)
+                val joinFieldName1 = m2mData.joinFieldName
                 // Add for field2
                 if (m2m.field2 != null) {
-                    addObjRel(m2m.toM2MData(m2m.field2!!, m2m.join2!!), this)
+                    val m2mData = m2m.toM2MData(m2m.field2!!, m2m.join2!!)
+                    if (m2mData.joinFieldName == joinFieldName1) {
+                        LOG.warn("Many-to-many table '${m2mData.tableName}' recursively joins the same table (${m2mData.relatedTableName}). Consider using @HasuraAlias(..., joinFieldAlias=\"\") on both ends of the relationship on fields: '${m2m.field1}' and '${m2m.field2}'" )
+                        m2mData.joinFieldName += "2"
+                    }
+                    addObjRel(m2mData, this)
                 }
             }
         }
