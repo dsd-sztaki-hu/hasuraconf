@@ -8,6 +8,9 @@ Configuration of Hasura is usually done via the Hasura console, however during d
 
 With `HasuraConfigurator` when the data model changes in Java/Kotlin the Hasura configurations can be regenerated and automatically loaded into Hasura thus the data model and the Hasura configuration will always be in sync. 
 
+
+_NOTE: in version 0.5.0 the configuration algorithm has been completely rewritten and `hasuraconf.confFile` and `hasuraconf.loadConf` "bulk JSON" based configuration is now deprecated. Use `hasuraconf.metadataFile`/`hasuraconf.loadMetadata` and `hasuraconf.cascadeDeleteFile`/`hasuraconf.loadCascadeDelete` instead. Old format `confJson` is still generated, but its loading into Hasura is extremely slow compared to the new metadata loading mechanism, which is now the predferred way._
+
 Configurations this tool handles:
 * Tracking for tables that are defined as JPA entities.
 
@@ -394,9 +397,16 @@ Then you should use `HasuraConfigurator` like this:
 ```java
 @Autowired HasuraConfigurator hasuraConf;
 ...
+// Setting these two to true will fully configure Hasura
+hasuraConf.setLoadMetadata(true);
+hasuraConf.setLoadCascadeDelete(true);
+
+// Generates metadataJson and cascadeDeleteJson and loads them to Hasura
 hasuraConf.configure();
-String confJson = hasuraConf.getConfJson();
+
+// See what has been generated
 String metadataJson = hasuraConf.getMetadataJson();
+String cascadeDeleteJson = hasuraConf.getMetadataJson();
 String jsonSchema = hasuraConf.getJsonSchema();
 
 ```
@@ -433,11 +443,20 @@ class MyConfiguration {
 
 ## Configuration properties (application.properties values)
 
-* `hasuraconf.confFile`: configuration JSON will be saved here. Default: hasura-conf.json
+* `hasuraconf.metadataFile`: metadata JSON will be saved here. Default: `metadata.json`
+
+* `hasuraconf.loadMetadata`: if true the generated metadata will  be loaded automatically to Hasura using [`replace_metadata`](https://hasura.io/docs/1.0/graphql/core/api-reference/schema-metadata-api/manage-metadata.html#replace-metadata) when `HasuraConfigurator#configure()` is called. For this to work `hasuraconfig.hasuraEndpoint` and `hasuraconfig.hasuraAdminSecret` must be specified. Startign from version 0.5.0 metadata json based Hasura configuration is the preferred solution as `confJson` based bulk operations are very slow. Default: `false`
+
+* `hasuraconf.cascadeDeleteFile`: cascade delete configuration will be saved here. Default: `cascade-delete.json`
+
+* `hasuraconf.loadCascadeDelete`: if true the generated config will be loaded automatically to Hasura when `HasuraConfigurator#configure()` is called. For this to work `hasuraconfig.hasuraEndpoint` and `hasuraconfig.hasuraAdminSecret` must be specified. When `loadMetadata` is set to true, you usually also want to set `loadCascadeDelete` to true, because these two loads can fully replace the functionality of loadConf.  Default: `false`
+
+
+* `hasuraconf.confFile`: *Deprecated*: old style bulk configuration JSON will be saved here. Default: `hasura-conf.json`
+
+* `hasuraconf.loadConf`: *Deprecated*: if true the generated config will also be loaded automatically to Hasura when `HasuraConfigurator#configure()` is called. For this to work `hasuraconfig.hasuraEndpoint` and `hasuraconfig.hasuraAdminSecret` must be specified. Default: false
 
 * `hasuraconf.schemaName`: the Postgresql schema of the model. Default: public
-
-* `hasuraconf.loadConf`: if true the generated config will also be loaded automatically to Hasura when `HasuraConfigurator#configure()` is called. For this to work `hasuraconfig.hasuraEndpoint` and `hasuraconfig.hasuraAdminSecret` must be specified. Defautlt: false
 
 * `hasuraconf.hasuraEndpoint`: URL of the Hasura server. Default: http://localhost:8080/v1/query
 
