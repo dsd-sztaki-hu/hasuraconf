@@ -134,7 +134,7 @@ class HasuraConfigurator(
     companion object {
         // @Suppress("JAVA_CLASS_ON_COMPANION")
         // @JvmStatic
-        private val LOG = getLogger(this::class.java.enclosingClass)
+        public val LOG = getLogger(this::class.java.enclosingClass)
     }
 
     inner class CascadeDeleteFields(var table: String, var field: String, var joinedTable: String)

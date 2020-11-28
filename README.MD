@@ -8,6 +8,8 @@ Configuration of Hasura is usually done via the Hasura console, however during d
 
 With `HasuraConfigurator` when the data model changes in Java/Kotlin the Hasura configurations can be regenerated and automatically loaded into Hasura thus the data model and the Hasura configuration will always be in sync. 
 
+ Version 0.6.0 adds `HasuraStaticConfigurator`, which can be used to execute Hasura API "bulk" operations in an idempontent way ie. if an operation fails, we can define a match criteria for the errors which are "acceptable" and thus can be ignorred. This way the same bulk operations can be executed any number of times without failing for reasons that we know in advance can be safely ignorred.   
+
 
 _NOTE: in version 0.5.0 the configuration algorithm has been completely rewritten and `hasuraconf.confFile` and `hasuraconf.loadConf` "bulk JSON" based configuration is now deprecated. Use `hasuraconf.metadataFile`/`hasuraconf.loadMetadata` and `hasuraconf.cascadeDeleteFile`/`hasuraconf.loadCascadeDelete` instead. Old format `confJson` is still generated, but its loading into Hasura is extremely slow compared to the new metadata loading mechanism, which is now the predferred way._
 
@@ -387,7 +389,7 @@ The easiest way to use it in a Maven project is via jitpack
     <dependency>
         <groupId>com.github.beepsoft</groupId>
         <artifactId>hasuraconf</artifactId>
-        <version>0.5.0</version>
+        <version>0.6.0</version>
     </dependency>
 </dependencies>
 ```
@@ -408,6 +410,37 @@ hasuraConf.configure();
 String metadataJson = hasuraConf.getMetadataJson();
 String cascadeDeleteJson = hasuraConf.getMetadataJson();
 String jsonSchema = hasuraConf.getJsonSchema();
+```
+
+```kotlin
+@Autowired hasuraStaticConf: HasuraSaticConfigurator 
+...
+hasuraStaticConf.loadStaticConf(
+"""
+			{
+			  "hasuraconfLoadSeparately": true,
+			  "type": "bulk",
+			  "args": [
+			    {
+			      "hasuraconfIgnoreError": {
+			        "message":"column \"custom_user_data2\" of relation \"calendar_user\" already exists",
+			        "status_code":"42701"
+			      },
+			      "type": "run_sql",
+			      "args": {
+			        "sql": "ALTER TABLE \"public\".\"calendar_user\" ADD COLUMN \"custom_user_data2\" text NULL;",
+			        "cascade": false,
+			        "read_only": false
+			      }
+			    }
+			  ]
+			}
+		""".trimIndent()
+)
+
+
+
+
 
 ```
 

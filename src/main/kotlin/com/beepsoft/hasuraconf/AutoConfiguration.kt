@@ -56,6 +56,16 @@ class AutoConfiguration
         return DefaultRootFieldNameProvider()
     }
 
+    @Suppress("SpringJavaInjectionPointsAutowiringInspection")
+    @Bean
+    @ConditionalOnMissingBean
+    fun hasuraStaticConfigurator(
+            @Value("\${hasuraconf.hasuraEndpoint:http://localhost:8080/v1/query}") hasuraEndpoint: String,
+            @Value("\${hasuraconf.hasuraAdminSecret:#{null}}") hasuraAdminSecret: String?
+    ) : HasuraStaticConfigurator
+    {
+        return HasuraStaticConfigurator(hasuraEndpoint, hasuraAdminSecret)
+    }
 //    @Bean
 //    @ConditionalOnMissingBean
 //    fun hasuraJsonSchemaGenerator(
