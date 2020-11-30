@@ -151,7 +151,7 @@ class HasuraStaticConfigurator(
 
     private fun doLoadStaticInit(confJson: JsonObject) {
         HasuraConfigurator.LOG.info("Executing static Hasura initialization JSON:")
-        HasuraConfigurator.LOG.debug(confJson.toString())
+        HasuraConfigurator.LOG.info(confJson.toString())
         val client = WebClient
                 .builder()
                 .baseUrl(hasuraEndpoint)
