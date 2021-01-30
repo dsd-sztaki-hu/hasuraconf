@@ -302,7 +302,24 @@ class HasuraJsonSchemaGenerator(
      * @param type the join type descriptor to add
      */
     fun addJoinType(type: JoinType) {
-        joinTypes.putIfAbsent(type.name, type)
+        // A join maybe added from both side of the join. Some valuies, like order field mauy only
+        // be set in one of the. So in case the join is already added merge the stored one with
+        // `type`
+        val existing = joinTypes.get(type.name)
+        existing?.let {
+            if (it.orderField == null && type.orderField != null) {
+                it.orderField = type.orderField
+            }
+            if (it.orderFieldType == null && type.orderFieldType != null) {
+                it.orderFieldType = type.orderFieldType
+            }
+            if (it.orderFieldGraphqlType == null && type.orderFieldGraphqlType != null) {
+                it.orderFieldGraphqlType = type.orderFieldGraphqlType
+            }
+        }
+        if (existing == null) {
+            joinTypes.put(type.name, type)
+        }
     }
 
     /**
