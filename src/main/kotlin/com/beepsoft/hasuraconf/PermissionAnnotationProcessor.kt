@@ -66,11 +66,43 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
     private fun createPresetFieldsMap(entity: EntityType<*>, classMetadata: AbstractEntityPersister, fieldPresets: HasuraFieldPresets) =
         fieldPresets.value.map {
             try {
-                val prop = classMetadata.getPropertyColumnNames(it.field)
-                prop[0] to it.value
+                if (it.column.length != 0) {
+                    var found = false
+                    classMetadata.attributes.forEach {attr ->
+                        val col = classMetadata.getPropertyColumnNames(attr.name)
+                        if (col.size > 0) {
+                            if (col[0] == it.column) {
+                                found = true
+                                return@forEach
+                            }
+                        }
+                    }
+                    if (found) {
+                        it.column to it.value
+                    }
+                    else {
+                        throw HasuraConfiguratorException("Column ${it.column} doesn't exist on ${entity.name}'s table")
+                    }
+                }
+                else {
+                    val col = classMetadata.getPropertyColumnNames(it.field)
+                    if (col.size == 0) {
+                        throw HasuraConfiguratorException("Field ${it.field} is not mapped into ${entity.name}'s table, so it cannot be set")
+                    }
+                    // Check for collection types, ie ManyToMany or OneToMany, these won't have an actual column
+                    // on this table, and could not be set.
+                    val propType = classMetadata.getPropertyType(it.field)
+                    if (propType.isCollectionType) {
+                        throw HasuraConfiguratorException("Field ${it.field} is a collection type and is not mapped into ${entity.name}'s table, so it cannot be set")
+                    }
+                    col[0] to it.value
+                }
             }
             catch (ex: Exception) {
-                throw HasuraConfiguratorException("Field ${it.field} doesn't exist on class ${entity.name}")
+                if (!(ex is HasuraConfiguratorException)) {
+                    throw HasuraConfiguratorException("Field ${it.field} doesn't exist on class ${entity.name}")
+                }
+                throw ex
             }
         }.toMap()
 

@@ -11,7 +11,8 @@
       "check": {
       },
       "set": {
-        "locale_lang": "en"
+        "locale_lang": "en",
+        "locale_country": "us"
       }
     }
   }

@@ -94,7 +94,12 @@ annotation class HasuraFieldPreset (
     /**
      * Field name on the Java class. Will be converted to appropriate column name for the Hasura metadata "set".
      */
-    val field: String,
+    val field: String = "",
+
+    /**
+     * Column name of the table the class is mapped to. You should use either field or column
+     */
+    val column: String = "",
 
     /**
      * Value of the field.

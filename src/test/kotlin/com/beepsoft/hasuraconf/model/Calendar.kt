@@ -19,7 +19,8 @@ import javax.persistence.*
                     operation = HasuraOperation.INSERT,
                     role = "USER",
                     fieldPresets = HasuraFieldPresets([
-                        HasuraFieldPreset(field = "localeLang", value = "en")
+                        HasuraFieldPreset(column = "locale_lang", value = "en"),
+                        HasuraFieldPreset(field = "localeCountry", value = "us")
                     ])
             ),
             HasuraPermission(
