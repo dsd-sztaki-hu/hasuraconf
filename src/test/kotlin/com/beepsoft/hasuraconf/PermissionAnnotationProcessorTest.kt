@@ -95,6 +95,7 @@ class PermissionAnnotationProcessorTest {
         val calSnapshot4 = readFileUsingGetResource("/calendar_perm_snapshot4.json")
         val calSnapshot5 = readFileUsingGetResource("/calendar_perm_snapshot5.json")
         val calSnapshot6 = readFileUsingGetResource("/calendar_perm_snapshot6.json")
+        val calSnapshot7 = readFileUsingGetResource("/calendar_perm_snapshot7.json")
 
 
         Assertions.assertEquals( "", permissions[0].json, "Insert permission on Calendar")
@@ -102,6 +103,7 @@ class PermissionAnnotationProcessorTest {
         JSONAssert.assertEquals("Read permission on Calendar", permissions[1].json, calSnapshot2, false)
         JSONAssert.assertEquals("Update permission on Calendar", permissions[2].json, calSnapshot1, false)
         JSONAssert.assertEquals("Delete permission on Calendar", permissions[3].json, calSnapshot1, false)
+        JSONAssert.assertEquals("Select permission Hasura JSON on Calendar", permissions[1].toHasuraApiJson(), calSnapshot7, false)
 
         JSONAssert.assertEquals("Insert permission Hasura JSON on Calendar", permissions[0].toHasuraApiJson(), calSnapshot3, false)
         JSONAssert.assertEquals("Insert permission Hasura JSON on Calendar with other_schema", permissions[0].toHasuraApiJson("other_schema"), calSnapshot4, false)
@@ -117,7 +119,9 @@ class PermissionAnnotationProcessorTest {
         Assertions.assertEquals( 4, permissions.size, "Day permissions have 4 elements")
 
         val daySnapshot1 = readFileUsingGetResource("/day_perm_snapshot1.json")
+        val daySnapshot2 = readFileUsingGetResource("/day_perm_snapshot2.json")
         JSONAssert.assertEquals("Read permission on Day (with @include from jsonFile)", permissions[1].json, daySnapshot1, false)
+        JSONAssert.assertEquals("Full day SELECT permission metadata (with @include from jsonFile)", permissions[1].toHasuraApiJson(), daySnapshot2, false)
 
 
     }

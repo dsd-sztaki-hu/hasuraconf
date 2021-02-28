@@ -1,15 +1,18 @@
 {
-  "type" : "create_insert_permission",
-  "args" : {
-    "table" : {
-      "name" : "calendar",
-      "schema" : "public"
+  "type": "create_insert_permission",
+  "args": {
+    "table": {
+      "name": "calendar",
+      "schema": "public"
     },
-    "role" : "USER",
-    "permission" : {
-      "set" : { },
-      "columns" : "*",
-      "check" : { }
+    "role": "USER",
+    "permission": {
+      "columns": "*",
+      "check": {
+      },
+      "set": {
+        "locale_lang": "en"
+      }
     }
   }
 }

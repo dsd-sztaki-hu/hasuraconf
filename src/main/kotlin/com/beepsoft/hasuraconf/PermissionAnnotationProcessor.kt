@@ -40,7 +40,12 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
      * @HasuraUpdatePermission, @HasuraDeletePermission}. Annotation properties will be accessed via reflection,
      * so actually any annotation would be suitable, which provides the same properties as those listed above.
      */
-    private fun createPermissionData(entity: EntityType<*>, tableName: String, permissionAnnot: Annotation): PermissionData {
+    private fun createPermissionData(
+        entity: EntityType<*>,
+        tableName: String,
+        classMetadata: AbstractEntityPersister,
+        permissionAnnot: Annotation): PermissionData
+    {
         return PermissionData(
                 tableName,
                 permissionAnnot.valueOf("role"),
@@ -52,8 +57,22 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
                 calcFinalFields(
                         permissionAnnot.valueOf("fields"),
                         permissionAnnot.valueOf("excludeFields"),
-                        entity))
+                        entity),
+                createPresetFieldsMap(entity, classMetadata, permissionAnnot.valueOf("fieldPresets")),
+                permissionAnnot.valueOf("allowAggregations")
+        )
     }
+
+    private fun createPresetFieldsMap(entity: EntityType<*>, classMetadata: AbstractEntityPersister, fieldPresets: HasuraFieldPresets) =
+        fieldPresets.value.map {
+            try {
+                val prop = classMetadata.getPropertyColumnNames(it.field)
+                prop[0] to it.value
+            }
+            catch (ex: Exception) {
+                throw HasuraConfiguratorException("Field ${it.field} doesn't exist on class ${entity.name}")
+            }
+        }.toMap()
 
 
     private fun KClass<*>.isSubclassOf(base: Array<KClass<*>>): Boolean =
@@ -183,22 +202,22 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
             // Note: we use isSubclassOf because the annotation maybe a proxy in which case direct
             // equality check would not work.
             if (it::class.isSubclassOf(HasuraPermission::class)) {
-                permissions.add(createPermissionData(entity, tableName, it))
+                permissions.add(createPermissionData(entity, tableName, classMetadata, it))
             }
             else if (it::class.isSubclassOf(HasuraPermissions::class)) {
                 (it as HasuraPermissions).value.forEach {
-                    permissions.add(createPermissionData(entity, tableName, it))
+                    permissions.add(createPermissionData(entity, tableName, classMetadata, it))
                 }
             }
             else {
                 // Meta @HasuraPermission
                 it.annotationClass.annotations.forEach {
                     if (it::class.isSubclassOf(HasuraPermission::class)) {
-                        permissions.add(createPermissionData(entity, tableName, it))
+                        permissions.add(createPermissionData(entity, tableName, classMetadata, it))
                     }
                     else if (it::class.isSubclassOf(HasuraPermissions::class)) {
                         (it as HasuraPermissions).value.forEach {
-                            permissions.add(createPermissionData(entity, tableName, it))
+                            permissions.add(createPermissionData(entity, tableName, classMetadata, it))
                         }
                     }
                 }
@@ -214,12 +233,23 @@ data class PermissionData (
     val role: String,
     val operation: HasuraOperation,
     val json: String,
-    val columns: List<String>
+    val columns: List<String>,
+    val fieldPresets: Map<String, String>,
+    val allowAggregations: Boolean,
 ) {
     fun toJsonObject(): JsonObject {
         return buildJsonObject {
             put("role", role)
             putJsonObject("permission") {
+                fun Map<String, String>.toFieldPresetsJson()
+                {
+                    putJsonObject("set") {
+                        fieldPresets.forEach() {
+                            put(it.key, it.value)
+                        }
+                    }
+                }
+
                 // No columns for delete
                 if (operation != HasuraOperation.DELETE) {
                     if (columns.isEmpty()) {
@@ -232,11 +262,12 @@ data class PermissionData (
                 }
 
                 if (operation == HasuraOperation.SELECT) {
-                    put("allow_aggregations", true)
+                    put("allow_aggregations", allowAggregations)
                 }
 
                 if (operation == HasuraOperation.UPDATE) {
                     put("check", JsonNull)
+                    fieldPresets?.let { fieldPresets.toFieldPresetsJson() }
                 }
                 if (operation == HasuraOperation.INSERT) {
                     if (json.isNotEmpty()) {
@@ -244,6 +275,7 @@ data class PermissionData (
                     } else {
                         put("check", Json.parseToJsonElement("{}"))
                     }
+                    fieldPresets?.let { fieldPresets.toFieldPresetsJson() }
                 }
                 else {
                     if (json.isNotEmpty()) {
@@ -273,3 +305,4 @@ data class PermissionData (
         return Json.encodeToString(jsonObj)
     }
 }
+

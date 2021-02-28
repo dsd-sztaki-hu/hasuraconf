@@ -8,6 +8,8 @@
     "role" : "USER",
     "permission" : {
       "check": null,
+      "set": {
+      },
       "columns" : [
         "created_at",
         "updated_at",

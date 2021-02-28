@@ -17,11 +17,17 @@ import javax.persistence.*
         [
             HasuraPermission(
                     operation = HasuraOperation.INSERT,
-                    role = "USER"),
+                    role = "USER",
+                    fieldPresets = HasuraFieldPresets([
+                        HasuraFieldPreset(field = "localeLang", value = "en")
+                    ])
+            ),
             HasuraPermission(
                     operation = HasuraOperation.SELECT,
                     role = "USER",
-                    json = "{roles: { user_id: { _eq: 'X-Hasura-User-Id' } }}"),
+                    json = "{roles: { user_id: { _eq: 'X-Hasura-User-Id' } }}",
+                    allowAggregations = true
+            ),
             HasuraPermission(
                     operation = HasuraOperation.UPDATE,
                     role = "USER",

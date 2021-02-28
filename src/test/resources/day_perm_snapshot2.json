@@ -1,0 +1,23 @@
+{
+  "type": "create_select_permission",
+  "args": {
+    "table": {
+      "name": "day",
+      "schema": "public"
+    },
+    "role": "user",
+    "permission": {
+      "columns": "*",
+      "allow_aggregations": false,
+      "filter": {
+        "calendar": {
+          "roles": {
+            "user_id": {
+              "_eq": "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    }
+  }
+}

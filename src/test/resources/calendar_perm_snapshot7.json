@@ -1,0 +1,21 @@
+{
+  "type": "create_select_permission",
+  "args": {
+    "table": {
+      "name": "calendar",
+      "schema": "public"
+    },
+    "role": "USER",
+    "permission": {
+      "columns": "*",
+      "allow_aggregations": true,
+      "filter": {
+        "roles": {
+          "user_id": {
+            "_eq": "X-Hasura-User-Id"
+          }
+        }
+      }
+    }
+  }
+}

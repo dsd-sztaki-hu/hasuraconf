@@ -70,13 +70,38 @@ annotation class HasuraPermission (
         val json: String = "",
         val jsonFile: String = "",
         val fields: Array<String> = [],
-        val excludeFields: Array<String> = []
+        val excludeFields: Array<String> = [],
+        val fieldPresets: HasuraFieldPresets = HasuraFieldPresets([]),
+        val allowAggregations: Boolean = false
 )
 
 @Target(AnnotationTarget.ANNOTATION_CLASS, AnnotationTarget.CLASS)
 annotation class HasuraPermissions (
         val value: Array<HasuraPermission>
 )
+
+/**
+ * Fields presets for INSERT and UPDATE operations
+ */
+@Target(AnnotationTarget.ANNOTATION_CLASS, AnnotationTarget.CLASS)
+annotation class HasuraFieldPresets (
+    val value: Array<HasuraFieldPreset>
+)
+
+@Repeatable
+@Target(AnnotationTarget.ANNOTATION_CLASS, AnnotationTarget.CLASS)
+annotation class HasuraFieldPreset (
+    /**
+     * Field name on the Java class. Will be converted to appropriate column name for the Hasura metadata "set".
+     */
+    val field: String,
+
+    /**
+     * Value of the field.
+     */
+    val value: String
+)
+
 
 enum class HasuraOperation {
     SELECT,
