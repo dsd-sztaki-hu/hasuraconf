@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>com.beepsoft</groupId>
 	<artifactId>hasuraconf</artifactId>
-	<version>0.6.5</version>
+	<version>0.6.6</version>
 	<name>hasuraconf</name>
 	<description>Hasura Configuration JSON Generation Based on JPA and Hasura Specific Annotations</description>
 
@@ -44,10 +44,6 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webflux</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>com.fasterxml.jackson.module</groupId>
-			<artifactId>jackson-module-kotlin</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.jetbrains.kotlin</groupId>
