@@ -341,7 +341,7 @@
         "content" : {
           "type" : "array",
           "items" : {
-            "type" : "integer"
+            "type" : "string"
           }
         },
         "contentType" : {
@@ -415,7 +415,7 @@
         "data" : {
           "type" : "array",
           "items" : {
-            "type" : "integer"
+            "type" : "string"
           }
         },
         "description" : {
