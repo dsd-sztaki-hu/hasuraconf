@@ -97,7 +97,7 @@
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-            <version>28.1-jre</version>
+            <version>30.0-jre</version>
         </dependency>
 		<dependency>
 			<groupId>com.h2database</groupId>
@@ -108,19 +108,19 @@
 		<dependency>
 			<groupId>org.testcontainers</groupId>
 			<artifactId>testcontainers</artifactId>
-			<version>1.12.3</version>
+			<version>1.16.0</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.testcontainers</groupId>
 			<artifactId>junit-jupiter</artifactId>
-			<version>1.12.3</version>
+			<version>1.16.0</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.testcontainers</groupId>
 			<artifactId>postgresql</artifactId>
-			<version>1.12.1</version>
+			<version>1.16.0</version>
 			<scope>test</scope>
 		</dependency>
 		<!-- https://mvnrepository.com/artifact/org.skyscreamer/jsonassert -->
@@ -167,9 +167,8 @@
 		<dependency>
 			<groupId>com.github.victools</groupId>
 			<artifactId>jsonschema-generator</artifactId>
-			<version>4.9.0</version>
+			<version>4.20.0</version>
 		</dependency>
-
 
 		<!-- https://mvnrepository.com/artifact/javax.validation/validation-api -->
 		<dependency>

@@ -112,9 +112,9 @@ class HasuraJsonSchemaGenerator(
         // Handle case that withInstanceAttributeOverride also adds the custom definitions to the property
         // and to the "items" and there seems no way to distinguish there for which part of the schema we are
         // generating the spec values.
-        configBuilder.forTypesInGeneral().withTypeAttributeOverride { jsonSchemaTypeNode:ObjectNode, scope: TypeScope, config: SchemaGeneratorConfig ->
-            if (jsonSchemaTypeNode.has("properties")) {
-                var custom = jsonSchemaTypeNode.hasuraProps
+        configBuilder.forTypesInGeneral().withTypeAttributeOverride { collectedTypeAttributes, scope, context ->
+            if (collectedTypeAttributes.has("properties")) {
+                var custom = collectedTypeAttributes.hasuraProps
                 hasuraSpecTypeValuesMap[scope.type.typeName]?.let {
                     custom.put("graphqlType", it.graphqlType)
                     custom.put("idProp", it.idProp)
@@ -161,7 +161,7 @@ class HasuraJsonSchemaGenerator(
             // 		}
             // 	}
             // },
-            if (jsonSchemaTypeNode.has("items")) {
+            if (collectedTypeAttributes.has("items")) {
                 // For some reason at this pint it is not the usual "type":array representation but:
                 // "items": {
                 // 	    "allOf": [
@@ -176,7 +176,7 @@ class HasuraJsonSchemaGenerator(
                 // 	    ]
                 // }
 
-                val items = jsonSchemaTypeNode.get("items") as ObjectNode;
+                val items = collectedTypeAttributes.get("items") as ObjectNode;
                 if (items.has("allOf")) {
                     val allOf = items.get("allOf") as ArrayNode
                     for (jsonNode  in allOf) {
