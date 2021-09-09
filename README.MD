@@ -389,7 +389,7 @@ The easiest way to use it in a Maven project is via jitpack
     <dependency>
         <groupId>com.github.beepsoft</groupId>
         <artifactId>hasuraconf</artifactId>
-        <version>0.6.8</version>
+        <version>0.6.9</version>
     </dependency>
 </dependencies>
 ```

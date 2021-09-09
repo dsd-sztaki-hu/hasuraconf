@@ -458,4 +458,43 @@ class HasuraConfiguratorIntegrationTests {
 		f = File(fileName)
 		Assertions.assertFalse(f.exists())
 	}
+
+	@DisplayName("Test confFile file is not written when confFile is not set")
+	@Test
+	fun testConfFileNotWrittenWhenNull() {
+		conf.loadConf = false
+		conf.loadMetadata = false
+		conf.loadCascadeDelete = false
+		conf.ignoreJsonSchema = false
+
+		// Configure with default metadataJsonFile
+		conf.configure()
+
+		// Does it exists?
+		var fileName = conf.confFile
+		var f = File(fileName)
+		Assertions.assertTrue(f.exists())
+		f.delete()
+
+		// Generate with null file, "null", "", "   " -> should not create file in fs
+		conf.confFile = null
+		conf.configure()
+		f = File(fileName)
+		Assertions.assertFalse(f.exists())
+
+		conf.confFile = "null"
+		conf.configure()
+		f = File(fileName)
+		Assertions.assertFalse(f.exists())
+
+		conf.confFile = ""
+		conf.configure()
+		f = File(fileName)
+		Assertions.assertFalse(f.exists())
+
+		conf.confFile = "   "
+		conf.configure()
+		f = File(fileName)
+		Assertions.assertFalse(f.exists())
+	}
 }

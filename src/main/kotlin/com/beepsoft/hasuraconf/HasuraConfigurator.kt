@@ -302,8 +302,8 @@ class HasuraConfigurator(
         // This creates confJson
         createBulkConfJson()
 
-        confFile?.let {
-            PrintWriter(it).use { out -> out.println(confJson) }
+        if (confFile != null && confFile != "null" && confFile!!.trim() != "") {
+            PrintWriter(confFile).use { out -> out.println(confJson) }
         }
         if (loadConf && confJson != null) {
             loadConfIntoHasura()
