@@ -276,8 +276,9 @@ class HasuraConfigurator(
         }
         metadataJson = Json.encodeToString(metadataJsonObject).reformatJson()
 
-        metadataJsonFile?.let {
-            PrintWriter(it).use { out -> out.println(metadataJson) }
+
+        if (metadataJsonFile != null && metadataJsonFile != "null" && metadataJsonFile!!.trim() != "") {
+            PrintWriter(metadataJsonFile).use { out -> out.println(metadataJson) }
         }
         if (loadMetadata && metadataJson != null) {
             loadMetadataIntoHasura()
@@ -310,11 +311,10 @@ class HasuraConfigurator(
 
         if (!ignoreJsonSchema) {
             jsonSchema = jsonSchemaGenerator.generateSchema(*entityClasses.toTypedArray()).toString().reformatJson()
-            schemaFile?.let {
-                PrintWriter(it).use { out -> out.println(jsonSchema) }
+            if (schemaFile != null && schemaFile != "null" && schemaFile!!.trim() != "") {
+                PrintWriter(schemaFile).use { out -> out.println(jsonSchema) }
             }
         }
-
     }
 
     /**

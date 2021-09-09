@@ -23,6 +23,7 @@ import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.containers.output.Slf4jLogConsumer
 import org.testcontainers.junit.jupiter.Testcontainers
 import reactor.core.publisher.Mono
+import java.io.File
 
 /**
  * Tests HasuraConfigurator with Postgresql + Hasura
@@ -379,5 +380,82 @@ class HasuraConfiguratorIntegrationTests {
 		staticConf.loadStaticConf(conf5)
 		staticConf.loadStaticConf(conf5)
 		staticConf.loadStaticConf(conf5)
+	}
+
+	@DisplayName("Test metadata file is not written when metadataFile is not set")
+	@Test
+	fun testMetadataNotWrittenWhenNull() {
+		conf.loadConf = false
+		conf.loadMetadata = false
+		conf.loadCascadeDelete = false
+
+		// Configure with default metadataJsonFile
+		conf.configure()
+
+		// Does it exists?
+		var fileName = conf.metadataJsonFile
+		var f = File(fileName)
+		Assertions.assertTrue(f.exists())
+		f.delete()
+
+		// Generate with null file, "null", "", "   " -> should not create file in fs
+		conf.metadataJsonFile = null
+		conf.configure()
+		f = File(fileName)
+		Assertions.assertFalse(f.exists())
+
+		conf.metadataJsonFile = "null"
+		conf.configure()
+		f = File(fileName)
+		Assertions.assertFalse(f.exists())
+
+		conf.metadataJsonFile = ""
+		conf.configure()
+		f = File(fileName)
+		Assertions.assertFalse(f.exists())
+
+		conf.metadataJsonFile = "   "
+		conf.configure()
+		f = File(fileName)
+		Assertions.assertFalse(f.exists())
+	}
+
+	@DisplayName("Test json schema file is not written when schemaFile is not set")
+	@Test
+	fun testJsonSchemaNotWrittenWhenNull() {
+		conf.loadConf = false
+		conf.loadMetadata = false
+		conf.loadCascadeDelete = false
+		conf.ignoreJsonSchema = false
+
+		// Configure with default metadataJsonFile
+		conf.configure()
+
+		// Does it exists?
+		var fileName = conf.schemaFile
+		var f = File(fileName)
+		Assertions.assertTrue(f.exists())
+		f.delete()
+
+		// Generate with null file, "null", "", "   " -> should not create file in fs
+		conf.schemaFile = null
+		conf.configure()
+		f = File(fileName)
+		Assertions.assertFalse(f.exists())
+
+		conf.schemaFile = "null"
+		conf.configure()
+		f = File(fileName)
+		Assertions.assertFalse(f.exists())
+
+		conf.schemaFile = ""
+		conf.configure()
+		f = File(fileName)
+		Assertions.assertFalse(f.exists())
+
+		conf.schemaFile = "   "
+		conf.configure()
+		f = File(fileName)
+		Assertions.assertFalse(f.exists())
 	}
 }
