@@ -9,7 +9,7 @@ class HasuraActionGeneratorTest {
     fun testActionGenerator()
     {
         val g = HasuraActionGenerator()
-        print(g.generateActionMetadata(listOf(BaseObject::class.javaObjectType.packageName)))
+        print(g.generateActionMetadata(listOf(BaseObject::class.java.`package`.name)))
 
     }
 }

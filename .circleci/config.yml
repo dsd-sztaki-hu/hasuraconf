@@ -5,6 +5,10 @@ jobs:
     machine:
       image: ubuntu-1604:202007-01    
     steps:
+      - checkout
+      - run: java -version
+      - run: mvn -B clean install
+      # Run with JDK 11 as well
       - run:
           name: Install OpenJDK 11
           command: |
@@ -12,6 +16,5 @@ jobs:
             sudo update-alternatives --set java /usr/lib/jvm/java-11-openjdk-amd64/bin/java
             sudo update-alternatives --set javac /usr/lib/jvm/java-11-openjdk-amd64/bin/javac
             java -version
-      - checkout
       - run: java -version
       - run: mvn -B clean install
