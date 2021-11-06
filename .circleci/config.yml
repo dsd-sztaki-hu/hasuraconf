@@ -4,4 +4,5 @@ jobs:
   build:
     steps:
       - checkout
+      - run: java -version
       - run: mvn -B clean install
