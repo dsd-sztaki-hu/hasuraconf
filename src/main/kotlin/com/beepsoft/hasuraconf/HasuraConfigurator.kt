@@ -135,6 +135,31 @@ class HasuraConfigurator(
         // @Suppress("JAVA_CLASS_ON_COMPANION")
         // @JvmStatic
         public val LOG = getLogger(this::class.java.enclosingClass)
+
+        // Acrtual postgresql types for some SQL types. Hibernate uses the key fields when generating
+        // tables, however Postgresql uses the "values" of postgresqlNames and so does Hasura when
+        // generating graphql schema based on the DB schema.
+        // https://hasura.io/docs/1.0/graphql/manual/api-reference/postgresql-types.html
+        // TODO: should check these some more ...
+        public val postgresqlNames = mapOf(
+            "int2" to "Int",
+            "int4" to "Int",
+            "int8" to "bigint",
+            "int" to "Int",
+            "serial2" to "Int",
+            "serial4" to "Int",
+            "serial8" to "bigserial",
+            "bool" to "Bool",
+            "date" to "Date",
+            "float4" to "Float",
+            "text" to "text",
+            "varchar(\$l)" to "String",
+            "time" to "time",
+            "timetz" to "time",
+            "timestamp" to "timestamp",
+            "timestamptz" to "timestamp",
+            "uuid" to "uuid"
+        )
     }
 
     inner class CascadeDeleteFields(var table: String, var field: String, var joinedTable: String)
@@ -165,31 +190,6 @@ class HasuraConfigurator(
     private lateinit var cascadeDeleteFields: MutableSet<CascadeDeleteFields>
     private lateinit var manyToManyEntities: MutableMap<String, ManyToManyEntity>
     private lateinit var extraTableNames: MutableSet<String>
-
-    // Acrtual postgresql types for some SQL types. Hibernate uses the key fields when generating
-    // tables, however Postgresql uses the "values" of postgresqlNames and so does Hasura when
-    // generating graphql schema based on the DB schema.
-    // https://hasura.io/docs/1.0/graphql/manual/api-reference/postgresql-types.html
-    // TODO: should check these some more ...
-    private val postgresqlNames = mapOf(
-            "int2" to "Int",
-            "int4" to "Int",
-            "int8" to "bigint",
-            "int" to "Int",
-            "serial2" to "Int",
-            "serial4" to "Int",
-            "serial8" to "bigserial",
-            "bool" to "Bool",
-            "date" to "Date",
-            "float4" to "Float",
-            "text" to "text",
-            "varchar(\$l)" to "String",
-            "time" to "time",
-            "timetz" to "time",
-            "timestamp" to "timestamp",
-            "timestamptz" to "timestamp",
-            "uuid" to "uuid"
-    );
 
     init {
         sessionFactoryImpl = entityManagerFactory.unwrap(SessionFactoryImpl::class.java)

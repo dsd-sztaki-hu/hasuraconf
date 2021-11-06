@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>com.beepsoft</groupId>
 	<artifactId>hasuraconf</artifactId>
-	<version>0.6.9</version>
+	<version>0.7.0</version>
 	<name>hasuraconf</name>
 	<description>Hasura Configuration JSON Generation Based on JPA and Hasura Specific Annotations</description>
 
@@ -187,6 +187,11 @@
 			<groupId>org.jetbrains.kotlinx</groupId>
 			<artifactId>kotlinx-serialization-json-jvm</artifactId>
 			<version>${serialization.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.reflections</groupId>
+			<artifactId>reflections</artifactId>
+			<version>0.10.2</version>
 		</dependency>
     </dependencies>
 
