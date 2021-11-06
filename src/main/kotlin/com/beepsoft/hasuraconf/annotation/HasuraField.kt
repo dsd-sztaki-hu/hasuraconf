@@ -3,16 +3,7 @@ package com.beepsoft.hasuraconf.annotation
 /**
  * Explcit typename to use for a function value parameter or field
  */
-@Target(
-    AnnotationTarget.VALUE_PARAMETER,
-    AnnotationTarget.FIELD,
-    AnnotationTarget.LOCAL_VARIABLE,
-    AnnotationTarget.PROPERTY,
-    AnnotationTarget.CONSTRUCTOR,
-    AnnotationTarget.PROPERTY_SETTER,
-    AnnotationTarget.PROPERTY_GETTER,
-)
-@Retention
+@Target(AnnotationTarget.FIELD)
 annotation class HasuraField (
     /**
      * Override field name in Graphql with tis value if the field's Java/Kotlin name is not suitable.

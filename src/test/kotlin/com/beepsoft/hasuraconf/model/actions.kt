@@ -2,6 +2,7 @@ package com.beepsoft.hasuraconf.model
 
 import com.beepsoft.hasuraconf.annotation.HasuraAction
 import com.beepsoft.hasuraconf.annotation.HasuraField
+import com.beepsoft.hasuraconf.annotation.HasuraType
 
 // createUserAndCalendar and createUserAndCalendar2 have same input params, but will have differenet input types
 // because the params are all primitives
@@ -42,19 +43,31 @@ class ActionTest {
     )
     fun createUserAndCalendar4(
         args: UserAndCalendarInput,
-    ): UserAndCalendarOutput
+    ): UserAndCalendar
     {
         TODO()
     }
+
+    @HasuraAction(
+        handler = "{{HANDLER_URL}}",
+        outputTypeName = "UserAndCalendarOutput5"
+    )
+    fun createUserAndCalendar5(
+        args: UserAndCalendarInput,
+    ): UserAndCalendar
+    {
+        TODO()
+    }
+
 }
 
-abstract class UserAndCalendarOutput {
-    lateinit var userName: String
-    @HasuraField(type = "bigint!!!!!")
-    var userId: Long = 0
-    var calendarId: Long = 0
-}
-
+@HasuraType("UserAndCalendarOutput")
+data class UserAndCalendar(
+    var userName: String,
+    @HasuraField(type="bigint!!!!!")
+    var userId: Long,
+    var calendarId: Long
+)
 
 data class UserAndCalendarInput(
     val name: String,

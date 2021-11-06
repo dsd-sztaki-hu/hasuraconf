@@ -207,7 +207,23 @@ class HasuraActionGenerator {
                 }
 
                 // Generate and set output type
-                val returnTypeName = if (annot.outputTypeName.isNotEmpty()) annot.outputTypeName else method.returnType.simpleName
+                // Use the class's name as the default
+                var returnTypeName = method.returnType.simpleName
+                // If class has a @HasuraType annotation, use the value/name from there
+                val hasuraTypeAnnot = method.returnType.getAnnotation(HasuraType::class.java)
+                if (hasuraTypeAnnot != null) {
+                    if (hasuraTypeAnnot.value.isNotEmpty()) {
+                        returnTypeName = hasuraTypeAnnot.value
+                    }
+                    else if (hasuraTypeAnnot.name.isNotEmpty()) {
+                        returnTypeName = hasuraTypeAnnot.name
+                    }
+                }
+                // @HasuraAction(outputTypeName=...) may override @HasuraType
+                if (annot.outputTypeName.isNotEmpty()) {
+                    returnTypeName = annot.outputTypeName
+                }
+                // Now we have the final returnTypeName
                 put("output_type", generateReturnTypeDefinition(method.returnType, returnTypeName))
 
                 // Generate input args and their types
@@ -382,13 +398,8 @@ class HasuraActionGenerator {
                         }
 
                         // The @HasuraField annotation may override this
-                        if (hasuraFieldAnnot != null) {
-                            if (hasuraFieldAnnot.value.isNotEmpty()) {
-                                explicitFieldTypeName = hasuraFieldAnnot.value
-                            }
-                            else if (hasuraFieldAnnot.name.isNotEmpty()) {
-                                explicitFieldTypeName = hasuraFieldAnnot.name
-                            }
+                        if (hasuraFieldAnnot != null && hasuraFieldAnnot.type.isNotEmpty()) {
+                            explicitFieldTypeName = hasuraFieldAnnot.type
                         }
 
                         val graphqlType = generateTypeDefinition(fieldType, explicitFieldTypeName, kind, true)
