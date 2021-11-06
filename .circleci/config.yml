@@ -2,9 +2,16 @@ version: 2
 executorType: machine
 jobs:
   build:
-    docker: # run the steps with Docker
-      - image: circleci/openjdk:11.0.3-jdk-stretch # ...with this image as the primary container; this is where all `steps` will run
+    machine:
+      image: ubuntu-1604:202007-01    
     steps:
+      - run:
+          name: Install OpenJDK 11
+          command: |
+            sudo apt-get update && sudo apt-get install openjdk-11-jdk
+            sudo update-alternatives --set java /usr/lib/jvm/java-11-openjdk-amd64/bin/java
+            sudo update-alternatives --set javac /usr/lib/jvm/java-11-openjdk-amd64/bin/javac
+            java -version
       - checkout
       - run: java -version
       - run: mvn -B clean install
