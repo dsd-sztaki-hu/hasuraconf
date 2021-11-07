@@ -1,11 +1,11 @@
 package com.beepsoft.hasuraconf
-import com.beepsoft.hasuraconf.annotation.HasuraAction
-import com.beepsoft.hasuraconf.annotation.HasuraField
-import com.beepsoft.hasuraconf.annotation.HasuraRelationship
-import com.beepsoft.hasuraconf.annotation.HasuraType
+import com.beepsoft.hasuraconf.annotation.*
 import kotlinx.serialization.json.*
 import net.pearx.kasechange.toCamelCase
 import org.hibernate.dialect.PostgreSQL9Dialect
+import org.hibernate.internal.SessionFactoryImpl
+import org.hibernate.metamodel.spi.MetamodelImplementor
+import org.hibernate.persister.entity.AbstractEntityPersister
 import org.reflections.Reflections
 import org.reflections.scanners.Scanners
 import org.reflections.scanners.Scanners.*
@@ -23,7 +23,7 @@ import javax.persistence.EntityManager
  * Based on [HasuraAction] annotations generates
  */
 class HasuraActionGenerator(
-    val entityManager: EntityManager? = null
+    val metaModel: MetamodelImplementor? = null
 ) {
 
     enum class TypeDefinitionKind {
@@ -419,9 +419,23 @@ class HasuraActionGenerator(
                                     name = field.name+"Id"
                                 }
                                 if (relationship.graphqlFieldType.isEmpty()) {
-                                    throw HasuraConfiguratorException("graphqlFieldType must be specified for a @HasuraRelationship referring to an object type type on field $field")
+                                    if (metaModel != null) {
+                                        val entity = metaModel.entity(fieldType)
+                                        val targetEntityClassMetadata = metaModel.entityPersister(entity.javaType.typeName) as AbstractEntityPersister
+                                        graphqlType = HasuraConfigurator.graphqlTypeFor(metaModel, targetEntityClassMetadata.identifierType, targetEntityClassMetadata)
+                                    }
+                                    else {
+                                        throw HasuraConfiguratorException("graphqlFieldType must be specified for a @HasuraRelationship referring to an object type type on field $field")
+                                    }
                                 }
-                                graphqlType = relationship.graphqlFieldType
+                                else {
+                                    graphqlType = relationship.graphqlFieldType
+                                }
+                            }
+                            else {
+                                if (classType.isAnnotationPresent(Entity::class.java)) {
+                                    throw HasuraConfiguratorException("Hasura managed entity class $classType must have a @HasuraRelationship annotation")
+                                }
                             }
                         }
 
@@ -446,39 +460,70 @@ class HasuraActionGenerator(
                         //  Figure out remote table, refercne ID, etc. based on entityManager. Later these migght be
                         //  overriden by @HasuraRelationship values
                         var fieldType = field.type
+                        var relationshipType: HasuraRelationshipType? = null
                         if (fieldType.isArray) {
                             fieldType = fieldType.componentType
                         }
-                        var remoteTable = ""
-                        var remoteSchema = ""
-                        var name = ""
-                        var type = ""
-                        if (entityManager != null && fieldType.isAnnotationPresent(Entity::class.java)) {
-                            TODO()
+                        var remoteTable: String? = null
+                        var graphqlFieldName: String? = null
+                        var fromId: String? = null
+                        var toId: String? = null
+                        var hasuraManagedEntityRelationship = false
+                        if (metaModel != null && fieldType.isAnnotationPresent(Entity::class.java)) {
+                            hasuraManagedEntityRelationship = true
+                            val entity = metaModel.entity(fieldType)
+                            val targetEntityClassMetadata = metaModel.entityPersister(entity.javaType.typeName) as AbstractEntityPersister
+                            remoteTable = targetEntityClassMetadata.tableName
+                            toId = targetEntityClassMetadata.keyColumnNames[0]
+                            graphqlFieldName = field.name.toCamelCase()+"Id"
+                            fromId = graphqlFieldName
+                            relationshipType = if(field.type.isArray) HasuraRelationshipType.ARRAY
+                                                else HasuraRelationshipType.OBJECT
+                        }
+                        else {
+                            //
+                            // Handle explicitly configured relations ships
+                            //
+
+                            // Sanity check
+                            if (annot.fieldMappings.isEmpty()) {
+                                throw HasuraConfiguratorException("@HasuraRelationship.fieldMappings vannot be empty for field $field")
+                            }
+                            if (annot.remoteTable.isEmpty()) {
+                                throw HasuraConfiguratorException("@HasuraRelationship.tableName is not specified for field $field")
+                            }
                         }
 
-                        //
-                        // Handle explicitly configured relations ships
-                        //
-
-                        // Sanity check
-                        if (annot.fieldMappings.isEmpty()) {
-                            throw HasuraConfiguratorException("@HasuraRelationship.fieldMappings vannot be empty for field $field")
-                        }
-                        if (annot.remoteTable.isEmpty()) {
-                            throw HasuraConfiguratorException("@HasuraRelationship.tableName is not specified for field $field")
-                        }
                         addJsonObject {
                             put("name", if (annot.name.isNotEmpty()) annot.name else field.name)
-                            put("type", annot.type.name.toLowerCase())
+                            // If we have a calculated value for a hasuraManagedEntityRelationship then use that
+                            if (relationshipType != null) {
+                                put("type", relationshipType.name.toLowerCase())
+                            }
+                            else {
+                                put("type", annot.type.name.toLowerCase())
+                            }
                             putJsonObject("remote_table") {
-                                put("name", annot.remoteTable)
+                                // In case of hasurra managed entity we must have a calcualted remoteTable
+                                if (remoteTable != null) {
+                                    put("name", remoteTable)
+                                }
+                                else {
+                                    put("name", annot.remoteTable)
+                                }
                                 put("schema", if(annot.remoteSchema.isNotEmpty()) annot.remoteSchema else "public")
                             }
                             putJsonArray("field_mappings") {
-                                annot.fieldMappings.forEach {mapping ->
+                                if (hasuraManagedEntityRelationship) {
                                     addJsonObject {
-                                        put(mapping.fromField, mapping.toField)
+                                        put(fromId!!, toId!!)
+                                    }
+                                }
+                                else {
+                                    annot.fieldMappings.forEach {mapping ->
+                                        addJsonObject {
+                                            put(mapping.fromField, mapping.toField)
+                                        }
                                     }
                                 }
                             }

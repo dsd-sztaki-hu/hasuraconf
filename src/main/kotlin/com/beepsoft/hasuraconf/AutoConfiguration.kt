@@ -27,6 +27,7 @@ class AutoConfiguration
             @Value("\${hasuraconf.jsonSchema.schemaVersion:DRAFT_2019_09}") schemaVersion: String,
             @Value("\${hasuraconf.jsonSchema.customPropsFieldName:hasura}") customPropsFieldName: String,
             @Value("\${hasuraconf.jsonSchema.ignore:false}") ignoreJsonSchema: Boolean,
+            @Value("\${hasuraconf.actionRoots:#{null}}") actionRoots: String?,
             rootFieldNameProvider: RootFieldNameProvider
     ): HasuraConfigurator {
         return HasuraConfigurator(
@@ -44,7 +45,9 @@ class AutoConfiguration
                 schemaVersion,
                 customPropsFieldName,
                 ignoreJsonSchema,
-                rootFieldNameProvider)
+                actionRoots?.split(",\\s*".toRegex()),
+                rootFieldNameProvider
+        )
     }
 
     /**

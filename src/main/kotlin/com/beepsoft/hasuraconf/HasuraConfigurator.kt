@@ -128,6 +128,7 @@ class HasuraConfigurator(
         var schemaVersion: String,
         var customPropsFieldName: String,
         var ignoreJsonSchema: Boolean = false,
+        var actionRoots: List<String>? = null,
         var rootFieldNameProvider: RootFieldNameProvider = DefaultRootFieldNameProvider()
 ) {
 
@@ -160,6 +161,15 @@ class HasuraConfigurator(
             "timestamptz" to "timestamp",
             "uuid" to "uuid"
         )
+
+         fun graphqlTypeFor(metaModel: MetamodelImplementor, columnType: Type, classMetadata: AbstractEntityPersister): String {
+            val sqlType = columnType.sqlTypes(metaModel.sessionFactory as SessionFactoryImpl)[0];
+            val keyTypeName = classMetadata.factory.jdbcServices.dialect.getTypeName(sqlType)
+            if (postgresqlNames[keyTypeName] == null) {
+                throw Error("No postgresql alias found for type $keyTypeName. Graphql type cannot be calculated.")
+            }
+            return postgresqlNames[keyTypeName]!!
+        }
     }
 
     inner class CascadeDeleteFields(var table: String, var field: String, var joinedTable: String)
@@ -179,11 +189,15 @@ class HasuraConfigurator(
     var cascadeDeleteJson: String? = null
         private set // the setter is private and has the default implementation
 
+    var actions: String? = null
+        private set // the setter is private and has the default implementation
+
     private var sessionFactoryImpl: SessionFactory
     private var metaModel: MetamodelImplementor
     private var permissionAnnotationProcessor: PermissionAnnotationProcessor
 
     private lateinit var jsonSchemaGenerator: HasuraJsonSchemaGenerator
+    private lateinit var actionGenerator: HasuraActionGenerator
 
     private lateinit var tableNames: MutableSet<String>
     private lateinit var entityClasses: MutableSet<Class<out Any>>
@@ -222,6 +236,7 @@ class HasuraConfigurator(
     fun configure()
     {
         jsonSchemaGenerator = HasuraJsonSchemaGenerator(schemaVersion, customPropsFieldName)
+        actionGenerator = HasuraActionGenerator(metaModel)
         cascadeDeleteFields = mutableSetOf<CascadeDeleteFields>()
         manyToManyEntities = mutableMapOf()
         extraTableNames = mutableSetOf()
@@ -314,6 +329,10 @@ class HasuraConfigurator(
             if (schemaFile != null && schemaFile != "null" && schemaFile!!.trim() != "") {
                 PrintWriter(schemaFile).use { out -> out.println(jsonSchema) }
             }
+        }
+
+        if (actionRoots != null) {
+            actions = actionGenerator.generateActionMetadata(actionRoots!!).toString()
         }
     }
 
@@ -626,7 +645,7 @@ class HasuraConfigurator(
         // Add ID field
         val f = Utils.findDeclaredFieldUsingReflection(entity.javaType, targetEntityClassMetadata.identifierPropertyName)
         jsonSchemaGenerator.addSpecValue(f!!,
-                HasuraSpecPropValues(graphqlType = graphqlTypeFor(targetEntityClassMetadata.identifierType, targetEntityClassMetadata)))
+                HasuraSpecPropValues(graphqlType = graphqlTypeFor(metaModel, targetEntityClassMetadata.identifierType, targetEntityClassMetadata)))
 
         entityClasses.add(entity.javaType)
 
@@ -934,12 +953,12 @@ class HasuraConfigurator(
                             tableName = tableName,
                             fromIdName = keyColumnAlias,
                             fromIdType = jsonSchemaTypeFor(join.keyType, classMetadata),
-                            fromIdGraphqlType = graphqlTypeFor(join.keyType, classMetadata),
+                            fromIdGraphqlType = graphqlTypeFor(metaModel, join.keyType, classMetadata),
                             fromAccessor = keyFieldName,
                             fromAccessorType = m2m.entity.name,
                             toIdName = relatedColumnNameAlias,
                             toIdType = jsonSchemaTypeFor(relatedColumnType, classMetadata),
-                            toIdGraphqlType = graphqlTypeFor(relatedColumnType, classMetadata),
+                            toIdGraphqlType = graphqlTypeFor(metaModel, relatedColumnType, classMetadata),
                             toAccessor = joinFieldName,
                             toAccessorType = relatedTableName.toCase(CaseFormat.CAPITALIZED_CAMEL),
                             orderField = join.indexColumnNames?.let {
@@ -949,7 +968,7 @@ class HasuraConfigurator(
                                 jsonSchemaTypeFor(join.indexType, classMetadata)
                             },
                             orderFieldGraphqlType = join.indexColumnNames?.let {
-                                graphqlTypeFor(join.indexType, classMetadata)
+                                graphqlTypeFor(metaModel, join.indexType, classMetadata)
                             },
                             rootFieldNames = rootFieldNames
                     ))
@@ -1231,15 +1250,6 @@ class HasuraConfigurator(
         else {
             return toJsonSchmeType(columnType)
         }
-    }
-
-    private fun graphqlTypeFor(columnType: Type, classMetadata: AbstractEntityPersister): String {
-        val sqlType = columnType.sqlTypes(sessionFactoryImpl as SessionFactoryImpl)[0];
-        val keyTypeName = classMetadata.factory.jdbcServices.dialect.getTypeName(sqlType)
-        if (postgresqlNames[keyTypeName] == null) {
-            throw Error("No postgresql alias found for type $keyTypeName. Graphql type cannot be calculated.")
-        }
-        return postgresqlNames[keyTypeName]!!
     }
 
     private fun generateRootFieldNames(
