@@ -1,8 +1,6 @@
 package com.beepsoft.hasuraconf.model
 
-import com.beepsoft.hasuraconf.annotation.HasuraAction
-import com.beepsoft.hasuraconf.annotation.HasuraField
-import com.beepsoft.hasuraconf.annotation.HasuraType
+import com.beepsoft.hasuraconf.annotation.*
 
 // createUserAndCalendar and createUserAndCalendar2 have same input params, but will have differenet input types
 // because the params are all primitives
@@ -68,7 +66,23 @@ data class UserAndCalendar(
     var userName: String,
     @HasuraField(type="bigint!!!!!")
     var userId: Long,
-    var calendarId: Long
+    @HasuraRelationship(
+        name="calendar",
+        remoteTable = "calendar",
+        graphqlFieldType = "bigint!",
+        fieldMappings = [
+            HasuraFieldMapping(fromField="calendarId", toField="id")
+        ]
+    )
+    var calendar: Calendar,
+    @HasuraRelationship(
+        name="otherCalendar",
+        remoteTable = "calendar",
+        fieldMappings = [
+            HasuraFieldMapping(fromField="differentCalendarId", toField="id")
+        ]
+    )
+    var differentCalendarId: Long
 )
 
 data class UserAndCalendarInput(

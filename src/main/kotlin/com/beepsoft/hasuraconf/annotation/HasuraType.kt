@@ -6,7 +6,7 @@ package com.beepsoft.hasuraconf.annotation
 @Target(AnnotationTarget.CLASS)
 annotation class HasuraType (
     /**
-     * Override field name in Graphql with tis value if the field's Java/Kotlin name is not suitable.
+     * Override field name in Graphql with this value if the field's Java/Kotlin name is not suitable.
      */
     val name: String = "",
     /**
@@ -14,4 +14,9 @@ annotation class HasuraType (
      */
     val value: String = "",
 
+    /**
+     * Relationships for some of the felds of the type. @HasuraRelationship maybe also defined at the @HasuraField
+     * level.
+     */
+    val relationships: Array<HasuraRelationship> = []
 )

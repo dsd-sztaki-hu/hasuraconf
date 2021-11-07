@@ -1,6 +1,7 @@
 package com.beepsoft.hasuraconf
 import com.beepsoft.hasuraconf.annotation.HasuraAction
 import com.beepsoft.hasuraconf.annotation.HasuraField
+import com.beepsoft.hasuraconf.annotation.HasuraRelationship
 import com.beepsoft.hasuraconf.annotation.HasuraType
 import kotlinx.serialization.json.*
 import net.pearx.kasechange.toCamelCase
@@ -8,6 +9,7 @@ import org.hibernate.dialect.PostgreSQL9Dialect
 import org.reflections.Reflections
 import org.reflections.scanners.Scanners
 import org.reflections.scanners.Scanners.*
+import java.lang.reflect.Field
 import java.lang.reflect.Method
 import java.math.BigDecimal
 import java.math.BigInteger
@@ -296,17 +298,6 @@ class HasuraActionGenerator {
         }
 
         return method.name.toCamelCase()+"InputType"
-//
-//        // If first and only param is a class type
-//        if (method.parameterCount == 1) {
-//            var firstParam = method.parameters[0]
-//            if (!firstParam.type.isPrimitive && !firstParam.type.isArray && !firstParam.type.isEnum) {
-//                return firstParam.type.simpleName
-//            }
-//            return null
-//        }
-//
-//        TODO()
     }
 
     /**
@@ -374,6 +365,8 @@ class HasuraActionGenerator {
 
         val typeDef = buildJsonObject {
             put("name", typeName)
+
+            val relationshipFields = mutableListOf<Field>()
             putJsonArray("fields") {
                 t.declaredFields.forEach {field ->
                     addJsonObject {
@@ -388,7 +381,6 @@ class HasuraActionGenerator {
                                 name = hasuraFieldAnnot.name
                             }
                         }
-                        put("name", name)
 
                         var fieldType = field.type
 
@@ -402,7 +394,38 @@ class HasuraActionGenerator {
                             hasuraFieldAnnot
                         )
 
-                        val graphqlType = generateTypeDefinition(fieldType, explicitFieldTypeName, kind, true)
+                        // Collect fields with re;lationships, these will be generated later
+                        val relationship = field.getAnnotation(HasuraRelationship::class.java)
+                        if (relationship != null) {
+                            relationshipFields.add(field)
+                        }
+
+                        // If field references a class and has a @HasuraRelationship then we won't recurse as the
+                        // type is only here for relationship reference, no graphql type will be generated for it.
+                        // Here we set name and graphqlType either with explicit values from  @HasuraRelationship
+                        // or calc from Hibernate mappings: TODO
+                        val classType = getClassType(fieldType)
+                        var graphqlType: String? = null
+                        if (classType != null) {
+                            if (relationship != null) {
+                                if (relationship.graphqlFieldName.isNotEmpty()) {
+                                    name = relationship.graphqlFieldName
+                                }
+                                else {
+                                    name = field.name+"Id"
+                                }
+                                if (relationship.graphqlFieldType.isEmpty()) {
+                                    throw HasuraConfiguratorException("graphqlFieldType must be specified for a @HasuraRelationship referring to an object type type on field $field")
+                                }
+                                graphqlType = relationship.graphqlFieldType
+                            }
+                        }
+
+                        put("name", name)
+                        // If graphqlType has not been set as the result of @HasuraRelationship, then generate it now
+                        if (graphqlType == null) {
+                            graphqlType = generateTypeDefinition(fieldType, explicitFieldTypeName, kind, true)
+                        }
                         put("type", graphqlType)
                     }
                 }
@@ -418,6 +441,23 @@ class HasuraActionGenerator {
         return typeDef
     }
 
+    /**
+     * If type referes to a class returns type. If type refers to an array of a class, returns the array component
+     * type. if type refers to a primitive type or enum, or an array of those, then return null.
+     */
+    private fun getClassType(type: Class<*>): Class<*>? {
+        if (type.isPrimitive || type == String::class.java || type.isEnum) {
+            return null
+        }
+        if (type.isArray) {
+            val compoType = type.componentType
+            if (compoType.isPrimitive || compoType == String::class.java || compoType.isEnum) {
+                return null
+            }
+            return compoType
+        }
+        return type
+    }
     private fun generateEnum(type: Class<*>, typeName: String, kind: TypeDefinitionKind) : String {
 
         val actualTypeName = typeName ?: type.simpleName
