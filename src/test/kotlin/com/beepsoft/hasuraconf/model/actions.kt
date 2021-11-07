@@ -11,7 +11,8 @@ import com.beepsoft.hasuraconf.annotation.HasuraType
 )
 fun createUserAndCalendar(
     name: String,
-    description: String
+    description: String,
+    calendarType: CalendarType
 ): String {
     TODO()
 }
@@ -21,7 +22,8 @@ fun createUserAndCalendar(
 )
 fun createUserAndCalendar2(
     name: String,
-    description: String,
+    descriptions: Array<String>,
+    calendarTypes: Array<CalendarType>
 ): String {
     TODO()
 }
@@ -33,7 +35,7 @@ fun createUserAndCalendar2(
 )
 fun createUserAndCalendar3(
     args: UserAndCalendarInput
-): String {
+): Array<String> {
     TODO()
 }
 
@@ -54,7 +56,7 @@ class ActionTest {
     )
     fun createUserAndCalendar5(
         args: UserAndCalendarInput,
-    ): UserAndCalendar
+    ): Array<UserAndCalendar>
     {
         TODO()
     }
@@ -73,3 +75,10 @@ data class UserAndCalendarInput(
     val name: String,
     val description: String
 )
+
+
+enum class CalendarType {
+    PRIVATE,
+    PUBLIC,
+    SHARED
+}

@@ -208,9 +208,13 @@ class HasuraActionGenerator {
 
                 // Generate and set output type
                 // Use the class's name as the default
-                var returnTypeName = method.returnType.simpleName
+                var typeForTypeName = method.returnType
+                if (method.returnType.isArray) {
+                    typeForTypeName = typeForTypeName.componentType
+                }
+                var returnTypeName = typeForTypeName.simpleName
                 // If class has a @HasuraType annotation, use the value/name from there
-                val hasuraTypeAnnot = method.returnType.getAnnotation(HasuraType::class.java)
+                val hasuraTypeAnnot = typeForTypeName.getAnnotation(HasuraType::class.java)
                 if (hasuraTypeAnnot != null) {
                     if (hasuraTypeAnnot.value.isNotEmpty()) {
                         returnTypeName = hasuraTypeAnnot.value
@@ -246,8 +250,12 @@ class HasuraActionGenerator {
                                     }
                                 }
                                 put("name", fieldName)
+                                var typeForAnnot = p.type
+                                if (typeForAnnot.isArray) {
+                                    typeForAnnot = typeForAnnot.componentType
+                                }
 
-                                val typeName = if (fieldAnnot != null && fieldAnnot.type.isNotEmpty()) fieldAnnot.type else null
+                                val typeName = calcExplicitName(typeForAnnot.getAnnotation(HasuraType::class.java), fieldAnnot)
                                 put("type", generateParameterTypeDefinition(p.type, typeName))
                             }
                         }
@@ -255,6 +263,25 @@ class HasuraActionGenerator {
                 }
             }
         }
+    }
+
+    private fun calcExplicitName(hasuraType: HasuraType?, hasuraField: HasuraField?): String?
+    {
+        var explicitName: String? = null
+        if (hasuraType != null) {
+            if (hasuraType.value.isNotEmpty()) {
+                explicitName = hasuraType.value
+            }
+            else if (hasuraType.name.isNotEmpty()) {
+                explicitName = hasuraType.name
+            }
+        }
+
+        // The @HasuraField annotation may override this
+        if (hasuraField != null && hasuraField.type.isNotEmpty()) {
+            explicitName = hasuraField.type
+        }
+        return explicitName
     }
 
     private inline fun generateActionName(method: Method, annot: HasuraAction) =
@@ -282,20 +309,6 @@ class HasuraActionGenerator {
 //        TODO()
     }
 
-    private fun generateOutputTypeName(method: Method, annot: HasuraAction) : String {
-
-        val t = method.returnType
-        if (t.isPrimitive) {
-            return getHasuraTypeOf(t)!!
-        }
-        val name = if (annot.outputTypeName.isNotEmpty()) annot.outputTypeName else t.simpleName
-        if (!t.isArray) {
-            return name
-        }
-
-        return "[$name!]"
-    }
-
     /**
      * Generates type definition for the parameter and stores it in inputTypes. Returns the parameter's type name
      */
@@ -312,25 +325,23 @@ class HasuraActionGenerator {
             // TODO add nullability
             return explicitName ?: getHasuraTypeOf(type)!!
         }
-        val actualTypeName = explicitName ?: type.simpleName
+        var actualTypeName = explicitName ?: type.simpleName
         if (type.isEnum) {
             // TODO add nullability
-            TODO()
-            //generateEnum()
-            return actualTypeName
+            return generateEnum(type, actualTypeName, kind)
         }
 
         var actualType = type
         if (type.isArray) {
             val compoType = type.componentType
-            if (compoType.isPrimitive || type == String::class.java) {
+            actualTypeName = explicitName ?: compoType.simpleName
+            if (compoType.isPrimitive || compoType == String::class.java) {
                 // TODO add nullability
-                return "[" + (explicitName ?: getHasuraTypeOf(compoType)!!) + "]"
+                return "[" + (actualTypeName ?: getHasuraTypeOf(compoType)!!) + "]"
             }
             else if (compoType.isEnum) {
                 // TODO add nullability
-                TODO()
-                return compoType.simpleName
+                return "[" + generateEnum(compoType, actualTypeName, kind) + "]"
             }
             else if (failForOutputTypeRecursion != null && failForOutputTypeRecursion && kind == TypeDefinitionKind.OUTPUT) {
                 throw HasuraConfiguratorException("Invalid return type $compoType. Return types should be primitive/enum type or a class made up of primitive/enum type fields")
@@ -386,57 +397,13 @@ class HasuraActionGenerator {
                         // output types cannot recurse
 
                         // Get type name override from the field's type
-                        var explicitFieldTypeName: String? = null
-                        val hasuraTypeAnnot = fieldType.getAnnotation(HasuraType::class.java)
-                        if (hasuraTypeAnnot != null) {
-                            if (hasuraTypeAnnot.value.isNotEmpty()) {
-                                explicitFieldTypeName = hasuraTypeAnnot.value
-                            }
-                            else if (hasuraTypeAnnot.name.isNotEmpty()) {
-                                explicitFieldTypeName = hasuraTypeAnnot.name
-                            }
-                        }
-
-                        // The @HasuraField annotation may override this
-                        if (hasuraFieldAnnot != null && hasuraFieldAnnot.type.isNotEmpty()) {
-                            explicitFieldTypeName = hasuraFieldAnnot.type
-                        }
+                        var explicitFieldTypeName: String? = calcExplicitName(
+                            fieldType.getAnnotation(HasuraType::class.java),
+                            hasuraFieldAnnot
+                        )
 
                         val graphqlType = generateTypeDefinition(fieldType, explicitFieldTypeName, kind, true)
                         put("type", graphqlType)
-//                        if (fieldType.isPrimitive) {
-//                            // TODO add nullability
-//                            put("type", getHasuraTypeOf(fieldType)!!)
-//                            return@addJsonObject
-//                        }
-//                        else if (fieldType.isEnum) {
-//                            // TODO add nullability
-//                            TODO()
-//                            return@addJsonObject
-//                        }
-//                        else if (fieldType.isArray) {
-//                            val compoType = fieldType.componentType
-//                            if (compoType.isPrimitive) {
-//                                // TODO add nullability
-//                                put("type", "["+getHasuraTypeOf(fieldType)!!+"]")
-//                                return@addJsonObject
-//                            }
-//                            else if (compoType.isEnum) {
-//                                // TODO add nullability
-//                                TODO()
-//                                return@addJsonObject
-//                            }
-//                            else if (kind == TypeDefinitionKind.OUTPUT) {
-//                                throw HasuraConfiguratorException("Invalid return type $fieldType. Return types should be primitive/enum type or a class made up of primitive/enum type fields")
-//                            }
-//                            else {
-//                                // Generate for the component type
-//                                fieldType = compoType
-//                            }
-//                        }
-//                        else if (kind == TypeDefinitionKind.OUTPUT) {
-//                            throw HasuraConfiguratorException("Invalid return type $fieldType. Return types should be primitive/enum type or a class made up of primitive/enum type fields")
-//                        }
                     }
                 }
             }
@@ -451,6 +418,26 @@ class HasuraActionGenerator {
         return typeDef
     }
 
+    private fun generateEnum(type: Class<*>, typeName: String, kind: TypeDefinitionKind) : String {
+
+        val actualTypeName = typeName ?: type.simpleName
+        if (enums.contains(actualTypeName)) {
+            return actualTypeName
+        }
+
+        val typeDef = buildJsonObject {
+            put("name", actualTypeName)
+            putJsonArray("values" ) {
+                type.enumConstants.forEach { enumConst ->
+                    addJsonObject {
+                        put("name", enumConst.toString())
+                    }
+                }
+            }
+        }
+        enums.put(actualTypeName, typeDef)
+        return actualTypeName
+    }
 
     /**
      * Generates a custom output type (ie. returns type of action)
