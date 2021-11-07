@@ -720,6 +720,8 @@ In case of many-to-many relationships only:
 
 * `hasuraconf.jsonSchema.ignore`: if true, JSON schema generation will ignorred. Defaults to `false`
 
+* `hasuraconf.actionRoots`: comma separated list of package names where to look for `@HasuraAction` annotations. Defaults to `null`.
+
 
 All `hasuraconf.XXX` values can be set on `HasuraConfigurator` directly before calling `configure()`.
 
