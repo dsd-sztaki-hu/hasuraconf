@@ -8,12 +8,21 @@ Configuration of Hasura is usually done via the Hasura console, however during d
 
 With `HasuraConfigurator` when the data model changes in Java/Kotlin the Hasura configurations can be regenerated and automatically loaded into Hasura thus the data model and the Hasura configuration will always be in sync. 
 
- Version 0.6.0 adds `HasuraStaticConfigurator`, which can be used to execute Hasura API "bulk" operations in an idempontent way ie. if an operation fails, we can define a match criteria for the errors which are "acceptable" and thus can be ignorred. This way the same bulk operations can be executed any number of times without failing for reasons that we know in advance can be safely ignorred.   
+# Notable changes
 
+## 0.7.0
 
-_NOTE: in version 0.5.0 the configuration algorithm has been completely rewritten and `hasuraconf.confFile` and `hasuraconf.loadConf` "bulk JSON" based configuration is now deprecated. Use `hasuraconf.metadataFile`/`hasuraconf.loadMetadata` and `hasuraconf.cascadeDeleteFile`/`hasuraconf.loadCascadeDelete` instead. Old format `confJson` is still generated, but its loading into Hasura is extremely slow compared to the new metadata loading mechanism, which is now the predferred way._
+Adds support for generating Actions.
 
-Configurations this tool handles:
+## 0.6.0
+
+Version 0.6.0 adds `HasuraStaticConfigurator`, which can be used to execute Hasura API "bulk" operations in an idempontent way ie. if an operation fails, we can define a match criteria for the errors which are "acceptable" and thus can be ignorred. This way the same bulk operations can be executed any number of times without failing for reasons that we know in advance can be safely ignorred.   
+
+## 0.5.0
+
+Version 0.5.0 the configuration algorithm has been completely rewritten and `hasuraconf.confFile` and `hasuraconf.loadConf` "bulk JSON" based configuration is now deprecated. Use `hasuraconf.metadataFile`/`hasuraconf.loadMetadata` and `hasuraconf.cascadeDeleteFile`/`hasuraconf.loadCascadeDelete` instead. Old format `confJson` is still generated, but its loading into Hasura is extremely slow compared to the new metadata loading mechanism, which is now the predferred way.
+
+# Configurations this tool handles
 * Tracking for tables that are defined as JPA entities.
 
 * Tracking of relationships that match the relationships defined in JPA.
@@ -58,6 +67,8 @@ Configurations this tool handles:
 
 * Starting from version `0.5.0` `HasuraConfigurator` now also generates [Hasura Metadata V2](https://github.com/hasura/graphql-engine/blob/master/contrib/metadata-types/src/metadata-schemas/HasuraMetadataV2.schema.json) JSON accessible as `HasuraConfigurator.metadataJson`. This JSON can be used as the `args` to the Hasura [replace_metadata](https://hasura.io/docs/1.0/graphql/core/api-reference/schema-metadata-api/manage-metadata.html#replace-metadata) API operation.
 
+* Generation of Hasura actions based on Java/Kotlin methods/functions. A method or function may be annotated with `@HasuraAction` and as a result `HasuraConfigurator` will generate Hasura actions metadata with the name of the method/function. As part of the action generation it also generates the necessary input types based on the method/function parameters and output types based on the method/function return type
+
 TODO:
 * More documentation on use of `HasuraConfigurator` especially `@HasuraPermission`.
 
@@ -65,7 +76,316 @@ TODO:
 
 * Annotation for generating "Check Constraints" in hasura-conf.json (Later: a way to generate directives based on the constrains into the graphql schema? This way the clients of Hasura could not what validations to perform on data before sending to Hasura)
 
-# JSON Schema generation
+# Usage
+
+The easiest way to use it in a Maven project is via jitpack
+
+```
+<repositories>
+    ...
+    <repository>
+        <id>jitpack.io</id>
+        <url>https://jitpack.io</url>
+    </repository>
+</repositories>
+...
+
+<dependencies>
+    <dependency>
+        <groupId>com.github.beepsoft</groupId>
+        <artifactId>hasuraconf</artifactId>
+        <version>0.7.0</version>
+    </dependency>
+</dependencies>
+```
+
+Then you should use `HasuraConfigurator` like this:
+
+```java
+@Autowired HasuraConfigurator hasuraConf;
+...
+// Setting these two to true will fully configure Hasura
+hasuraConf.setLoadMetadata(true);
+hasuraConf.setLoadCascadeDelete(true);
+
+// Generates metadataJson and cascadeDeleteJson and loads them to Hasura
+hasuraConf.configure();
+
+// See what has been generated
+String metadataJson = hasuraConf.getMetadataJson();
+String cascadeDeleteJson = hasuraConf.getMetadataJson();
+String jsonSchema = hasuraConf.getJsonSchema();
+```
+
+```kotlin
+@Autowired hasuraStaticConf: HasuraSaticConfigurator 
+...
+hasuraStaticConf.loadStaticConf(
+"""
+			{
+			  "hasuraconfLoadSeparately": true,
+			  "type": "bulk",
+			  "args": [
+			    {
+			      "hasuraconfIgnoreError": {
+			        "message":"column \"custom_user_data2\" of relation \"calendar_user\" already exists",
+			        "status_code":"42701"
+			      },
+			      "type": "run_sql",
+			      "args": {
+			        "sql": "ALTER TABLE \"public\".\"calendar_user\" ADD COLUMN \"custom_user_data2\" text NULL;",
+			        "cascade": false,
+			        "read_only": false
+			      }
+			    }
+			  ]
+			}
+		""".trimIndent()
+)
+
+
+
+
+
+```
+
+To provide global root field naming create a bean of type RootFieldNameProvider. For example:
+
+```kotlin
+@Configuration
+class MyConfiguration {
+    class MyRootFieldNameProvider : RootFieldNameProvider {
+        override fun rootFieldFor(fieldName: String, entityName: String, entityNameLower: String, tableName: String) : String {
+            return when(fieldName) {
+                "select" -> "my_select_$tableName"
+                "selectByPk" -> "my_selectByPk_$tableName"
+                "selectAggregate" -> "my_selectAggregate_$tableName"
+                "insert" -> "my_insert_$tableName"
+                "insertOne" -> "my_insertOne_$tableName"
+                "update" -> "my_update_$tableName"
+                "updateByPk" -> "my_updateByPk_$tableName"
+                "delete" -> "my_delete_$tableName"
+                "deleteByPk" -> "my_deleteByPk_$tableName"
+                else -> throw HasuraConfiguratorException("Unknown root field name: $fieldName")
+            }
+        }
+    }
+
+    @Bean
+    fun customProvider(): RootFieldNameProvider
+    {
+        return MyRootFieldNameProvider()
+    }
+}
+```
+
+## Action generation
+
+Annotate a function to generate an action based on it. The only requirement  is to define `handler` URL, or the enviroment variable configured in Hasura, where the action will be served.   
+
+```kotlin
+@HasuraAction(
+    handler = "{{HANDLER_URL}}"
+)
+fun createUserAndCalendar(
+    args: UserAndCalendarInput
+): String {
+    TODO()
+}
+
+data class UserAndCalendarInput(
+    val userName: String,
+    val name: String,
+    val description: String
+)
+
+@HasuraAction(
+    handler = "{{HANDLER_URL}}",
+)
+fun createUserAndCalendar2(
+    name: String,
+    description: String,
+    calendarType: CalendarType
+): UserAndCalendar
+{
+    TODO()
+}
+
+data class UserAndCalendar(
+    var userName: String,
+
+    @HasuraField(type="bigint!")
+    var userId: Long,
+
+    @HasuraRelationship
+    var calendar: Calendar,
+
+    @HasuraRelationship(
+        name="otherCalendar",
+        remoteTable = "calendar",
+        fieldMappings = [
+            HasuraFieldMapping(fromField="differentCalendarId", toField="id")
+        ]
+    )
+    var differentCalendarId: Long
+)
+
+enum class CalendarType {
+    PRIVATE,
+    PUBLIC,
+    SHARED
+}
+```
+
+Set `actionsRoot` of `HasuraConfigurator` to define the packages where to look for `@HasuraAction` annotation methods/functions
+
+```kotlin
+@Autowired 
+var hasuraConf: HasuraConfigurator
+...
+hasuraConf.actionRoots = listOf("some.package.name")
+hasuraConf.configure()
+print(hasuraConf.actions)
+```
+
+It generates tthe following actions metadata JSON:
+
+```
+{
+  "actions": [
+    {
+      "name": "createUserAndCalendar",
+      "definition": {
+        "handler": "{{HANDLER_URL}}",
+        "type": "mutation",
+        "kind": "synchronous",
+        "forward_client_headers": true,
+        "output_type": "String",
+        "arguments": [
+          {
+            "name": "args",
+            "type": "UserAndCalendarInput"
+          }
+        ]
+      }
+    },
+        {
+      "name": "createUserAndCalendar2",
+      "definition": {
+        "handler": "{{HANDLER_URL}}",
+        "type": "mutation",
+        "kind": "synchronous",
+        "forward_client_headers": true,
+        "output_type": "UserAndCalendar",
+        "arguments": [
+          {
+            "name": "name",
+            "type": "String"
+          },
+          {
+            "name": "description",
+            "type": "String"
+          },
+          {
+            "name": "calendarType",
+            "type": "CalendarType"
+          }
+        ]
+      }
+    }
+  ],
+  "custom_types": {
+    "input_objects": [
+      {
+        "name": "UserAndCalendarInput",
+        "fields": [
+          {
+            "name": "userName",
+            "type": "String"
+          },
+          {
+            "name": "name",
+            "type": "String"
+          },
+          {
+            "name": "description",
+            "type": "String"
+          }
+        ]
+      }
+    ],
+    "objects": [
+      {
+        "name": "UserAndCalendar",
+        "fields": [
+          {
+            "name": "userName",
+            "type": "String"
+          },
+          {
+            "name": "userId",
+            "type": "bigint!"
+          },
+          {
+            "name": "calendarId",
+            "type": "bigint"
+          },
+          {
+            "name": "differentCalendarId",
+            "type": "bigint"
+          }
+        ],
+        "relationships": [
+          {
+            "name": "calendar",
+            "type": "object",
+            "remote_table": {
+              "name": "calendar",
+              "schema": "public"
+            },
+            "field_mappings": [
+              {
+                "calendarId": "id"
+              }
+            ]
+          },
+          {
+            "name": "otherCalendar",
+            "type": "object",
+            "remote_table": {
+              "name": "calendar",
+              "schema": "public"
+            },
+            "field_mappings": [
+              {
+                "differentCalendarId": "id"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "scalars": [],
+    "enums": [
+      {
+        "name": "CalendarType",
+        "values": [
+          {
+            "name": "PRIVATE"
+          },
+          {
+            "name": "PUBLIC"
+          },
+          {
+            "name": "SHARED"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+## JSON Schema generation
 
 The Hasura graphql schema doesn't expose some important aspects of the model, for example the nature of array references. An array reference can be either a `@OneToMany` or `@ManyToMany` relationship. In case of a `@OneToMany` the foreign key is mapped by the "many" side, while in case of `@ManyToMany` Hibernate connects the two entities via a generated join table.
 
@@ -73,7 +393,7 @@ The Hasura graphql doesn't expose any information about the constraints of the e
 
 So, to complements the graphql schema `hasuraconf` can be used to also generate a JSON Schema based on the JPA and `javax.validation` annotations. We use the `https://github.com/victools/jsonschema-generator` project to generate the JSON schema with our own extensions in the `hasura` property of types or properties.
 
-Take for example for this entity: 
+Take for example for this entity:
 
 ```kotlin
 @MappedSuperclass
@@ -324,7 +644,7 @@ class Calendar : BaseObject() {
 }
 ```
 
-The JSON Schema describes the relations of objects as they are defined in Java. Eg. `Calendar` has a List of `CalendarRole`s associated with it and this is represented by JSON Schema as 
+The JSON Schema describes the relations of objects as they are defined in Java. Eg. `Calendar` has a List of `CalendarRole`s associated with it and this is represented by JSON Schema as
 
 ```
          "roles" : {
@@ -343,7 +663,7 @@ To add information about the SQL relationship between `Calendar` and `CalendarRo
            },
 ```
 
-All these information can be used by GUI clients to be able to automatically generate listings, forms etc based on the graphql and JSON Schema of a Hasura exposed database. 
+All these information can be used by GUI clients to be able to automatically generate listings, forms etc based on the graphql and JSON Schema of a Hasura exposed database.
 
 
 ## Hasura extension values on properties
@@ -353,7 +673,7 @@ Common properties:
 * `relation`: can be `one-to-one`, `one-to-many`, `many-to-one`, `many-to-many`
 * `reference`: in case this entity holds the reference to the other entity  (ie. holds its ID as a foreign key), then `reference`'s value is the name of the field in the current type holding this reference. In the example above Calnedars can have versions and the `previousVersion` property is a reference to an older `Calendar` object. The relatiosnship between the two calendars are  actually store in SQL in a field calles `previous_version_id`, which is actually exposed by hasuraconf as `previousVersionId`. So, when working with Calendars and we want to make the "previous version" connection between two Calendars althouh we have a `previousVersion` field where we can navigate but we can also know that to edit this relationship we have to set the `previousVersionId` on the new Calendar.
 * `referenceType`: the JSON schema type of the `reference`, ie.  the type of the foreign ID field.
-* `mappedBy`: in case of one-to-one and one-to-many relations the reference maynot be hold by the source entity but the target entity. In this case `mappedBy` defines the property that is actually responsible for holding this reference in the target. 
+* `mappedBy`: in case of one-to-one and one-to-many relations the reference maynot be hold by the source entity but the target entity. In this case `mappedBy` defines the property that is actually responsible for holding this reference in the target.
 * `parentReference`: in case on one-to-many relations the field holding the reference (foreign key) of the owning/parent entity.
 * `graphqlType`: the graphql type of field. Used on key/ID fields and join type's order property.
 
@@ -363,116 +683,13 @@ In case of many-to-many relationships only:
     * `item`: the field in the join entity, which cen be used to navigate to the actual target. In case of the `users` property the `CalendarUsers.calendarUser` property will result in the connected CalendarUser
     * `reference`: the field in the join entity actually holding the reference. For the above case `theUserId` field holds the reference, so to change where `CalendarUsers.calendarUser` navigates, we have to change the ID in this field.
     * `parentReference`: the field holding the reference to the parent from where we can navigate to the referenced entity.
-      
+
 ## Hasura extension values on types
 
 * `graphqlType`: the type name used in Hasura graphql.
 * `idProp`: name of the ID - primary key - property
-* `properties`: lists "hidden" reference properties. These are the properties holding ID references to other entities. These are not part of the Java class definitions,  but these are present in the Hasura graphql schema and we reprexent these here in the usual JSON Schema `properties` format.    
+* `properties`: lists "hidden" reference properties. These are the properties holding ID references to other entities. These are not part of the Java class definitions,  but these are present in the Hasura graphql schema and we reprexent these here in the usual JSON Schema `properties` format.
 * `rootFieldNames`: alias for root field names. HasuraConfigurator provides default aliases for these, which can be overriden using `@HasuraRootFields`. See also: https://hasura.io/docs/1.0/graphql/manual/api-reference/schema-metadata-api/table-view.html#set-table-custom-fields
-
-# Usage
-
-The easiest way to use it in a Maven project is via jitpack
-
-```
-<repositories>
-    ...
-    <repository>
-        <id>jitpack.io</id>
-        <url>https://jitpack.io</url>
-    </repository>
-</repositories>
-...
-
-<dependencies>
-    <dependency>
-        <groupId>com.github.beepsoft</groupId>
-        <artifactId>hasuraconf</artifactId>
-        <version>0.6.9</version>
-    </dependency>
-</dependencies>
-```
-
-Then you should use `HasuraConfigurator` like this:
-
-```java
-@Autowired HasuraConfigurator hasuraConf;
-...
-// Setting these two to true will fully configure Hasura
-hasuraConf.setLoadMetadata(true);
-hasuraConf.setLoadCascadeDelete(true);
-
-// Generates metadataJson and cascadeDeleteJson and loads them to Hasura
-hasuraConf.configure();
-
-// See what has been generated
-String metadataJson = hasuraConf.getMetadataJson();
-String cascadeDeleteJson = hasuraConf.getMetadataJson();
-String jsonSchema = hasuraConf.getJsonSchema();
-```
-
-```kotlin
-@Autowired hasuraStaticConf: HasuraSaticConfigurator 
-...
-hasuraStaticConf.loadStaticConf(
-"""
-			{
-			  "hasuraconfLoadSeparately": true,
-			  "type": "bulk",
-			  "args": [
-			    {
-			      "hasuraconfIgnoreError": {
-			        "message":"column \"custom_user_data2\" of relation \"calendar_user\" already exists",
-			        "status_code":"42701"
-			      },
-			      "type": "run_sql",
-			      "args": {
-			        "sql": "ALTER TABLE \"public\".\"calendar_user\" ADD COLUMN \"custom_user_data2\" text NULL;",
-			        "cascade": false,
-			        "read_only": false
-			      }
-			    }
-			  ]
-			}
-		""".trimIndent()
-)
-
-
-
-
-
-```
-
-To provide global root field naming create a bean of type RootFieldNameProvider. For example:
-
-```kotlin
-@Configuration
-class MyConfiguration {
-    class MyRootFieldNameProvider : RootFieldNameProvider {
-        override fun rootFieldFor(fieldName: String, entityName: String, entityNameLower: String, tableName: String) : String {
-            return when(fieldName) {
-                "select" -> "my_select_$tableName"
-                "selectByPk" -> "my_selectByPk_$tableName"
-                "selectAggregate" -> "my_selectAggregate_$tableName"
-                "insert" -> "my_insert_$tableName"
-                "insertOne" -> "my_insertOne_$tableName"
-                "update" -> "my_update_$tableName"
-                "updateByPk" -> "my_updateByPk_$tableName"
-                "delete" -> "my_delete_$tableName"
-                "deleteByPk" -> "my_deleteByPk_$tableName"
-                else -> throw HasuraConfiguratorException("Unknown root field name: $fieldName")
-            }
-        }
-    }
-
-    @Bean
-    fun customProvider(): RootFieldNameProvider
-    {
-        return MyRootFieldNameProvider()
-    }
-}
-```
 
 ## Configuration properties (application.properties values)
 

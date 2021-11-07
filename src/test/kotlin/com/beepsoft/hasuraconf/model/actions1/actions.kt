@@ -9,6 +9,7 @@ import com.beepsoft.hasuraconf.model.Calendar
     handler = "{{HANDLER_URL}}"
 )
 fun createUserAndCalendar(
+    userName: String,
     name: String,
     description: String,
     calendarType: CalendarType
