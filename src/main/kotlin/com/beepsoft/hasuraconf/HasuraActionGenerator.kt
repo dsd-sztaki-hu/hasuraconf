@@ -15,12 +15,16 @@ import java.math.BigDecimal
 import java.math.BigInteger
 import java.sql.Types
 import java.util.*
+import javax.persistence.Entity
+import javax.persistence.EntityManager
 
 
 /**
  * Based on [HasuraAction] annotations generates
  */
-class HasuraActionGenerator {
+class HasuraActionGenerator(
+    val entityManager: EntityManager? = null
+) {
 
     enum class TypeDefinitionKind {
         INPUT,
@@ -427,6 +431,58 @@ class HasuraActionGenerator {
                             graphqlType = generateTypeDefinition(fieldType, explicitFieldTypeName, kind, true)
                         }
                         put("type", graphqlType)
+                    }
+                }
+            }
+
+            if (relationshipFields.isNotEmpty()) {
+                putJsonArray("relationships") {
+                    relationshipFields.forEach { field ->
+                        val annot = field.getAnnotation(HasuraRelationship::class.java)
+
+                        //
+                        // TODO: Handle relationships to Hasura managed entities.
+                        //
+                        //  Figure out remote table, refercne ID, etc. based on entityManager. Later these migght be
+                        //  overriden by @HasuraRelationship values
+                        var fieldType = field.type
+                        if (fieldType.isArray) {
+                            fieldType = fieldType.componentType
+                        }
+                        var remoteTable = ""
+                        var remoteSchema = ""
+                        var name = ""
+                        var type = ""
+                        if (entityManager != null && fieldType.isAnnotationPresent(Entity::class.java)) {
+                            TODO()
+                        }
+
+                        //
+                        // Handle explicitly configured relations ships
+                        //
+
+                        // Sanity check
+                        if (annot.fieldMappings.isEmpty()) {
+                            throw HasuraConfiguratorException("@HasuraRelationship.fieldMappings vannot be empty for field $field")
+                        }
+                        if (annot.remoteTable.isEmpty()) {
+                            throw HasuraConfiguratorException("@HasuraRelationship.tableName is not specified for field $field")
+                        }
+                        addJsonObject {
+                            put("name", if (annot.name.isNotEmpty()) annot.name else field.name)
+                            put("type", annot.type.name.toLowerCase())
+                            putJsonObject("remote_table") {
+                                put("name", annot.remoteTable)
+                                put("schema", if(annot.remoteSchema.isNotEmpty()) annot.remoteSchema else "public")
+                            }
+                            putJsonArray("field_mappings") {
+                                annot.fieldMappings.forEach {mapping ->
+                                    addJsonObject {
+                                        put(mapping.fromField, mapping.toField)
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
