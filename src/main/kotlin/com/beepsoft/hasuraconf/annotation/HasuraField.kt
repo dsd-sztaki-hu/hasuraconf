@@ -23,7 +23,13 @@ annotation class HasuraField (
     /**
      * Type name of the field in case its Java/Kotlin type is not suitable.
      */
-    val type: String = ""
+    val type: String = "",
+
+    /**
+     * Description for type if it is a scalar type. This is used in the graphql schema as comment
+     */
+    val typeDescription: String = ""
+
 )
 
 /**
@@ -64,6 +70,11 @@ annotation class HasuraRelationship (
      * Explicit graphql type to generate for this field
      */
     val graphqlFieldType: String = "",
+
+    /**
+     * Description of the fields type. Mostly useful for scalar type definitions.
+     */
+    val graphqlFieldTypeDescription: String = "",
 
     /**
      * Type of the relationship

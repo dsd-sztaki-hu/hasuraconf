@@ -315,10 +315,15 @@ class HasuraActionGenerator(
         return generateTypeDefinition(type, explicitName, TypeDefinitionKind.OUTPUT)
     }
 
-    private fun generateTypeDefinition(type: Class<*>, explicitName: String?, kind: TypeDefinitionKind, failForOutputTypeRecursion: Boolean? = false) : String {
+    private fun generateTypeDefinition(type: Class<*>, explicitName: String?, kind: TypeDefinitionKind, fieldAnnot: HasuraField? = null, failForOutputTypeRecursion: Boolean? = false) : String {
         if (type.isPrimitive || type == String::class.java) {
+            var typeName = explicitName ?: getHasuraTypeOf(type)!!
+            fieldAnnot?.let {
+                var cleanTypeName = typeName.replace("!", "")
+                addOptionaScalar(cleanTypeName, fieldAnnot)
+            }
             // TODO add nullability
-            return explicitName ?: getHasuraTypeOf(type)!!
+            return typeName
         }
         var actualTypeName = explicitName ?: type.simpleName
         if (type.isEnum) {
@@ -415,7 +420,7 @@ class HasuraActionGenerator(
                         // If field references a class and has a @HasuraRelationship then we won't recurse as the
                         // type is only here for relationship reference, no graphql type will be generated for it.
                         // Here we set name and graphqlType either with explicit values from  @HasuraRelationship
-                        // or calc from Hibernate mappings: TODO
+                        // or calc from Hibernate mappings
                         val classType = getClassType(fieldType)
                         var graphqlType: String? = null
                         if (classType != null) {
@@ -450,7 +455,12 @@ class HasuraActionGenerator(
                         put("name", name)
                         // If graphqlType has not been set as the result of @HasuraRelationship, then generate it now
                         if (graphqlType == null) {
-                            graphqlType = generateTypeDefinition(fieldType, explicitFieldTypeName, kind, true)
+                            graphqlType = generateTypeDefinition(fieldType, explicitFieldTypeName, kind, hasuraFieldAnnot, true)
+                        }
+                        else {
+                            hasuraFieldAnnot?.let {
+                                addOptionaScalar(graphqlType, hasuraFieldAnnot)
+                            }
                         }
                         put("type", graphqlType)
                     }
@@ -548,6 +558,25 @@ class HasuraActionGenerator(
         }
 
         return typeDef
+    }
+
+    private fun addOptionaScalar(graphqlType: String, hasuraFieldAnnot: HasuraField)
+    {
+        var cleanType = graphqlType.replace("!", "")
+        if (!isBuiltinGraphqlType(cleanType)) {
+            val existing = scalars[cleanType]
+            // If we don't have an existing scalar, or have an existing one but without
+            // typeDescription, then add it (even if this one has no description as well)
+            if (existing == null || existing["typeDescription"] == null) {
+                scalars.put(graphqlType, buildJsonObject {
+                    put("name", cleanType)
+                    if (hasuraFieldAnnot != null && hasuraFieldAnnot.typeDescription.isNotEmpty()) {
+                        put("description", hasuraFieldAnnot.typeDescription)
+                    }
+                })
+            }
+        }
+
     }
 
     /**
