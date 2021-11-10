@@ -9,6 +9,12 @@ annotation class HasuraField (
      * Override field name in Graphql with tis value if the field's Java/Kotlin name is not suitable.
      */
     val name: String = "",
+
+    /**
+     * Description of field for users of the graphql schema
+     */
+    val description: String = "",
+
     /**
      * Same as name.
      */

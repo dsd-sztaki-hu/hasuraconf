@@ -369,6 +369,10 @@ class HasuraActionGenerator(
 
         val typeDef = buildJsonObject {
             put("name", typeName)
+            val hasuraType = t.getAnnotation(HasuraType::class.java)
+            if (hasuraType != null && hasuraType.description.isNotEmpty()) {
+                put("description", hasuraType.description)
+            }
 
             val relationshipFields = mutableListOf<Field>()
             putJsonArray("fields") {
@@ -383,6 +387,10 @@ class HasuraActionGenerator(
                             }
                             else if (hasuraFieldAnnot.name.isNotEmpty()) {
                                 name = hasuraFieldAnnot.name
+                            }
+
+                            if (hasuraFieldAnnot.description.isNotEmpty()) {
+                                put("description", hasuraFieldAnnot.description)
                             }
                         }
 
