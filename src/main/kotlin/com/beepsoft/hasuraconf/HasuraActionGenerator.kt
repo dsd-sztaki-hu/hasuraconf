@@ -543,17 +543,13 @@ class HasuraActionGenerator(
                                 }
                                 put("schema", if(annot.remoteSchema.isNotEmpty()) annot.remoteSchema else "public")
                             }
-                            putJsonArray("field_mappings") {
+                            putJsonObject("field_mapping") {
                                 if (hasuraManagedEntityRelationship) {
-                                    addJsonObject {
-                                        put(fromId!!, toId!!)
-                                    }
+                                    put(fromId!!, toId!!)
                                 }
                                 else {
                                     annot.fieldMappings.forEach {mapping ->
-                                        addJsonObject {
-                                            put(mapping.fromField, mapping.toField)
-                                        }
+                                        put(mapping.fromField, mapping.toField)
                                     }
                                 }
                             }
