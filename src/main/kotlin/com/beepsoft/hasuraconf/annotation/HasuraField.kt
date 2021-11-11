@@ -1,7 +1,7 @@
 package com.beepsoft.hasuraconf.annotation
 
 /**
- * Explcit typename to use for a function value parameter or field
+ * Explicit typename to use for a function value parameter or field
  */
 @Target(AnnotationTarget.FIELD)
 annotation class HasuraField (
@@ -28,8 +28,14 @@ annotation class HasuraField (
     /**
      * Description for type if it is a scalar type. This is used in the graphql schema as comment
      */
-    val typeDescription: String = ""
+    val typeDescription: String = "",
 
+    /**
+     * If TRUE, the field is nullable, ie. no value needs to be provided or its value van be null. If FALSE then
+     * the field must be provided / will always be available in result. If UNSET then the action generator tries to
+     * figure out from the kotlin reflections. If it is not available then will default to true.
+     */
+    val nullable: Nullable = Nullable.UNSET
 )
 
 /**
@@ -96,4 +102,10 @@ annotation class HasuraFieldMapping (
 enum class HasuraRelationshipType {
     OBJECT,
     ARRAY
+}
+
+enum class Nullable {
+    UNSET,
+    TRUE,
+    FALSE
 }

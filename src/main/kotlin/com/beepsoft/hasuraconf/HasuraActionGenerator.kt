@@ -15,6 +15,8 @@ import java.math.BigInteger
 import java.sql.Types
 import java.util.*
 import javax.persistence.Entity
+import kotlin.reflect.jvm.kotlinFunction
+import kotlin.reflect.jvm.kotlinProperty
 
 
 /**
@@ -240,12 +242,18 @@ class HasuraActionGenerator(
                 }
                 else {
                     putJsonArray("arguments") {
-                        method.parameters.forEach { p ->
+                        method.parameters.forEachIndexed() { ix, p ->
                             addJsonObject {
+                                var nullable: Boolean? = null
+                                method.kotlinFunction?.let {
+                                    nullable = it.parameters[ix].type.isMarkedNullable
+                                }
+
                                 val fieldAnnot = p.getDeclaredAnnotation(HasuraField::class.java)
                                 var fieldName = p.name
                                 // May override default name with annotation value
                                 if (fieldAnnot != null) {
+                                    nullable = if (fieldAnnot.nullable != Nullable.UNSET) fieldAnnot.nullable.name.toLowerCase().toBoolean() else nullable
                                     if (fieldAnnot.value.isNotEmpty()) {
                                         fieldName = fieldAnnot.value
                                     }
@@ -260,7 +268,10 @@ class HasuraActionGenerator(
                                 }
 
                                 val typeName = calcExplicitName(typeForAnnot.getAnnotation(HasuraType::class.java), fieldAnnot)
-                                put("type", generateParameterTypeDefinition(p.type, typeName))
+                                if (nullable == null) {
+                                    nullable = true
+                                }
+                                put("type", generateParameterTypeDefinition(p.type, typeName) + if(!nullable!!) "!" else "")
                             }
                         }
                     }
@@ -314,18 +325,16 @@ class HasuraActionGenerator(
     }
 
     private fun generateTypeDefinition(type: Class<*>, explicitName: String?, kind: TypeDefinitionKind, fieldAnnot: HasuraField? = null, failForOutputTypeRecursion: Boolean? = false) : String {
-        if (type.isPrimitive || type == String::class.java) {
+        if (type.isPrimitive || type == String::class.java || Number::class.java.isAssignableFrom(type)) {
             var typeName = explicitName ?: getHasuraTypeOf(type)!!
             fieldAnnot?.let {
                 var cleanTypeName = typeName.replace("!", "")
                 addOptionalScalar(cleanTypeName, fieldAnnot)
             }
-            // TODO add nullability
             return typeName
         }
         var actualTypeName = explicitName ?: type.simpleName
         if (type.isEnum) {
-            // TODO add nullability
             return generateEnum(type, actualTypeName, kind)
         }
 
@@ -334,12 +343,10 @@ class HasuraActionGenerator(
             val compoType = type.componentType
             actualTypeName = explicitName ?: compoType.simpleName
             if (compoType.isPrimitive || compoType == String::class.java) {
-                // TODO add nullability
-                return "[" + (actualTypeName ?: getHasuraTypeOf(compoType)!!) + "]"
+                return "[" + (actualTypeName ?: getHasuraTypeOf(compoType)!!) + "!]"
             }
             else if (compoType.isEnum) {
-                // TODO add nullability
-                return "[" + generateEnum(compoType, actualTypeName, kind) + "]"
+                return "[" + generateEnum(compoType, actualTypeName, kind) + "!]"
             }
             else if (failForOutputTypeRecursion != null && failForOutputTypeRecursion && kind == TypeDefinitionKind.OUTPUT) {
                 throw HasuraConfiguratorException("Invalid return type $compoType. Return types should be primitive/enum type or a class made up of primitive/enum type fields")
@@ -351,11 +358,9 @@ class HasuraActionGenerator(
         }
         generateTypeDefinitionForClass(actualType, actualTypeName, kind)
         if (type.isArray) {
-            // TODO add nullability
             return "[$actualTypeName!]"
         }
 
-        // TODO add nullability
         return "$actualTypeName"
     }
 
@@ -379,12 +384,17 @@ class HasuraActionGenerator(
 
             val relationshipFields = mutableListOf<Field>()
             putJsonArray("fields") {
-                t.declaredFields.forEach {field ->
+                t.declaredFields.forEachIndexed { ix, field ->
                     addJsonObject {
+                        var nullable: Boolean? = null
+                        field.kotlinProperty?.let {
+                            nullable = it.returnType.isMarkedNullable
+                        }
 
                         val hasuraFieldAnnot = field.getAnnotation(HasuraField::class.java)
                         var name = field.name
                         if (hasuraFieldAnnot != null) {
+                            nullable = if (hasuraFieldAnnot.nullable != Nullable.UNSET) hasuraFieldAnnot.nullable.name.toLowerCase().toBoolean() else nullable
                             if (hasuraFieldAnnot.value.isNotEmpty()) {
                                 name = hasuraFieldAnnot.value
                             }
@@ -460,7 +470,11 @@ class HasuraActionGenerator(
                                 addOptionalScalar(graphqlType, hasuraFieldAnnot)
                             }
                         }
-                        put("type", graphqlType)
+                        // If not set default to nullable
+                        if (nullable == null) {
+                            nullable = true
+                        }
+                        put("type", graphqlType + if (!nullable!!) "!" else "")
                     }
                 }
             }

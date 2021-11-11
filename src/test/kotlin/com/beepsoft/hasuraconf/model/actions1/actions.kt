@@ -66,7 +66,17 @@ class ActionTest {
 @HasuraType("UserAndCalendarOutput", description="The description of UserAndCalendarOutput")
 data class UserAndCalendar(
     @HasuraField(description = "The user's name")
-    var userName: String,
+    var userFullName: String,
+
+    @HasuraField(description = "The user's age")
+    var userAge: Int?,
+
+    @HasuraField(description = "Field is not defined in Kotlin as nullable, but explicitly set so", nullable = Nullable.TRUE)
+    var explicitNullable: String,
+
+    @HasuraField(description = "Field is defined in Kotlin as nullable, but explicitly set to not nullable", nullable = Nullable.FALSE)
+    var explicitlyNotNullable: String?,
+
     @HasuraField(type="bigint!", description = "User identifier", typeDescription = "bigint type")
     var userId: Long,
     @HasuraRelationship(

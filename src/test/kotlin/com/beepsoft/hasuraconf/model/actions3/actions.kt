@@ -36,7 +36,7 @@ fun createUserAndCalendar2(
 }
 
 data class UserAndCalendar(
-    var userName: String,
+    var userName: String?,
 
     @HasuraField(type="bigint!")
     var userId: Long,
