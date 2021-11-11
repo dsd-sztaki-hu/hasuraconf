@@ -3,7 +3,6 @@ import com.beepsoft.hasuraconf.annotation.*
 import kotlinx.serialization.json.*
 import net.pearx.kasechange.toCamelCase
 import org.hibernate.dialect.PostgreSQL9Dialect
-import org.hibernate.internal.SessionFactoryImpl
 import org.hibernate.metamodel.spi.MetamodelImplementor
 import org.hibernate.persister.entity.AbstractEntityPersister
 import org.reflections.Reflections
@@ -16,7 +15,6 @@ import java.math.BigInteger
 import java.sql.Types
 import java.util.*
 import javax.persistence.Entity
-import javax.persistence.EntityManager
 
 
 /**
@@ -320,7 +318,7 @@ class HasuraActionGenerator(
             var typeName = explicitName ?: getHasuraTypeOf(type)!!
             fieldAnnot?.let {
                 var cleanTypeName = typeName.replace("!", "")
-                addOptionaScalar(cleanTypeName, fieldAnnot)
+                addOptionalScalar(cleanTypeName, fieldAnnot)
             }
             // TODO add nullability
             return typeName
@@ -459,7 +457,7 @@ class HasuraActionGenerator(
                         }
                         else {
                             hasuraFieldAnnot?.let {
-                                addOptionaScalar(graphqlType, hasuraFieldAnnot)
+                                addOptionalScalar(graphqlType, hasuraFieldAnnot)
                             }
                         }
                         put("type", graphqlType)
@@ -560,7 +558,7 @@ class HasuraActionGenerator(
         return typeDef
     }
 
-    private fun addOptionaScalar(graphqlType: String, hasuraFieldAnnot: HasuraField)
+    private fun addOptionalScalar(graphqlType: String, hasuraFieldAnnot: HasuraField)
     {
         var cleanType = graphqlType.replace("!", "")
         if (!isBuiltinGraphqlType(cleanType)) {
