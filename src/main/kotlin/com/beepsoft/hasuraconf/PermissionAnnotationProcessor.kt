@@ -4,14 +4,15 @@ import blue.endless.jankson.Jankson
 import blue.endless.jankson.impl.SyntaxError
 import com.beepsoft.hasuraconf.annotation.*
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.*
 import org.hibernate.internal.SessionFactoryImpl
 import org.hibernate.metamodel.spi.MetamodelImplementor
 import org.hibernate.persister.entity.AbstractEntityPersister
+import org.hibernate.type.CollectionType
 import javax.persistence.EntityManagerFactory
 import javax.persistence.metamodel.EntityType
 import kotlin.reflect.KClass
 import kotlin.reflect.full.isSubclassOf
-import kotlinx.serialization.json.*
 
 
 /**
@@ -122,7 +123,9 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
         }
 
         val classMetadata = metaModel.entityPersister(entity.javaType.typeName) as AbstractEntityPersister
-        val propertyNames = classMetadata.propertyNames
+        val propertyNames = mutableListOf<String>()
+        propertyNames.addAll(classMetadata.propertyNames)
+        propertyNames.add(classMetadata.identifierPropertyName)
 
         val finalFields = mutableSetOf<String>()
         finalFields.addAll(fields)
@@ -139,8 +142,10 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
             if (f!!.isAnnotationPresent(HasuraIgnoreRelationship::class.java)) {
                 continue;
             }
-            val columnName = classMetadata.getPropertyColumnNames(propertyName)[0]
-            columns.add(columnName)
+            // Only handle own properties of object, ie. own fields. collection types are not owned
+            if (!(classMetadata.toType(propertyName) is CollectionType)) {
+                val columnName = classMetadata.getPropertyColumnNames(propertyName)[0]
+                columns.add(columnName)
 //            println("${propertyName} --> ${columnName}")
 //            val f = Utils.findDeclaredFieldUsingReflection(entityClass, propertyName)
 //            if (f!!.isAnnotationPresent(HasuraGenerateCascadeDeleteTrigger::class.java)) {
@@ -148,6 +153,7 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
 //                val cdf = CascadeDeleteFields(classMetadata.tableName, classMetadata.getPropertyColumnNames(propertyName)[0], fieldMetadata.tableName)
 //                cascadeDeleteFields.add(cdf)
 //            }
+            }
         }
         return columns
     }
