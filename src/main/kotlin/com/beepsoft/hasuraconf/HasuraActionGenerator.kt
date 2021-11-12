@@ -616,7 +616,7 @@ class HasuraActionGenerator(
             putJsonArray("values" ) {
                 type.enumConstants.forEach { enumConst ->
                     addJsonObject {
-                        put("name", enumConst.toString())
+                        put("value", enumConst.toString())
                     }
                 }
             }
