@@ -9,6 +9,7 @@ import org.hibernate.internal.SessionFactoryImpl
 import org.hibernate.metamodel.spi.MetamodelImplementor
 import org.hibernate.persister.entity.AbstractEntityPersister
 import org.hibernate.type.CollectionType
+import reactor.util.function.Tuple2
 import javax.persistence.EntityManagerFactory
 import javax.persistence.metamodel.EntityType
 import kotlin.reflect.KClass
@@ -47,6 +48,10 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
         classMetadata: AbstractEntityPersister,
         permissionAnnot: Annotation): PermissionData
     {
+        val finalFields = calcFinalFields(
+                                permissionAnnot.valueOf("fields"),
+                                permissionAnnot.valueOf("excludeFields"),
+                                entity)
         return PermissionData(
                 tableName,
                 permissionAnnot.valueOf("role"),
@@ -55,10 +60,8 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
                         permissionAnnot.valueOf("json"),
                         permissionAnnot.valueOf("jsonFile"),
                         entity),
-                calcFinalFields(
-                        permissionAnnot.valueOf("fields"),
-                        permissionAnnot.valueOf("excludeFields"),
-                        entity),
+                finalFields.first,
+                finalFields.second,
                 createPresetFieldsMap(entity, classMetadata, permissionAnnot.valueOf("fieldPresets")),
                 permissionAnnot.valueOf("allowAggregations")
         )
@@ -115,17 +118,27 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
      * Calculates the actual list of fields to be included in the premission JSON based on the allowed {@code fields}
      * and the {@code excludeFields}
      */
-    private fun calcFinalFields(fields: Array<String>, excludeFields: Array<String>, entity: EntityType<*>): List<String>
+    private fun calcFinalFields(fields: Array<String>, excludeFields: Array<String>, entity: EntityType<*>): Pair<List<String>, List<String>>
     {
+        val computedFieldNames = entity.javaType.declaredFields
+                                    .filter { it.isAnnotationPresent(HasuraComputedField::class.java) }
+                                    .map { it.name }
         // If no include/exlude given, then we will allow all fields
         if (fields.size == 0 && excludeFields.size == 0) {
-            return mutableListOf<String>()
+            // If nothing is specified, we have to explicitly include all the computed fields. We don't have a generic
+            // "*" option in this case.
+            val computedList = mutableListOf<String>()
+            if (computedFieldNames != null && computedFieldNames.isNotEmpty()) {
+                computedList.addAll(computedFieldNames)
+            }
+            return Pair(listOf(), computedList)
         }
 
         val classMetadata = metaModel.entityPersister(entity.javaType.typeName) as AbstractEntityPersister
         val propertyNames = mutableListOf<String>()
         propertyNames.addAll(classMetadata.propertyNames)
         propertyNames.add(classMetadata.identifierPropertyName)
+        propertyNames.addAll(computedFieldNames)
 
         val finalFields = mutableSetOf<String>()
         finalFields.addAll(fields)
@@ -136,10 +149,19 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
         finalFields.removeAll(excludeFields)
 
         val columns = mutableListOf<String>()
+        val computedFields = mutableListOf<String>()
         for (propertyName in finalFields) {
             // Handle @HasuraIgnoreRelationship annotation on field
             val f = Utils.findDeclaredFieldUsingReflection(entity.javaType, propertyName)
+            if (f == null) {
+                throw HasuraConfiguratorException("Inexistent field '$propertyName' in the permission definitions of $entity")
+            }
             if (f!!.isAnnotationPresent(HasuraIgnoreRelationship::class.java)) {
+                continue;
+            }
+            // HasuraComputedFields are added as-is
+            if (f!!.isAnnotationPresent(HasuraComputedField::class.java)) {
+                computedFields.add(f.name)
                 continue;
             }
             // Only handle own properties of object, ie. own fields. collection types are not owned
@@ -155,7 +177,7 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
 //            }
             }
         }
-        return columns
+        return Pair(columns, computedFields)
     }
 
     private val atIncludeRegex = "[\"']\\s*@include\\((.*?)\\)\\s*[\"']".toRegex()
@@ -272,6 +294,7 @@ data class PermissionData (
     val operation: HasuraOperation,
     val json: String,
     val columns: List<String>,
+    val computedFields: List<String>,
     val fieldPresets: Map<String, String>,
     val allowAggregations: Boolean,
 ) {
@@ -295,6 +318,11 @@ data class PermissionData (
                     } else {
                         putJsonArray("columns") {
                             columns.distinct().forEach { add(it) }
+                        }
+                    }
+                    if (computedFields.isNotEmpty()) {
+                        putJsonArray("computed_fields") {
+                            computedFields.distinct().forEach { add(it) }
                         }
                     }
                 }

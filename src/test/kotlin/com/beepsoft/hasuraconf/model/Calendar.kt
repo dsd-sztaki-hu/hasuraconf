@@ -4,6 +4,7 @@ import com.beepsoft.hasuraconf.annotation.*
 import org.hibernate.annotations.OnDelete
 import org.hibernate.annotations.OnDeleteAction
 import javax.persistence.*
+import kotlin.jvm.Transient
 
 /**
  */
@@ -37,7 +38,15 @@ import javax.persistence.*
             HasuraPermission(
                     operation = HasuraOperation.DELETE,
                     role = "USER",
-                    jsonFile = "/permissions/delete_permission_fragment.json")
+                    jsonFile = "/permissions/delete_permission_fragment.json"),
+
+            HasuraPermission(
+                operation = HasuraOperation.SELECT,
+                role = "FRIEND",
+                fields = ["tag", "titleAndDescription"],
+                json = "{roles: { user_id: { _eq: 'X-Hasura-User-Id' } }}",
+                allowAggregations = true
+            ),
         ]
 )
 class Calendar : BaseObject() {
@@ -52,6 +61,18 @@ class Calendar : BaseObject() {
 
     /** Short description of the calendar  */
     var description: String? = null
+
+    @HasuraComputedField(
+        functionName = "title_and_description",
+        functionDefinition = """
+            CREATE OR REPLACE FUNCTION title_and_description(calendar_row calendar)
+            RETURNS TEXT as ${'$'}${'$'}
+                SELECT calendar_row.title || '---' || calendar_row.description
+            ${'$'}${'$'} LANGUAGE sql STABLE;
+        """
+    )
+    @Transient
+    var titleAndDescription: String? = null
 
     /** Locale language  */
     var localeLang: String? = null

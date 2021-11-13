@@ -1,4 +1,3 @@
-
 {
   "type" : "bulk",
   "args" : [ {
@@ -230,6 +229,21 @@
       }
     }
   }, {
+    "type" : "add_computed_field",
+    "args" : {
+      "table" : {
+        "schema" : "public",
+        "name" : "calendar"
+      },
+      "name" : "titleAndDescription",
+      "definition" : {
+        "function" : {
+          "name" : "title_and_description",
+          "schema" : "public"
+        }
+      }
+    }
+  }, {
     "type" : "create_array_relationship",
     "args" : {
       "table" : {
@@ -329,6 +343,7 @@
       "role" : "USER",
       "permission" : {
         "columns" : "*",
+        "computed_fields" : [ "titleAndDescription" ],
         "check" : { },
         "set" : {
           "locale_lang" : "en",
@@ -346,6 +361,28 @@
       "role" : "USER",
       "permission" : {
         "columns" : "*",
+        "computed_fields" : [ "titleAndDescription" ],
+        "allow_aggregations" : true,
+        "filter" : {
+          "roles" : {
+            "user_id" : {
+              "_eq" : "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    }
+  }, {
+    "type" : "create_select_permission",
+    "args" : {
+      "table" : {
+        "schema" : "public",
+        "name" : "calendar"
+      },
+      "role" : "FRIEND",
+      "permission" : {
+        "columns" : [ "tag" ],
+        "computed_fields" : [ "titleAndDescription" ],
         "allow_aggregations" : true,
         "filter" : {
           "roles" : {
@@ -365,7 +402,8 @@
       },
       "role" : "USER",
       "permission" : {
-        "columns" : [ "created_at", "updated_at", "availability_value", "id", "description", "locale_country", "next_version_id", "published", "theme_id", "theme_config", "title", "version" ],
+        "columns" : [ "created_at", "updated_at", "availability_value", "description", "locale_country", "next_version_id", "published", "theme_id", "theme_config", "title", "version", "id" ],
+        "computed_fields" : [ "titleAndDescription" ],
         "check" : null,
         "set" : { },
         "filter" : {

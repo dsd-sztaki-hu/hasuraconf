@@ -8,8 +8,10 @@
     "role": "USER",
     "permission": {
       "columns": "*",
-      "check": {
-      },
+      "computed_fields": [
+        "titleAndDescription"
+      ],
+      "check": {},
       "set": {
         "locale_lang": "en",
         "locale_country": "us"

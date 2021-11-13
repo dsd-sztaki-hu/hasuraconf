@@ -10,6 +10,48 @@ With `HasuraConfigurator` when the data model changes in Java/Kotlin the Hasura 
 
 # Notable changes
 
+## 0.8.0
+
+Adds support for computed fields with possibility to define the backing sql function inline in the @HasuraComputedFields annotation.
+
+For example, the following would define a computed field `titleAndDescription` which would call the SQL function defined with the `functionDefinition` parameter. Also, in HasuraPermission you can now define permissions for the `titleAndDescription` field in the `fields` or `excludeFields` parameters:
+
+```kotlin
+@Entity
+@HasuraPermissions(
+    [
+        HasuraPermission(
+            operation = HasuraOperation.SELECT,
+            role = "FRIEND",
+            fields = ["tag", "titleAndDescription"],
+            json = "{roles: { user_id: { _eq: 'X-Hasura-User-Id' } }}",
+            allowAggregations = true
+        )
+    ]
+)
+class Calendar : BaseObject() {
+
+    /** Title of the calendar  */
+    var title: String? = null
+
+    /** Short description of the calendar  */
+    var description: String? = null
+
+    @HasuraComputedField(
+        functionName = "title_and_description",
+        functionDefinition = """
+            CREATE OR REPLACE FUNCTION title_and_description(calendar_row calendar)
+            RETURNS TEXT as ${'$'}${'$'}
+                SELECT calendar_row.title || '---' || calendar_row.description
+            ${'$'}${'$'} LANGUAGE sql STABLE;
+        """
+    )
+    @Transient
+    var titleAndDescription: String? = null
+}
+
+```
+
 ## 0.7.0
 
 Adds support for generating Actions.
@@ -94,7 +136,7 @@ The easiest way to use it in a Maven project is via jitpack
     <dependency>
         <groupId>com.github.beepsoft</groupId>
         <artifactId>hasuraconf</artifactId>
-        <version>0.7.5</version>
+        <version>0.8.0</version>
     </dependency>
 </dependencies>
 ```

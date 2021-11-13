@@ -8,6 +8,9 @@
     "role": "USER",
     "permission": {
       "columns": "*",
+      "computed_fields": [
+        "titleAndDescription"
+      ],
       "allow_aggregations": true,
       "filter": {
         "roles": {

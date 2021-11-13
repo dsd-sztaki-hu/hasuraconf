@@ -128,10 +128,20 @@
         }
       }
     } ],
+    "computed_fields" : [ {
+      "name" : "titleAndDescription",
+      "definition" : {
+        "function" : {
+          "name" : "title_and_description",
+          "schema" : "public"
+        }
+      }
+    } ],
     "insert_permissions" : [ {
       "role" : "USER",
       "permission" : {
         "columns" : "*",
+        "computed_fields" : [ "titleAndDescription" ],
         "check" : { },
         "set" : {
           "locale_lang" : "en",
@@ -143,6 +153,21 @@
       "role" : "USER",
       "permission" : {
         "columns" : "*",
+        "computed_fields" : [ "titleAndDescription" ],
+        "allow_aggregations" : true,
+        "filter" : {
+          "roles" : {
+            "user_id" : {
+              "_eq" : "X-Hasura-User-Id"
+            }
+          }
+        }
+      }
+    }, {
+      "role" : "FRIEND",
+      "permission" : {
+        "columns" : [ "tag" ],
+        "computed_fields" : [ "titleAndDescription" ],
         "allow_aggregations" : true,
         "filter" : {
           "roles" : {
@@ -156,7 +181,8 @@
     "update_permissions" : [ {
       "role" : "USER",
       "permission" : {
-        "columns" : [ "created_at", "updated_at", "availability_value", "id", "description", "locale_country", "next_version_id", "published", "theme_id", "theme_config", "title", "version" ],
+        "columns" : [ "created_at", "updated_at", "availability_value", "description", "locale_country", "next_version_id", "published", "theme_id", "theme_config", "title", "version", "id" ],
+        "computed_fields" : [ "titleAndDescription" ],
         "check" : null,
         "set" : { },
         "filter" : {

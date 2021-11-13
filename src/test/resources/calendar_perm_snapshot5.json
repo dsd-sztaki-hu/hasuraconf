@@ -1,20 +1,16 @@
 {
-  "type" : "create_update_permission",
-  "args" : {
-    "table" : {
-      "name" : "calendar",
-      "schema" : "public"
+  "type": "create_update_permission",
+  "args": {
+    "table": {
+      "name": "calendar",
+      "schema": "public"
     },
-    "role" : "USER",
-    "permission" : {
-      "check": null,
-      "set": {
-      },
-      "columns" : [
+    "role": "USER",
+    "permission": {
+      "columns": [
         "created_at",
         "updated_at",
         "availability_value",
-        "id",
         "description",
         "locale_country",
         "next_version_id",
@@ -22,22 +18,34 @@
         "theme_id",
         "theme_config",
         "title",
-        "version"
+        "version",
+        "id"
       ],
-      "filter" : {
-        "_and" : [ {
-          "roles" : {
-            "user_id" : {
-              "_eq" : "X-Hasura-User-Id"
+      "computed_fields": [
+        "titleAndDescription"
+      ],
+      "check": null,
+      "set": {},
+      "filter": {
+        "_and": [
+          {
+            "roles": {
+              "user_id": {
+                "_eq": "X-Hasura-User-Id"
+              }
+            }
+          },
+          {
+            "roles": {
+              "role_value": {
+                "_in": [
+                  "OWNER",
+                  "EDITOR"
+                ]
+              }
             }
           }
-        }, {
-          "roles" : {
-            "role_value" : {
-              "_in" : [ "OWNER", "EDITOR" ]
-            }
-          }
-        } ]
+        ]
       }
     }
   }

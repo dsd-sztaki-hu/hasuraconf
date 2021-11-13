@@ -87,7 +87,7 @@ class PermissionAnnotationProcessorTest {
         //
         // Calendar has 4 permissions with inline json and jsonFile as well.
         //
-        Assertions.assertEquals( 4, permissions.size, "Calendar permissions have 4 elements")
+        Assertions.assertEquals( 5, permissions.size, "Calendar permissions have 5 elements")
 
         val calSnapshot1 = readFileUsingGetResource("/calendar_perm_snapshot1.json")
         val calSnapshot2 = readFileUsingGetResource("/calendar_perm_snapshot2.json")
@@ -100,14 +100,22 @@ class PermissionAnnotationProcessorTest {
 
         Assertions.assertEquals( "", permissions[0].json, "Insert permission on Calendar")
 
+        println(permissions[1].json)
         JSONAssert.assertEquals("Read permission on Calendar", permissions[1].json, calSnapshot2, false)
+        println(permissions[2].json)
         JSONAssert.assertEquals("Update permission on Calendar", permissions[2].json, calSnapshot1, false)
+        println(permissions[3].json)
         JSONAssert.assertEquals("Delete permission on Calendar", permissions[3].json, calSnapshot1, false)
+        println(permissions[1].toHasuraApiJson())
         JSONAssert.assertEquals("Select permission Hasura JSON on Calendar", permissions[1].toHasuraApiJson(), calSnapshot7, false)
 
+        println(permissions[0].toHasuraApiJson())
         JSONAssert.assertEquals("Insert permission Hasura JSON on Calendar", permissions[0].toHasuraApiJson(), calSnapshot3, false)
+        println(permissions[0].toHasuraApiJson("other_schema"))
         JSONAssert.assertEquals("Insert permission Hasura JSON on Calendar with other_schema", permissions[0].toHasuraApiJson("other_schema"), calSnapshot4, false)
+        println(permissions[2].toHasuraApiJson())
         JSONAssert.assertEquals("Update permission Hasura JSON on Calendar", permissions[2].toHasuraApiJson(), calSnapshot5, false)
+        println(permissions[3].toHasuraApiJson())
         JSONAssert.assertEquals("Delete permission Hasura JSON on Calendar with excluded fields", permissions[3].toHasuraApiJson(), calSnapshot6, false)
 
         //

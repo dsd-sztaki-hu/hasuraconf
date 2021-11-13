@@ -192,6 +192,9 @@ class HasuraConfigurator(
     var actions: String? = null
         private set // the setter is private and has the default implementation
 
+    var sqlFunctionDefinitions: String? = null
+        private set // the setter is private and has the default implementation
+
     private var sessionFactoryImpl: SessionFactory
     private var metaModel: MetamodelImplementor
     private var permissionAnnotationProcessor: PermissionAnnotationProcessor
@@ -204,6 +207,31 @@ class HasuraConfigurator(
     private lateinit var cascadeDeleteFields: MutableSet<CascadeDeleteFields>
     private lateinit var manyToManyEntities: MutableMap<String, ManyToManyEntity>
     private lateinit var extraTableNames: MutableSet<String>
+    // {
+    //  "type": "bulk",
+    //  "source": "default",
+    //  "args": [
+    //    {
+    //      "type": "run_sql",
+    //      "args": {
+    //        "source": "default",
+    //        "sql": "SET LOCAL statement_timeout = 10000;",
+    //        "cascade": false,
+    //        "read_only": false
+    //      }
+    //    },
+    //    {
+    //      "type": "run_sql",
+    //      "args": {
+    //        "source": "default",
+    //        "sql": "CREATE OR REPLACE FUNCTION public.emailfromaccount2(users_row users)\n RETURNS text\n LANGUAGE sql\n STABLE\nAS $function$ SELECT email FROM auth.accounts WHERE auth.accounts.user_id = users_row.id $function$;",
+    //        "cascade": false,
+    //        "read_only": false
+    //      }
+    //    }
+    //  ]
+    //}
+    private lateinit var sqlFunctionRunSqlDefs: MutableList<JsonObject>
 
     init {
         sessionFactoryImpl = entityManagerFactory.unwrap(SessionFactoryImpl::class.java)
@@ -242,6 +270,7 @@ class HasuraConfigurator(
         extraTableNames = mutableSetOf()
         tableNames = mutableSetOf()
         entityClasses = mutableSetOf<Class<out Any>>()
+        sqlFunctionRunSqlDefs = mutableListOf()
 
         // Get metaModel.entities sorted by name. We do this sorting to make result more predictable (eg. for testing)
         val entities = sortedSetOf(
@@ -291,6 +320,13 @@ class HasuraConfigurator(
         }
         metadataJson = Json.encodeToString(metadataJsonObject).reformatJson()
 
+        if (sqlFunctionRunSqlDefs.isNotEmpty()) {
+            sqlFunctionDefinitions = buildJsonObject {
+                put("type", "bulk")
+                put("source", "default")
+                put("args", JsonArray(sqlFunctionRunSqlDefs))
+            }.toString()
+        }
 
         if (metadataJsonFile != null && metadataJsonFile != "null" && metadataJsonFile!!.trim() != "") {
             PrintWriter(metadataJsonFile).use { out -> out.println(metadataJson) }
@@ -486,6 +522,8 @@ class HasuraConfigurator(
                     //    }
                     //  }
                     addAllFromArray("object_relationships", "create_object_relationship")
+
+                    addAllFromArray("computed_fields", "add_computed_field")
 
 
                     // {
@@ -695,10 +733,59 @@ class HasuraConfigurator(
                 put("is_enum", true)
             }
 
+            val computedFields = configureComputedFields(entity)
+            if (computedFields.isNotEmpty()) {
+                put("computed_fields", JsonArray(computedFields))
+            }
             configurePermissions(entity, this)
         }
 
         return tableJson
+    }
+
+    private fun configureComputedFields(entity: EntityType<*>): List<JsonObject>
+    {
+        return entity.javaType.declaredFields
+            .filter {
+                it.isAnnotationPresent(HasuraComputedField::class.java)
+            }
+            .map { field ->
+                val annot = field.getAnnotation(HasuraComputedField::class.java)
+
+                // If we have an inline function definition add it to sqlFunctionRunSqlDefs
+                if (annot.functionDefinition.isNotEmpty()) {
+                    sqlFunctionRunSqlDefs.add(
+                        buildJsonObject {
+                            put("type", "run_sql")
+                            putJsonObject("args") {
+                                put("source", "default")
+                                put("sql", annot.functionDefinition)
+                                put("cascade", false)
+                                put("read_only", false)
+                            }
+                        }
+                    )
+                }
+
+                // Generate the "computed_fields" object
+                buildJsonObject {
+                    put("name", field.name)
+                    if (annot.comment.isNotEmpty()) {
+                        put("comment", annot.comment)
+                    }
+                    putJsonObject("definition") {
+                        putJsonObject("function") {
+                            put("name", annot.functionName)
+                            if (annot.functionSchema.isNotEmpty()) {
+                                put("schema", annot.functionSchema)
+                            }
+                            else {
+                                put("schema", schemaName)
+                            }
+                        }
+                    }
+                }
+            }
     }
 
     private fun configurePermissions(entity: EntityType<*>, builder: JsonObjectBuilder)
@@ -1330,11 +1417,20 @@ class HasuraConfigurator(
     }
 
     private fun loadConfIntoHasura() {
+        // Make sure SQL functions are loaded forst, so that computed_fields would work.
+        if (sqlFunctionDefinitions != null) {
+            loadIntoHasura(sqlFunctionDefinitions!!)
+        }
         LOG.info("Executing Hasura bulk initialization JSON. This operation could be slow, consider using metadataJson instead ...")
         loadIntoHasura(confJson!!)
     }
 
     private fun loadMetadataIntoHasura() {
+        // Make sure SQL functions are loaded forst, so that computed_fields would work.
+        if (sqlFunctionDefinitions != null) {
+            loadIntoHasura(sqlFunctionDefinitions!!)
+        }
+
         LOG.info("Executing replace_metadata with metadata JSON.")
 
         val replaceMetadata = Json.encodeToString(buildJsonObject {

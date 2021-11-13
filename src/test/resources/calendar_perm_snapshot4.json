@@ -1,18 +1,21 @@
 {
-  "type" : "create_insert_permission",
-  "args" : {
-    "table" : {
-      "name" : "calendar",
-      "schema" : "other_schema"
+  "type": "create_insert_permission",
+  "args": {
+    "table": {
+      "name": "calendar",
+      "schema": "other_schema"
     },
-    "role" : "USER",
-    "permission" : {
-      "set" : {
+    "role": "USER",
+    "permission": {
+      "columns": "*",
+      "computed_fields": [
+        "titleAndDescription"
+      ],
+      "check": {},
+      "set": {
         "locale_lang": "en",
         "locale_country": "us"
-      },
-      "columns" : "*",
-      "check" : { }
+      }
     }
   }
 }
