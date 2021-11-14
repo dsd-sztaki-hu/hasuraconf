@@ -13,6 +13,9 @@ import javax.xml.bind.annotation.XmlElementWrapper
         Index(columnList = "id"))
 )
 class Task : BaseObject() {
+    @ManyToOne
+    var owner : CalendarUser? = null
+
     /**
      * Operations in the task.
      */

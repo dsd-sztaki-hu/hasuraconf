@@ -1,9 +1,13 @@
 package com.beepsoft.hasuraconf.annotation
 
+import java.lang.annotation.Retention
+import java.lang.annotation.RetentionPolicy
+
 /**
  * Explicit typename to use for a Class instead of the class's Java/Kotlin name
  */
 @Target(AnnotationTarget.CLASS)
+@Retention(RetentionPolicy.RUNTIME)
 annotation class HasuraType (
     /**
      * Override field name in Graphql with this value if the field's Java/Kotlin name is not suitable.

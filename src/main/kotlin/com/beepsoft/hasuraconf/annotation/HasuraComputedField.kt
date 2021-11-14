@@ -1,5 +1,8 @@
 package com.beepsoft.hasuraconf.annotation
 
+import java.lang.annotation.Retention
+import java.lang.annotation.RetentionPolicy
+
 /**
  * Definition of a computed field, the value of which is the result of running an SQL function with the
  * a record of the current table as a parameter.
@@ -10,6 +13,7 @@ package com.beepsoft.hasuraconf.annotation
  * @HasuraComputedField with definition details.
  */
 @Target(AnnotationTarget.FIELD)
+@Retention(RetentionPolicy.RUNTIME)
 annotation class HasuraComputedField (
 
     /**

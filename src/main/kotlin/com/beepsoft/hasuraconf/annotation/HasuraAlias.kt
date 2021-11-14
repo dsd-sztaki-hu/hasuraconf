@@ -15,6 +15,7 @@ import java.lang.annotation.RetentionPolicy
  * a {@code @HasuraRootFields} annotation set in the {@code rootFieldAliases} parameter.
  */
 @Target(AnnotationTarget.FIELD)
+@Retention(RetentionPolicy.RUNTIME)
 annotation class HasuraAlias (
         /**
          * Instead of using the field name as defined in Java, use this alias

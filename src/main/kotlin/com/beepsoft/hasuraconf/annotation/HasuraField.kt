@@ -1,9 +1,13 @@
 package com.beepsoft.hasuraconf.annotation
 
+import java.lang.annotation.Retention
+import java.lang.annotation.RetentionPolicy
+
 /**
  * Explicit typename to use for a function value parameter or field
  */
 @Target(AnnotationTarget.FIELD)
+@Retention(RetentionPolicy.RUNTIME)
 annotation class HasuraField (
     /**
      * Override field name in Graphql with tis value if the field's Java/Kotlin name is not suitable.
@@ -51,6 +55,7 @@ annotation class HasuraField (
  * a simple type `remoteTable`, `remoteSchema`, and `fieldMappings` must be explicitly specified.
  */
 @Target(AnnotationTarget.ANNOTATION_CLASS, AnnotationTarget.FIELD)
+@Retention(RetentionPolicy.RUNTIME)
 annotation class HasuraRelationship (
     /**
      * Name of relationship
@@ -94,6 +99,7 @@ annotation class HasuraRelationship (
 )
 
 @Target(AnnotationTarget.ANNOTATION_CLASS)
+@Retention(RetentionPolicy.RUNTIME)
 annotation class HasuraFieldMapping (
     val fromField: String = "",
     val toField: String = ""

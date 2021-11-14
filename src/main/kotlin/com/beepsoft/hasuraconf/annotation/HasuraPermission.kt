@@ -63,10 +63,11 @@ import java.lang.annotation.RetentionPolicy
  *
  */
 @Repeatable
-@Target(AnnotationTarget.ANNOTATION_CLASS, AnnotationTarget.CLASS)
+@Target(AnnotationTarget.ANNOTATION_CLASS, AnnotationTarget.CLASS, AnnotationTarget.FIELD)
+@Retention(RetentionPolicy.RUNTIME)
 annotation class HasuraPermission (
         val operation: HasuraOperation = HasuraOperation.SELECT,
-        val role: String = "",
+        val role: String,
         val json: String = "",
         val jsonFile: String = "",
         val fields: Array<String> = [],
@@ -75,7 +76,8 @@ annotation class HasuraPermission (
         val allowAggregations: Boolean = false
 )
 
-@Target(AnnotationTarget.ANNOTATION_CLASS, AnnotationTarget.CLASS)
+@Target(AnnotationTarget.ANNOTATION_CLASS, AnnotationTarget.CLASS, AnnotationTarget.FIELD)
+@Retention(RetentionPolicy.RUNTIME)
 annotation class HasuraPermissions (
         val value: Array<HasuraPermission>
 )
@@ -84,12 +86,14 @@ annotation class HasuraPermissions (
  * Fields presets for INSERT and UPDATE operations
  */
 @Target(AnnotationTarget.ANNOTATION_CLASS, AnnotationTarget.CLASS)
+@Retention(RetentionPolicy.RUNTIME)
 annotation class HasuraFieldPresets (
     val value: Array<HasuraFieldPreset>
 )
 
 @Repeatable
 @Target(AnnotationTarget.ANNOTATION_CLASS, AnnotationTarget.CLASS)
+@Retention(RetentionPolicy.RUNTIME)
 annotation class HasuraFieldPreset (
     /**
      * Field name on the Java class. Will be converted to appropriate column name for the Hasura metadata "set".

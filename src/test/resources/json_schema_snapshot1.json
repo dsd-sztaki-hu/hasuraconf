@@ -779,6 +779,14 @@
             "$ref" : "#/$defs/Operation"
           }
         },
+        "owner" : {
+          "$ref" : "#/$defs/CalendarUser",
+          "hasura" : {
+            "relation" : "many-to-one",
+            "reference" : "ownerId",
+            "referenceType" : "integer"
+          }
+        },
         "tag" : {
           "type" : "string",
           "readOnly" : true,
@@ -804,6 +812,11 @@
           "selectByPk" : "task",
           "update" : "updateTasks",
           "updateByPk" : "updateTask"
+        },
+        "properties" : {
+          "ownerId" : {
+            "type" : "integer"
+          }
         }
       }
     },

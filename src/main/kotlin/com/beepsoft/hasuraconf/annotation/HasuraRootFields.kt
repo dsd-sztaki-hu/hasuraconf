@@ -8,6 +8,7 @@ import java.lang.annotation.RetentionPolicy
  * https://hasura.io/docs/1.0/graphql/manual/api-reference/schema-metadata-api/table-view.html
  */
 @Target(AnnotationTarget.CLASS)
+@Retention(RetentionPolicy.RUNTIME)
 annotation class HasuraRootFields (
         /**
          * Instead of a name derived from the table name by turning the snake case name to CamelCase use this

@@ -737,7 +737,8 @@ class HasuraConfigurator(
             if (computedFields.isNotEmpty()) {
                 put("computed_fields", JsonArray(computedFields))
             }
-            configurePermissions(entity, this)
+            val permissions = permissionAnnotationProcessor.process(entity)
+            configurePermissions(permissions, this)
         }
 
         return tableJson
@@ -788,11 +789,9 @@ class HasuraConfigurator(
             }
     }
 
-    private fun configurePermissions(entity: EntityType<*>, builder: JsonObjectBuilder)
+    private fun configurePermissions(permissions: List<PermissionData>, builder: JsonObjectBuilder)
     {
         builder.apply {
-            val permissions = permissionAnnotationProcessor.process(entity)
-
             val inserts = permissions.filter { it.operation==HasuraOperation.INSERT }.map { permissionData ->
                 permissionData.toJsonObject()
             }
@@ -874,7 +873,7 @@ class HasuraConfigurator(
         }
     }
 
-    internal data class M2MData(
+    data class M2MData(
             val join: BasicCollectionPersister,
             val field: Field,
             val tableName: String,
@@ -1076,6 +1075,9 @@ class HasuraConfigurator(
                     addObjRel(m2mData, this)
                 }
             }
+
+            val permissions = permissionAnnotationProcessor.process(m2mData)
+            configurePermissions(permissions, this)
         }
         return tableJson
     }

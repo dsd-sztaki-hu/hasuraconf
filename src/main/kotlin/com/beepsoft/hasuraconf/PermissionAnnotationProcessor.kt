@@ -9,7 +9,6 @@ import org.hibernate.internal.SessionFactoryImpl
 import org.hibernate.metamodel.spi.MetamodelImplementor
 import org.hibernate.persister.entity.AbstractEntityPersister
 import org.hibernate.type.CollectionType
-import reactor.util.function.Tuple2
 import javax.persistence.EntityManagerFactory
 import javax.persistence.metamodel.EntityType
 import kotlin.reflect.KClass
@@ -59,13 +58,40 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
                 calcJson(
                         permissionAnnot.valueOf("json"),
                         permissionAnnot.valueOf("jsonFile"),
-                        entity),
+                        entity, null),
                 finalFields.first,
                 finalFields.second,
                 createPresetFieldsMap(entity, classMetadata, permissionAnnot.valueOf("fieldPresets")),
                 permissionAnnot.valueOf("allowAggregations")
         )
     }
+
+    private fun createPresetFieldsMap(m2mData: HasuraConfigurator.M2MData, fieldPresets: HasuraFieldPresets) =
+        fieldPresets.value.map {
+            if(it.column.isNotEmpty()) {
+                if (it.column == m2mData.keyColumn) {
+                    m2mData.keyColumn to it.value
+                }
+                else if (it.column == m2mData.relatedColumnName) {
+                    m2mData.relatedColumnName to it.value
+                }
+                else {
+                    throw HasuraConfiguratorException("Column ${it.column} doesn't exist on ${m2mData.field}'s join table. Did you mean ${m2mData.keyColumn} or ${m2mData.relatedColumnName}")
+                }
+            }
+            else {
+                if (it.field == m2mData.keyFieldName || it.field == m2mData.keyColumnAlias) {
+                    m2mData.keyColumn to it.value
+                }
+                else if (it.field == m2mData.joinFieldName || it.field == m2mData.relatedColumnNameAlias) {
+                    m2mData.relatedColumnName to it.value
+                }
+                else {
+                    throw HasuraConfiguratorException("Field ${it.field} doesn't exist on ${m2mData.field}'s join table. " +
+                            "Did you mean ${m2mData.keyFieldName}, ${m2mData.keyColumnAlias}, ${m2mData.joinFieldName} or ${m2mData.relatedColumnNameAlias} ")
+                }
+            }
+        }.toMap()
 
     private fun createPresetFieldsMap(entity: EntityType<*>, classMetadata: AbstractEntityPersister, fieldPresets: HasuraFieldPresets) =
         fieldPresets.value.map {
@@ -113,6 +139,32 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
 
     private fun KClass<*>.isSubclassOf(base: Array<KClass<*>>): Boolean =
             base.firstOrNull { this.isSubclassOf(it) } != null
+
+    private fun calcFinalFields(fields: Array<String>, excludeFields: Array<String>, m2mData: HasuraConfigurator.M2MData): List<String>
+    {
+        // If no include/exclude given, then we will allow all fields
+        if (fields.size == 0 && excludeFields.size == 0) {
+            return listOf()
+        }
+        val propertyNames = listOf(m2mData.keyFieldName, m2mData.keyColumnAlias, m2mData.joinFieldName, m2mData.relatedColumnNameAlias)
+        val finalFields = mutableSetOf<String>()
+        finalFields.addAll(fields)
+        if (finalFields.size == 0) {
+            finalFields.addAll(propertyNames)
+        }
+
+        finalFields.removeAll(excludeFields)
+
+        val columns = mutableListOf<String>()
+        if (finalFields.contains(m2mData.keyFieldName) || finalFields.contains(m2mData.keyColumnAlias) ) {
+            columns.add(m2mData.keyColumn)
+        }
+        if (finalFields.contains(m2mData.joinFieldName) || finalFields.contains(m2mData.relatedColumnNameAlias) ) {
+            columns.add(m2mData.relatedColumnName)
+        }
+
+        return columns
+    }
 
     /**
      * Calculates the actual list of fields to be included in the premission JSON based on the allowed {@code fields}
@@ -183,10 +235,10 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
     private val atIncludeRegex = "[\"']\\s*@include\\((.*?)\\)\\s*[\"']".toRegex()
 
 
-    private fun resolveIncludes(json: String, entity: EntityType<*>): String
+    private fun resolveIncludes(json: String, entity: EntityType<*>?, m2mData: HasuraConfigurator.M2MData?): String
     {
         // Does actual @include resolving recursively processing @includes in included files
-        fun doResolveIncludes(json: String, jsonFile: String?, entity: EntityType<*>?): String
+        fun doResolveIncludes(json: String, jsonFile: String?, entity: EntityType<*>?, m2mData: HasuraConfigurator.M2MData?): String
         {
             var resolvedJson = json+"" // make a copy
 
@@ -196,12 +248,15 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
                 try {
                     var includedJson = HasuraConfigurator::class.java.getResource(file).readText()
                     // Recursively process includes in the included json
-                    includedJson = doResolveIncludes(includedJson, file, null)
+                    includedJson = doResolveIncludes(includedJson, file, null, null)
                     resolvedJson = resolvedJson.replace(inc, includedJson)
                 }
                 catch (ex: Throwable) {
                     if (entity != null) {
                         throw HasuraConfiguratorException("Unable to load include ${inc} for entity ${entity}", ex)
+                    }
+                    else if (m2mData != null) {
+                        throw HasuraConfiguratorException("Unable to load include ${inc} for field ${m2mData.field}", ex)
                     }
                     else {
                         throw HasuraConfiguratorException("Unable to load include ${inc} in file ${jsonFile!!}", ex)
@@ -211,7 +266,7 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
             return resolvedJson
         }
 
-        return doResolveIncludes(json, null, entity)
+        return doResolveIncludes(json, null, entity, m2mData)
     }
 
     /**
@@ -220,7 +275,7 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
      * other files via {@code @include(/path/to/file)} this way the permission JSON can be defined modularly where
      * JSON fragments can be reused.
      */
-    private fun calcJson(jsonString: String, jsonFile: String, entity: EntityType<*>): String
+    private fun calcJson(jsonString: String, jsonFile: String, entity: EntityType<*>?, m2mData: HasuraConfigurator.M2MData?): String
     {
         var json = jsonString.trim()
         if (json.length == 0 && jsonFile.length != 0) {
@@ -228,17 +283,33 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
                 json = HasuraConfigurator::class.java.getResource(jsonFile).readText()
             }
             catch(ex: Throwable) {
-                throw HasuraConfiguratorException("Unable to load from jsonFile ${jsonFile} for entity ${entity}", ex)
+                if (entity != null) {
+                    throw HasuraConfiguratorException(
+                        "Unable to load from jsonFile ${jsonFile} for entity ${entity}",
+                        ex
+                    )
+                }
+                else if (m2mData != null) {
+                    throw HasuraConfiguratorException(
+                        "Unable to load from jsonFile ${jsonFile} for field ${m2mData.field}",
+                        ex
+                    )
+                }
             }
         }
 
         if (json.trim().length == 0) {
-            LOG.warn("Neither json nor jsonFile defined for hasura permission annotation on ${entity.javaType}")
+            if (entity != null) {
+                LOG.warn("Neither json nor jsonFile defined for hasura permission annotation on ${entity.javaType}")
+            }
+            else if (m2mData != null) {
+                LOG.warn("Neither json nor jsonFile defined for hasura permission annotation on ${m2mData.field}")
+            }
             return json
             //throw HasuraConfiguratorException("Neither json nor jsonFile defined for hasura permission annotation on ${entity}");
         }
         try {
-            json = resolveIncludes(json, entity)
+            json = resolveIncludes(json, entity, m2mData)
             val configObject = Jankson
                     .builder()
                     .build()
@@ -248,42 +319,84 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
             val processed = configObject.toJson(false, true)
             return processed
         } catch (error: SyntaxError) {
-            throw HasuraConfiguratorException("Syntax error in hasura permission annotation on ${entity.javaType}: ${error.completeMessage}")
+            if (entity != null) {
+                throw HasuraConfiguratorException("Syntax error in hasura permission annotation on ${entity.javaType}: ${error.completeMessage}")
+            }
+            else if (m2mData != null) {
+                throw HasuraConfiguratorException("Syntax error in hasura permission annotation on ${m2mData.field}: ${error.completeMessage}")
+            }
+            throw HasuraConfiguratorException("Syntax error in hasura permission: ${error.completeMessage}")
         }
     }
 
+    fun process(m2mData: HasuraConfigurator.M2MData): List<PermissionData> {
+        val permissions = processAnnotations(m2mData.field.annotations) { permissionAnnot ->
+            val finalFields = calcFinalFields(
+                permissionAnnot.valueOf("fields"),
+                permissionAnnot.valueOf("excludeFields"),
+                m2mData)
+            PermissionData(
+                m2mData.tableName,
+                permissionAnnot.valueOf("role"),
+                permissionAnnot.valueOf("operation"),
+                calcJson(
+                    permissionAnnot.valueOf("json"),
+                    permissionAnnot.valueOf("jsonFile"),
+                    m2mData = m2mData,
+                    entity = null),
+                finalFields,
+                listOf(), // no calculated fields here. Should we support it via some @HasuraPermission parameter?
+                createPresetFieldsMap(m2mData, permissionAnnot.valueOf("fieldPresets")),
+                permissionAnnot.valueOf("allowAggregations"))
+        }
+
+        return permissions
+    }
+
     fun process(entity: EntityType<*>): List<PermissionData> {
-        val permissions = mutableListOf<PermissionData>()
+        //val permissions = mutableListOf<PermissionData>()
         val classMetadata = metaModel.entityPersister(entity.javaType.typeName) as AbstractEntityPersister
         val tableName = classMetadata.tableName
 
-        entity.javaType.annotations.forEach {
+        val permissions = processAnnotations(entity.javaType.annotations) {
+            createPermissionData(entity, tableName, classMetadata, it)
+        }
+
+        return permissions
+    }
+
+    /**
+     * Find @HasuraPermission annotations either in a @HasuraPermission annotation or on an external annotation, and
+     * process these annotations using a processor function generating PermissionData.
+     */
+    fun processAnnotations(annotations: Array<Annotation>, processor: (Annotation) -> PermissionData) : List<PermissionData> {
+        val permissions = mutableListOf<PermissionData>()
+        annotations.forEach {
             // Direct @HasuraPermission
             // Note: we use isSubclassOf because the annotation maybe a proxy in which case direct
             // equality check would not work.
             if (it::class.isSubclassOf(HasuraPermission::class)) {
-                permissions.add(createPermissionData(entity, tableName, classMetadata, it))
+                permissions.add(processor(it))
             }
             else if (it::class.isSubclassOf(HasuraPermissions::class)) {
                 (it as HasuraPermissions).value.forEach {
-                    permissions.add(createPermissionData(entity, tableName, classMetadata, it))
+                    permissions.add(processor(it))
                 }
             }
             else {
                 // Meta @HasuraPermission
                 it.annotationClass.annotations.forEach {
                     if (it::class.isSubclassOf(HasuraPermission::class)) {
-                        permissions.add(createPermissionData(entity, tableName, classMetadata, it))
+                        permissions.add(processor(it))
                     }
                     else if (it::class.isSubclassOf(HasuraPermissions::class)) {
                         (it as HasuraPermissions).value.forEach {
-                            permissions.add(createPermissionData(entity, tableName, classMetadata, it))
+                            permissions.add(processor(it))
                         }
                     }
                 }
             }
         }
-
         return permissions
     }
 }

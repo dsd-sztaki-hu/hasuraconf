@@ -52,4 +52,5 @@ import java.lang.annotation.RetentionPolicy
 </pre> *
  */
 @Target(AnnotationTarget.FIELD)
+@Retention(RetentionPolicy.RUNTIME)
 annotation class HasuraGenerateCascadeDeleteTrigger

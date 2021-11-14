@@ -1,5 +1,8 @@
 package com.beepsoft.hasuraconf.annotation
 
+import java.lang.annotation.Retention
+import java.lang.annotation.RetentionPolicy
+
 
 /**
  * Relationship fields  (ie. @OneToOne, @OneToMany, @ManyToOne, @ManyToMany) marked with @HasuraIgnoreRelationship
@@ -9,4 +12,5 @@ package com.beepsoft.hasuraconf.annotation
  * @HasuraIgnoreRelationship to not generate hasura specific tracking for the relationship
  */
 @Target(AnnotationTarget.FIELD)
+@Retention(RetentionPolicy.RUNTIME)
 annotation class HasuraIgnoreRelationship

@@ -1029,7 +1029,20 @@
       },
       "custom_column_names" : {
         "created_at" : "createdAt",
-        "updated_at" : "updatedAt"
+        "updated_at" : "updatedAt",
+        "owner_id" : "ownerId"
+      }
+    }
+  }, {
+    "type" : "create_object_relationship",
+    "args" : {
+      "table" : {
+        "schema" : "public",
+        "name" : "task"
+      },
+      "name" : "owner",
+      "using" : {
+        "foreign_key_constraint_on" : "owner_id"
       }
     }
   }, {
@@ -1283,6 +1296,28 @@
       "name" : "operation",
       "using" : {
         "foreign_key_constraint_on" : "operation_id"
+      }
+    }
+  }, {
+    "type" : "create_select_permission",
+    "args" : {
+      "table" : {
+        "schema" : "public",
+        "name" : "task_operation"
+      },
+      "role" : "USER",
+      "permission" : {
+        "columns" : [ "operation_id", "task_id" ],
+        "allow_aggregations" : false,
+        "filter" : {
+          "task" : {
+            "owner" : {
+              "id" : {
+                "_eq" : "x-hasura-user-id"
+              }
+            }
+          }
+        }
       }
     }
   }, {

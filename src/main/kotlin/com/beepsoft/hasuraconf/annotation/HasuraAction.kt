@@ -1,9 +1,13 @@
 package com.beepsoft.hasuraconf.annotation
 
+import java.lang.annotation.Retention
+import java.lang.annotation.RetentionPolicy
+
 /**
  * Marks a function as a template for defining the types of a Hasura action.
  */
 @Target(AnnotationTarget.FUNCTION)
+@Retention(RetentionPolicy.RUNTIME)
 annotation class HasuraAction (
     /**
      * Explicit name for the action, if want to override default Java/Kotlin method name.
@@ -64,6 +68,7 @@ annotation class HasuraAction (
 /**
  * An HTTP Header with name/value
  */
+@Retention(RetentionPolicy.RUNTIME)
 annotation class HasuraHeader (
     val name: String,
     val value: String

@@ -193,6 +193,7 @@ class HasuraConfiguratorIntegrationTests {
 		// Load metadata again and compare with what we had with the previous algorithm
 		val meta = exportMetadata(conf.hasuraEndpoint, conf.hasuraAdminSecret!!)
 		println("**** export_meta result: $meta")
+		println("conf.metadataJson\n"+conf.metadataJson)
 		var snapshot = readFileUsingGetResource("/metadata_snapshot1.json")
 		JSONAssert.assertEquals(snapshot, conf.metadataJson, false)
 		JSONAssert.assertEquals(conf.metadataJson, snapshot, false)
