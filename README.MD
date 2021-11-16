@@ -12,7 +12,8 @@ With `HasuraConfigurator` when the data model changes in Java/Kotlin the Hasura 
 
 ## 0.8.0
 
-Adds support for computed fields with possibility to define the backing sql function inline in the @HasuraComputedFields annotation.
+- Adds support for permissions on @ManyToMany join tables
+- Adds support for computed fields with possibility to define the backing sql function inline in the @HasuraComputedFields annotation.
 
 For example, the following would define a computed field `titleAndDescription` which would call the SQL function defined with the `functionDefinition` parameter. Also, in HasuraPermission you can now define permissions for the `titleAndDescription` field in the `fields` or `excludeFields` parameters:
 
