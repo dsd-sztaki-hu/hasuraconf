@@ -56,3 +56,12 @@ object Utils {
         return null
     }
 }
+
+fun actualSchemaAndName(schemaName: String, tableName: String) : Pair<String, String>
+{
+    val schemaAndName = tableName.split(".")
+    if (schemaAndName.size > 1) {
+        return Pair(schemaAndName[0], schemaAndName[1])
+    }
+    return Pair(schemaName, tableName)
+}

@@ -307,8 +307,9 @@ class HasuraConfigurator(
                 // It is really an extra table name, add it
                 add(buildJsonObject {
                     putJsonObject("table") {
-                        put("schema", schemaName)
-                        put("name", tableName)
+                        val schemaAndName = actualSchemaAndName(schemaName, tableName)
+                        put("schema", schemaAndName.first)
+                        put("name", schemaAndName.second)
                     }
                 })
             }
@@ -712,8 +713,9 @@ class HasuraConfigurator(
 
         val tableJson = buildJsonObject {
             put("table", buildJsonObject {
-                put("schema", schemaName)
-                put("name", tableName)
+                val schemaAndName = actualSchemaAndName(schemaName, tableName)
+                put("schema", schemaAndName.first)
+                put("name", schemaAndName.second)
             })
             put("configuration", buildJsonObject{
                 put("custom_root_fields", configureRootFieldNames(rootFieldNames))
@@ -989,8 +991,9 @@ class HasuraConfigurator(
                 val rootFieldNames = generateRootFieldNames(rootFields, entityName, entityNameLower, tableName)
 
                 put("table", buildJsonObject {
-                    put("schema", schemaName)
-                    put("name", tableName)
+                    val schemaAndName = actualSchemaAndName(schemaName, tableName)
+                    put("schema", schemaAndName.first)
+                    put("name", schemaAndName.second)
                 })
                 put("configuration", buildJsonObject {
                     put("custom_root_fields", configureRootFieldNames(rootFieldNames))
@@ -1174,6 +1177,8 @@ class HasuraConfigurator(
                     val assocType = params.columnType as AssociationType
                     val fkDir = assocType.foreignKeyDirection
                     if (fkDir === ForeignKeyDirection.FROM_PARENT) {
+                        // may need join.tableName?
+                        val join = assocType.getAssociatedJoinable(sessionFactoryImpl as SessionFactoryImpl?)
                         add(buildJsonObject {
                             put("name", params.propName)
                             putJsonObject("using") {
@@ -1218,8 +1223,9 @@ class HasuraConfigurator(
                             putJsonObject("using") {
                                 putJsonObject("manual_configuration") {
                                     putJsonObject("remote_table") {
-                                        put("name", join.tableName)
-                                        put("schema", schemaName)
+                                        val schemaAndName = actualSchemaAndName(schemaName, join.tableName)
+                                        put("schema", schemaAndName.first)
+                                        put("name", schemaAndName.second)
                                     }
                                     putJsonObject("column_mapping") {
                                         put(keyColumn, mappedId)
@@ -1263,8 +1269,9 @@ class HasuraConfigurator(
                             putJsonObject("foreign_key_constraint_on") {
                                 put("column", keyColumn)
                                 putJsonObject("table") {
-                                    put("name", join.tableName)
-                                    put("schema", schemaName)
+                                    val schemaAndName = actualSchemaAndName(schemaName, join.tableName)
+                                    put("schema", schemaAndName.first)
+                                    put("name", schemaAndName.second)
                                 }
                             }
                         }

@@ -534,14 +534,11 @@ class HasuraActionGenerator(
                                 put("type", annot.type.name.toLowerCase())
                             }
                             putJsonObject("remote_table") {
-                                // In case of hasurra managed entity we must have a calcualted remoteTable
-                                if (remoteTable != null) {
-                                    put("name", remoteTable)
-                                }
-                                else {
-                                    put("name", annot.remoteTable)
-                                }
-                                put("schema", if(annot.remoteSchema.isNotEmpty()) annot.remoteSchema else "public")
+                                val schema = if(annot.remoteSchema.isNotEmpty()) annot.remoteSchema else "public"
+                                val tableName = if (remoteTable != null)  remoteTable else annot.remoteTable
+                                val schemaAndName = actualSchemaAndName(schema, tableName)
+                                put("schema", schemaAndName.first)
+                                put("name", schemaAndName.second)
                             }
                             putJsonObject("field_mapping") {
                                 if (hasuraManagedEntityRelationship) {
