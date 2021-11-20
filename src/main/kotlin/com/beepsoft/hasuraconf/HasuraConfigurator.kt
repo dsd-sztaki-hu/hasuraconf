@@ -150,7 +150,7 @@ class HasuraConfigurator(
             "serial2" to "Int",
             "serial4" to "Int",
             "serial8" to "bigserial",
-            "bool" to "Bool",
+            "bool" to "Boolean",
             "date" to "Date",
             "float4" to "Float",
             "text" to "text",

@@ -119,7 +119,7 @@ class HasuraActionGenerator(
     inline fun isBuiltinGraphqlType(type: String) =
         when(type) {
             "Int",
-            "Bool",
+            "Boolean",
             "Date",
             "Float",
             "String" -> true

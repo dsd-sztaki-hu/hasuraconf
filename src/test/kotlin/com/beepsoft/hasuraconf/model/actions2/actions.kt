@@ -81,7 +81,8 @@ data class UserAndCalendar(
 
 data class UserAndCalendarInput(
     val name: String,
-    val description: String
+    val description: String,
+    val isPublic: Boolean
 )
 
 
