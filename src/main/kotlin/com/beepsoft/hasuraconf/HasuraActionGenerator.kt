@@ -325,7 +325,14 @@ class HasuraActionGenerator(
     }
 
     private fun generateTypeDefinition(type: Class<*>, explicitName: String?, kind: TypeDefinitionKind, fieldAnnot: HasuraField? = null, failForOutputTypeRecursion: Boolean? = false) : String {
-        if (type.isPrimitive || type == String::class.java || Number::class.java.isAssignableFrom(type)) {
+        if (type.isPrimitive
+            || type == Boolean::class.javaObjectType
+            || type == Boolean::class.java
+            || type == String::class.javaObjectType
+            || type == String::class.java
+            || Number::class.java.isAssignableFrom(type)
+        )
+        {
             var typeName = explicitName ?: getHasuraTypeOf(type)!!
             fieldAnnot?.let {
                 var cleanTypeName = typeName.replace("!", "")
