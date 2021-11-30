@@ -12,6 +12,7 @@ import java.lang.reflect.Field
 import java.lang.reflect.Method
 import java.math.BigDecimal
 import java.math.BigInteger
+import java.sql.Timestamp
 import java.sql.Types
 import java.util.*
 import javax.persistence.Entity
@@ -25,6 +26,10 @@ import kotlin.reflect.jvm.kotlinProperty
 class HasuraActionGenerator(
     val metaModel: MetamodelImplementor? = null
 ) {
+
+    companion object {
+        public val LOG = getLogger(this::class.java.enclosingClass)
+    }
 
     enum class TypeDefinitionKind {
         INPUT,
@@ -324,12 +329,14 @@ class HasuraActionGenerator(
         return generateTypeDefinition(type, explicitName, TypeDefinitionKind.OUTPUT)
     }
 
-    private fun generateTypeDefinition(type: Class<*>, explicitName: String?, kind: TypeDefinitionKind, fieldAnnot: HasuraField? = null, failForOutputTypeRecursion: Boolean? = false) : String {
+    private fun generateTypeDefinition(type: Class<*>, explicitName: String?, kind: TypeDefinitionKind, field: Field? = null, fieldAnnot: HasuraField? = null, failForOutputTypeRecursion: Boolean? = false) : String {
         if (type.isPrimitive
             || type == Boolean::class.javaObjectType
             || type == Boolean::class.java
             || type == String::class.javaObjectType
             || type == String::class.java
+            || type == Date::class.java
+            || type == Timestamp::class.java
             || Number::class.java.isAssignableFrom(type)
         )
         {
@@ -337,6 +344,14 @@ class HasuraActionGenerator(
             fieldAnnot?.let {
                 var cleanTypeName = typeName.replace("!", "")
                 addOptionalScalar(cleanTypeName, fieldAnnot)
+            }
+            if ((type == Date::class.java || type == Timestamp::class.java) &&
+                (fieldAnnot == null || fieldAnnot?.type!!.isEmpty())) {
+                LOG.warn("""
+                    {$field} has a date type, which is mapped to graphql Date by default, however in case of Hasura you
+                    may want to user another type like timestamptz or timetz. You can specificy it using 
+                    @HasuraField(type="..."). See https://hasura.io/blog/working-with-dates-time-timezones-graphql-postgresql/                    
+                """.trimIndent())
             }
             return typeName
         }
@@ -470,7 +485,7 @@ class HasuraActionGenerator(
                         put("name", name)
                         // If graphqlType has not been set as the result of @HasuraRelationship, then generate it now
                         if (graphqlType == null) {
-                            graphqlType = generateTypeDefinition(fieldType, explicitFieldTypeName, kind, hasuraFieldAnnot, true)
+                            graphqlType = generateTypeDefinition(fieldType, explicitFieldTypeName, kind, field, hasuraFieldAnnot, true)
                         }
                         else {
                             hasuraFieldAnnot?.let {
