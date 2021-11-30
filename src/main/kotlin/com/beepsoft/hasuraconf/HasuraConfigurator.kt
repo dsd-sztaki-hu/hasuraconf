@@ -742,7 +742,7 @@ class HasuraConfigurator(
                                 entityClass.fields.forEach { enumField ->
                                     val enumVal = java.lang.Enum.valueOf(entityClass as Class<out Enum<*>?>, enumField.name)
                                     val descriptionField = entityClass.declaredFields.first { it.name == "description" }
-                                    descriptionField.trySetAccessible()
+                                    descriptionField.isAccessible = true
                                     append("INSERT INTO $schemaName.$tableName (value, description) VALUES ('${enumField.name}', '${descriptionField.get(enumVal)}') ON CONFLICT DO NOTHING;\n")
                                 }
                             }
