@@ -158,7 +158,10 @@ class HasuraConfigurator(
             "timetz" to "time",
             "timestamp" to "timestamp",
             "timestamptz" to "timestamp",
-            "uuid" to "uuid"
+            "uuid" to "uuid",
+            // not included in Hasura's description, but in our case java Float is translated to 'real' and here back
+            // to graphql Float
+            "real" to "Float",
         )
 
          fun graphqlTypeFor(metaModel: MetamodelImplementor, columnType: Type, classMetadata: AbstractEntityPersister): String {
