@@ -216,6 +216,7 @@ class HasuraActionGenerator(
                         }
                     }
                 }
+                generateRequestTransform(this, annot.requestTransform)
 
                 // Generate and set output type
                 // Use the class's name as the default
@@ -282,6 +283,29 @@ class HasuraActionGenerator(
                     }
                 }
             }
+        }
+    }
+
+    // TODO: this might be usable for event transforms as well
+    private fun generateRequestTransform(builder: JsonObjectBuilder, annot: HasuraRequestTransform)
+    {
+        // If not set, then nothing to do
+        if (annot.url == "<<<empty>>>") {
+            return
+        }
+
+        builder.putJsonObject("request_transform") {
+            // cannto have tabs in front, etc., so reformat it
+            put("body", annot.body.replace("\\s".toRegex(), ""))
+            put("url", annot.url)
+            put("content_type", annot.contentType)
+            put("method", annot.method.name)
+            putJsonObject("query_params") {
+                annot.queryParams.forEach {
+                    put(it.key, it.value)
+                }
+            }
+            put("template_engine", annot.templateEngine)
         }
     }
 

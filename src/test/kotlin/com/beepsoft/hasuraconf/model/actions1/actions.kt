@@ -111,3 +111,33 @@ enum class CalendarType {
     PUBLIC,
     SHARED
 }
+
+
+@HasuraAction(
+    handler = "http://some.rest.endpoint",
+    requestTransform = HasuraRequestTransform(
+        url = "{{\$base_url}}/signup/email-password",
+        method = HasuraHttpMethod.POST,
+        body = """
+            {
+                "email": {{${'$'}body.input.args.email}},
+                "password": {{${'$'}body.input.args.password}}
+            }
+        """
+    )
+)
+fun signUpWithExternalRestApi(
+    args: SignUpWithExternalRestApiInput
+): SignUpWithExternalRestApiOutput {
+    TODO()
+}
+
+data class SignUpWithExternalRestApiInput(
+    val email: String,
+    val password: String
+)
+
+data class SignUpWithExternalRestApiOutput(
+    val mfa: String,
+    val session: String
+)

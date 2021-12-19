@@ -63,6 +63,15 @@ annotation class HasuraAction (
      * Override output type name in case return type is an Object and don't want to use its Java/Kotlin name.
      */
     val outputTypeName: String = "",
+
+    /**
+     * Request transformation for a REST call to be exposed as this action
+     */
+    val requestTransform: HasuraRequestTransform = HasuraRequestTransform(
+        body = "<<<empty>>>",
+        method = HasuraHttpMethod.GET,
+        url = "<<<empty>>>"
+    ),
 )
 
 /**

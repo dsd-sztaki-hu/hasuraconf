@@ -10,6 +10,10 @@ With `HasuraConfigurator` when the data model changes in Java/Kotlin the Hasura 
 
 # Notable changes
 
+## 0.8.7
+
+- Added support or action transforms
+
 ## 0.8.0
 
 - Adds support for permissions on @ManyToMany join tables
@@ -137,7 +141,7 @@ The easiest way to use it in a Maven project is via jitpack
     <dependency>
         <groupId>com.github.beepsoft</groupId>
         <artifactId>hasuraconf</artifactId>
-        <version>0.8.6</version>
+        <version>0.8.7</version>
     </dependency>
 </dependencies>
 ```

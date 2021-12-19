@@ -40,9 +40,10 @@ private val objectMapper = ObjectMapper()
 /**
  * Beautifies the JSON string with proper indentations
  */
-fun String.reformatJson(): String {
+fun String.reformatJson(indent: Boolean? = true): String {
+    val doIndent = indent ?: true
     // Reformat json
-    objectMapper.configure(SerializationFeature.INDENT_OUTPUT, true)
+    objectMapper.configure(SerializationFeature.INDENT_OUTPUT, doIndent)
     val tree = objectMapper.readTree(this)
     return objectMapper.writeValueAsString(tree)
 }
