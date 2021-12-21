@@ -381,6 +381,7 @@ class HasuraActionGenerator(
         }
         var actualTypeName = explicitName ?: type.simpleName
         if (type.isEnum) {
+            actualTypeName = calcEnumTypeName(type, actualTypeName, explicitName)
             return generateEnum(type, actualTypeName, kind)
         }
 
@@ -392,6 +393,7 @@ class HasuraActionGenerator(
                 return "[" + (actualTypeName ?: getHasuraTypeOf(compoType)!!) + "!]"
             }
             else if (compoType.isEnum) {
+                actualTypeName = calcEnumTypeName(compoType, actualTypeName, explicitName)
                 return "[" + generateEnum(compoType, actualTypeName, kind) + "!]"
             }
             else if (failForOutputTypeRecursion != null && failForOutputTypeRecursion && kind == TypeDefinitionKind.OUTPUT) {
@@ -410,6 +412,26 @@ class HasuraActionGenerator(
         return "$actualTypeName"
     }
 
+    private fun calcEnumTypeName(type: Class<*>, actualTypeName: String, explicitName: String?) : String
+    {
+        var result = actualTypeName
+
+        // For @HasuraEnum annotated classes we cannot use the name derived from the classname, but we either need
+        // to have an HasuraEnum or the name must be derived from the table name, since we already have a definition
+        // for the enum generated for the ain graphql definitions, and we have to repeat it here
+        if (type.isAnnotationPresent(HasuraEnum::class.java)) {
+            if (explicitName == null) {
+                if (metaModel != null) {
+                    val targetEntityClassMetadata = metaModel.entityPersister(type.typeName) as AbstractEntityPersister
+                    result = targetEntityClassMetadata.tableName+"_enum"
+                }
+                else {
+                    throw HasuraConfiguratorException("metaModel must be provided when using @HasuraEnum annotated enums without an explicit type")
+                }
+            }
+        }
+        return result
+    }
 
     /**
      * kind is either "input" or "output"

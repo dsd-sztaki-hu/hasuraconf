@@ -209,6 +209,7 @@ class HasuraConfigurator(
     private lateinit var cascadeDeleteFields: MutableSet<CascadeDeleteFields>
     private lateinit var manyToManyEntities: MutableMap<String, ManyToManyEntity>
     private lateinit var extraTableNames: MutableSet<String>
+    private lateinit var classToTableName: MutableMap<Class<out Any>, String>
     // {
     //  "type": "bulk",
     //  "source": "default",
@@ -271,6 +272,7 @@ class HasuraConfigurator(
         manyToManyEntities = mutableMapOf()
         extraTableNames = mutableSetOf()
         tableNames = mutableSetOf()
+        classToTableName = mutableMapOf()
         entityClasses = mutableSetOf<Class<out Any>>()
         runSqlDefs = mutableListOf()
 
@@ -682,6 +684,7 @@ class HasuraConfigurator(
         val keyKolumnName = targetEntityClassMetadata.keyColumnNames[0]
 
         tableNames.add(tableName)
+        classToTableName.put(entity.javaType, tableName)
 
         // Add ID field
         val f = Utils.findDeclaredFieldUsingReflection(entity.javaType, targetEntityClassMetadata.identifierPropertyName)
