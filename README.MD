@@ -141,7 +141,7 @@ The easiest way to use it in a Maven project is via jitpack
     <dependency>
         <groupId>com.github.beepsoft</groupId>
         <artifactId>hasuraconf</artifactId>
-        <version>0.8.7</version>
+        <version>0.8.8</version>
     </dependency>
 </dependencies>
 ```

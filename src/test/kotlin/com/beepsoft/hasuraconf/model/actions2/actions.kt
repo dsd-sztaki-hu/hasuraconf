@@ -2,6 +2,7 @@ package com.beepsoft.hasuraconf.model.actions2
 
 import com.beepsoft.hasuraconf.annotation.*
 import com.beepsoft.hasuraconf.model.Calendar
+import com.beepsoft.hasuraconf.model.CalendarRole
 
 // createUserAndCalendar and createUserAndCalendar2 have same input params, but will have differenet input types
 // because the params are all primitives
@@ -11,7 +12,7 @@ import com.beepsoft.hasuraconf.model.Calendar
 fun createUserAndCalendar(
     name: String,
     description: String,
-    calendarType: CalendarType
+    calendarRoleType: CalendarRole.RoleType
 ): String {
     TODO()
 }
@@ -22,7 +23,7 @@ fun createUserAndCalendar(
 fun createUserAndCalendar(
     name: String,
     descriptions: Array<String>,
-    calendarTypes: Array<CalendarType>
+    calendarRoleTypes: Array<CalendarRole.RoleType>
 ): String {
     TODO()
 }
@@ -85,9 +86,3 @@ data class UserAndCalendarInput(
     val isPublic: Boolean
 )
 
-
-enum class CalendarType {
-    PRIVATE,
-    PUBLIC,
-    SHARED
-}
