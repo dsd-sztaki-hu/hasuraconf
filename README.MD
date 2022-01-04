@@ -10,14 +10,16 @@ With `HasuraConfigurator` when the data model changes in Java/Kotlin the Hasura 
 
 # Notable changes
 
-## 0.8.7
+## 0.9.x
 
-- Added support or action transforms
+- Added support for default permission setting per entity
+- Added @HasuraPermission.operations and @HasuraPermission.roles to be able to define common permissions for a a set of operations/roles using a singe annotation 
 
-## 0.8.0
+## 0.8.x
 
 - Adds support for permissions on @ManyToMany join tables
 - Adds support for computed fields with possibility to define the backing sql function inline in the @HasuraComputedFields annotation.
+- Added support or action transforms
 
 For example, the following would define a computed field `titleAndDescription` which would call the SQL function defined with the `functionDefinition` parameter. Also, in HasuraPermission you can now define permissions for the `titleAndDescription` field in the `fields` or `excludeFields` parameters:
 
@@ -57,15 +59,15 @@ class Calendar : BaseObject() {
 
 ```
 
-## 0.7.0
+## 0.7.x
 
 Adds support for generating Actions.
 
-## 0.6.0
+## 0.6.x
 
 Version 0.6.0 adds `HasuraStaticConfigurator`, which can be used to execute Hasura API "bulk" operations in an idempontent way ie. if an operation fails, we can define a match criteria for the errors which are "acceptable" and thus can be ignorred. This way the same bulk operations can be executed any number of times without failing for reasons that we know in advance can be safely ignorred.   
 
-## 0.5.0
+## 0.5.x
 
 Version 0.5.0 the configuration algorithm has been completely rewritten and `hasuraconf.confFile` and `hasuraconf.loadConf` "bulk JSON" based configuration is now deprecated. Use `hasuraconf.metadataFile`/`hasuraconf.loadMetadata` and `hasuraconf.cascadeDeleteFile`/`hasuraconf.loadCascadeDelete` instead. Old format `confJson` is still generated, but its loading into Hasura is extremely slow compared to the new metadata loading mechanism, which is now the predferred way.
 
@@ -141,7 +143,7 @@ The easiest way to use it in a Maven project is via jitpack
     <dependency>
         <groupId>com.github.beepsoft</groupId>
         <artifactId>hasuraconf</artifactId>
-        <version>0.8.8</version>
+        <version>0.8.9</version>
     </dependency>
 </dependencies>
 ```

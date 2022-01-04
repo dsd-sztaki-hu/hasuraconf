@@ -35,40 +35,9 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
         metaModel = sessionFactoryImpl.metamodel as MetamodelImplementor
     }
 
-    /**
-     * Creates a PermissionData for the given annotation. {@code permissionAnnot} is expected to be one of
-     * the annotation {@code @HauraPermission, @HasuraReadPermission, @HasuraInsertPermission,
-     * @HasuraUpdatePermission, @HasuraDeletePermission}. Annotation properties will be accessed via reflection,
-     * so actually any annotation would be suitable, which provides the same properties as those listed above.
-     */
-    private fun createPermissionData(
-        entity: EntityType<*>,
-        tableName: String,
-        classMetadata: AbstractEntityPersister,
-        permissionAnnot: Annotation): PermissionData
-    {
-        val finalFields = calcFinalFields(
-                                permissionAnnot.valueOf("fields"),
-                                permissionAnnot.valueOf("excludeFields"),
-                                entity)
-        return PermissionData(
-                tableName,
-                permissionAnnot.valueOf("role"),
-                permissionAnnot.valueOf("operation"),
-                calcJson(
-                        permissionAnnot.valueOf("json"),
-                        permissionAnnot.valueOf("jsonFile"),
-                        entity, null),
-                finalFields.first,
-                finalFields.second,
-                createPresetFieldsMap(entity, classMetadata, permissionAnnot.valueOf("fieldPresets")),
-                permissionAnnot.valueOf("allowAggregations")
-        )
-    }
-
-    private fun createPresetFieldsMap(m2mData: HasuraConfigurator.M2MData, fieldPresets: HasuraFieldPresets) =
-        fieldPresets.value.map {
-            if(it.column.isNotEmpty()) {
+    private fun createPresetFieldsMap(m2mData: HasuraConfigurator.M2MData, fieldPresets: List<HasuraFieldPresetValues>) =
+        fieldPresets.map {
+            if(it.column.isNotEmpty() && it.column != NOTSET) {
                 if (it.column == m2mData.keyColumn) {
                     m2mData.keyColumn to it.value
                 }
@@ -93,10 +62,10 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
             }
         }.toMap()
 
-    private fun createPresetFieldsMap(entity: EntityType<*>, classMetadata: AbstractEntityPersister, fieldPresets: HasuraFieldPresets) =
-        fieldPresets.value.map {
+    private fun createPresetFieldsMap(entity: EntityType<*>, classMetadata: AbstractEntityPersister, fieldPresets: List<HasuraFieldPresetValues>) =
+        fieldPresets.map {
             try {
-                if (it.column.length != 0) {
+                if (it.column.length != 0 && it.column != NOTSET) {
                     var found = false
                     classMetadata.attributes.forEach {attr ->
                         val col = classMetadata.getPropertyColumnNames(attr.name)
@@ -140,7 +109,7 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
     private fun KClass<*>.isSubclassOf(base: Array<KClass<*>>): Boolean =
             base.firstOrNull { this.isSubclassOf(it) } != null
 
-    private fun calcFinalFields(fields: Array<String>, excludeFields: Array<String>, m2mData: HasuraConfigurator.M2MData): List<String>
+    private fun calcFinalFields(fields: List<String>, excludeFields: List<String>, m2mData: HasuraConfigurator.M2MData): List<String>
     {
         // If no include/exclude given, then we will allow all fields
         if (fields.size == 0 && excludeFields.size == 0) {
@@ -170,7 +139,7 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
      * Calculates the actual list of fields to be included in the premission JSON based on the allowed {@code fields}
      * and the {@code excludeFields}
      */
-    private fun calcFinalFields(fields: Array<String>, excludeFields: Array<String>, entity: EntityType<*>): Pair<List<String>, List<String>>
+    private fun calcFinalFields(fields: List<String>, excludeFields: List<String>, entity: EntityType<*>): Pair<List<String>, List<String>>
     {
         val computedFieldNames = entity.javaType.declaredFields
                                     .filter { it.isAnnotationPresent(HasuraComputedField::class.java) }
@@ -329,28 +298,66 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
         }
     }
 
-    fun process(m2mData: HasuraConfigurator.M2MData): List<PermissionData> {
-        val permissions = processAnnotations(m2mData.field.annotations) { permissionAnnot ->
-            val finalFields = calcFinalFields(
-                permissionAnnot.valueOf("fields"),
-                permissionAnnot.valueOf("excludeFields"),
-                m2mData)
-            PermissionData(
-                m2mData.tableName,
-                permissionAnnot.valueOf("role"),
-                permissionAnnot.valueOf("operation"),
-                calcJson(
-                    permissionAnnot.valueOf("json"),
-                    permissionAnnot.valueOf("jsonFile"),
-                    m2mData = m2mData,
-                    entity = null),
-                finalFields,
-                listOf(), // no calculated fields here. Should we support it via some @HasuraPermission parameter?
-                createPresetFieldsMap(m2mData, permissionAnnot.valueOf("fieldPresets")),
-                permissionAnnot.valueOf("allowAggregations"))
+    private fun collectDefaultPermissionValues(annotations: Array<Annotation>) : Map<String, HasuraPermissionValues>
+    {
+        // Key is "operation-" or "operation-role"
+        val defaultPermissions = mutableMapOf<String, HasuraPermissionValues>()
+
+        processAnnotations(annotations) {annot ->
+            if (annot.default) {
+                val ops = calcEffectiveOperations(annot)
+                val roles = calcEffectiveRoles(annot)
+                ops.forEach { op ->
+                    roles.forEach { role ->
+                        defaultPermissions.put("${op}-${role}", HasuraPermissionValues.from(annot))
+                    }
+                }
+            }
+            // don't return anything, we just use all this for filtering, collectng default values
+            null
         }
 
-        return permissions
+        return defaultPermissions
+    }
+
+    private fun calcEffectiveOperations(annot: HasuraPermission) : List<HasuraOperation>
+    {
+        val ops = mutableListOf<HasuraOperation>()
+        if (!annot.operations.contains(HasuraOperation.NOTSET) && annot.operations.isNotEmpty()) {
+            ops.addAll(annot.operations)
+        }
+        else {
+            when (annot.operation) {
+                // Just one
+                HasuraOperation.SELECT,
+                HasuraOperation.INSERT,
+                HasuraOperation.UPDATE,
+                HasuraOperation.DELETE -> ops.add(annot.operation)
+                // Applicable to all of them
+                HasuraOperation.ALL, HasuraOperation.NOTSET -> {
+                    ops.add(HasuraOperation.SELECT)
+                    ops.add(HasuraOperation.INSERT)
+                    ops.add(HasuraOperation.UPDATE)
+                    ops.add(HasuraOperation.DELETE)
+                }
+            }
+        }
+        return ops
+    }
+
+    private fun calcEffectiveRoles(annot: HasuraPermission) : List<String>
+    {
+        val roles = mutableListOf<String>()
+        if (!annot.roles.contains(NOTSET)) {
+            roles.addAll(annot.roles)
+        }
+        else if (annot.role == NOTSET){
+            roles.add("") // any role
+        }
+        else {
+            roles.add(annot.role)
+        }
+        return roles
     }
 
     fun process(entity: EntityType<*>): List<PermissionData> {
@@ -358,40 +365,246 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
         val classMetadata = metaModel.entityPersister(entity.javaType.typeName) as AbstractEntityPersister
         val tableName = classMetadata.tableName
 
-        val permissions = processAnnotations(entity.javaType.annotations) {
-            createPermissionData(entity, tableName, classMetadata, it)
+        val defaultPermissions = collectDefaultPermissionValues(entity.javaType.annotations)
+        val permissions = processAnnotations(entity.javaType.annotations) { annot ->
+            if (!annot.default) {
+                // A single annotations my cause generation of multiple permission definitions per operation and
+                // per role, so first calc all the ops and roles and permutate permission defnitions based on this
+                val ops = calcEffectiveOperations(annot)
+                val roles = calcEffectiveRoles(annot)
+                val res = mutableListOf<PermissionData>()
+                ops.forEach { op ->
+                    roles.forEach { role ->
+                        val permVal = HasuraPermissionValues.from(annot)
+                        permVal.operation = op
+                        permVal.role = role
+                        res.add(createPermissionData(
+                            entity,
+                            tableName,
+                            classMetadata,
+                            permVal,
+                            defaultPermissions
+                        ))
+                    }
+                }
+                res
+            }
+            else {
+                null
+            }
         }
 
         return permissions
     }
 
     /**
+     * Creates a PermissionData for the given annotation. {@code permissionAnnot} is expected to be one of
+     * the annotation {@code @HauraPermission, @HasuraReadPermission, @HasuraInsertPermission,
+     * @HasuraUpdatePermission, @HasuraDeletePermission}. Annotation properties will be accessed via reflection,
+     * so actually any annotation would be suitable, which provides the same properties as those listed above.
+     */
+    private fun createPermissionData(
+        entity: EntityType<*>,
+        tableName: String,
+        classMetadata: AbstractEntityPersister,
+        permissionValues: HasuraPermissionValues,
+        defaults: Map<String,HasuraPermissionValues>? = null,
+    ): PermissionData
+    {
+        // Calc the actual permissionValues from default HasuraPermission values and the actual HasuraPermission
+        var defOp : HasuraPermissionValues? = null
+        var defOpRole : HasuraPermissionValues? = null
+        if (defaults != null) {
+            defOp = defaults!!.get("${permissionValues.operation}-")
+            defOpRole = defaults!!.get("${permissionValues.operation}-${permissionValues.role}")
+        }
+        // Inherit values from the generic operation based default, then the operation+role based, then from the
+        // actual annotation
+        val finalValues = mergePermissionValues(
+            defOp,
+            defOpRole,
+            permissionValues)
+
+        val finalFields = calcFinalFields(
+            finalValues.fields.filter { it != NOTSET },
+            finalValues.excludeFields.filter { it != NOTSET },
+            entity)
+
+        return PermissionData(
+            finalValues,
+            tableName,
+            finalValues.role,
+            finalValues.operation,
+            calcJson(
+                if (finalValues.json == NOTSET) "" else finalValues.json,
+                if (finalValues.jsonFile == NOTSET) "" else finalValues.jsonFile,
+                entity, null),
+            finalFields.first,
+            finalFields.second,
+            createPresetFieldsMap(entity, classMetadata, finalValues.fieldPresets.filter {
+                //Only those where not both of column and field is set to NOTSET
+                !(it.column == NOTSET && it.field == NOTSET)
+            }),
+            !(finalValues.allowAggregations == AllowAggregationsEnum.NOTSET || finalValues.allowAggregations == AllowAggregationsEnum.FALSE)
+        )
+    }
+
+    /**
+     * Process permissions on a many-to-many field. Such fields have no mapped java classes, so we have to work on the
+     * HasuraConfigurator.M2MData objects, which represent the many-to-many join attributes
+     */
+    fun process(m2mData: HasuraConfigurator.M2MData): List<PermissionData> {
+        val defaultPermissions = collectDefaultPermissionValues(m2mData.field.annotations)
+        val permissions = processAnnotations(m2mData.field.annotations) { annot ->
+            if (!annot.default) {
+                // A single annotations my cause generation of multiple permission definitions per operation and
+                // per role, so first calc all the ops and roles and permutate permission defnitions based on this
+                val ops = calcEffectiveOperations(annot)
+                val roles = calcEffectiveRoles(annot)
+                val res = mutableListOf<PermissionData>()
+                ops.forEach { op ->
+                    roles.forEach { role ->
+                        val permVal = HasuraPermissionValues.from(annot)
+                        permVal.operation = op
+                        permVal.role = role
+                        res.add(createPermissionData(m2mData, permVal, defaultPermissions))
+                    }
+                }
+                res
+            }
+            else {
+                null
+            }
+        }
+
+        return permissions
+    }
+
+    private fun createPermissionData(
+        m2mData: HasuraConfigurator.M2MData,
+        permissionValues: HasuraPermissionValues,
+        defaults: Map<String,HasuraPermissionValues>? = null,
+    ): PermissionData
+    {
+        // Calc the actual permissionValues from default HasuraPermission values and the actual HasuraPermission
+        var defOp : HasuraPermissionValues? = null
+        var defOpRole : HasuraPermissionValues? = null
+        if (defaults != null) {
+            defOp = defaults!!.get("${permissionValues.operation}-")
+            defOpRole = defaults!!.get("${permissionValues.operation}-${permissionValues.role}")
+        }
+        // Inherit values from the generic operation based default, then the operation+role based, then from the
+        // actual annotation
+        val finalValues = mergePermissionValues(
+            defOp,
+            defOpRole,
+            permissionValues)
+
+        val finalFields = calcFinalFields(
+            finalValues.fields.filter { it != NOTSET },
+            finalValues.excludeFields.filter { it != NOTSET },
+            m2mData)
+
+        return PermissionData(
+            finalValues,
+            m2mData.tableName,
+            finalValues.role,
+            finalValues.operation,
+            calcJson(
+                if (finalValues.json == NOTSET) "" else finalValues.json,
+                if (finalValues.jsonFile == NOTSET) "" else finalValues.jsonFile,
+                m2mData = m2mData,
+                entity = null),
+            finalFields,
+            listOf(), // no calculated fields here. Should we support it via some @HasuraPermission parameter?
+            createPresetFieldsMap(m2mData, finalValues.fieldPresets.filter {
+                //Only those where not both of column and field is set to NOTSET
+                !(it.column == NOTSET && it.field == NOTSET)
+            }),
+            !(finalValues.allowAggregations == AllowAggregationsEnum.NOTSET || finalValues.allowAggregations == AllowAggregationsEnum.FALSE)
+        )
+    }
+
+    private fun mergePermissionValues(defOp: HasuraPermissionValues?, defOpRole: HasuraPermissionValues?, actual: HasuraPermissionValues) : HasuraPermissionValues
+    {
+        var result : HasuraPermissionValues? = null
+        if (defOp != null) {
+            result = defOp
+        }
+        if (defOpRole != null) {
+            if (result != null) {
+                result = result.merge(defOpRole)
+            }
+            else {
+                result = defOpRole
+            }
+        }
+        if (result != null) {
+            result = result.merge(actual)
+        }
+        else {
+            result = actual
+        }
+        return result
+    }
+
+
+    /**
+     * Collects HasuraPermission annotations with `default=true` settings and orders them so that first come
+     * defaults without a role specification, then default with both operation and role. Defaults will be applied to
+     * actual PermissionData in this same order.
+     * @param entity
+     */
+//    fun collectDefaultPermissions(entity: EntityType<*>): List<PermissionData> {
+//        val permissions = processAnnotations(entity.javaType.annotations) {
+//
+//        }
+//        return permissions
+//    }
+//
+//    fun collectDefaultPermissions(m2mData: HasuraConfigurator.M2MData): List<PermissionData> {
+//    }
+
+
+        /**
      * Find @HasuraPermission annotations either in a @HasuraPermission annotation or on an external annotation, and
      * process these annotations using a processor function generating PermissionData.
      */
-    fun processAnnotations(annotations: Array<Annotation>, processor: (Annotation) -> PermissionData) : List<PermissionData> {
+    fun processAnnotations(annotations: Array<Annotation>, processor: (HasuraPermission) ->  List<PermissionData>?) : List<PermissionData> {
         val permissions = mutableListOf<PermissionData>()
         annotations.forEach {
             // Direct @HasuraPermission
             // Note: we use isSubclassOf because the annotation maybe a proxy in which case direct
             // equality check would not work.
             if (it::class.isSubclassOf(HasuraPermission::class)) {
-                permissions.add(processor(it))
+                val d = processor(it as HasuraPermission)
+                if (d != null) {
+                    permissions.addAll(d)
+                }
             }
             else if (it::class.isSubclassOf(HasuraPermissions::class)) {
                 (it as HasuraPermissions).value.forEach {
-                    permissions.add(processor(it))
+                    val d = processor(it)
+                    if (d != null) {
+                        permissions.addAll(d)
+                    }
                 }
             }
             else {
                 // Meta @HasuraPermission
                 it.annotationClass.annotations.forEach {
                     if (it::class.isSubclassOf(HasuraPermission::class)) {
-                        permissions.add(processor(it))
+                        val d = processor(it as HasuraPermission)
+                        if (d != null) {
+                            permissions.addAll(d)
+                        }
                     }
                     else if (it::class.isSubclassOf(HasuraPermissions::class)) {
                         (it as HasuraPermissions).value.forEach {
-                            permissions.add(processor(it))
+                            val d = processor(it)
+                            if (d != null) {
+                                permissions.addAll(d)
+                            }
                         }
                     }
                 }
@@ -402,6 +615,7 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
 }
 
 data class PermissionData (
+    val permissionValues: HasuraPermissionValues,
     val table: String,
     val role: String,
     val operation: HasuraOperation,
@@ -483,5 +697,18 @@ data class PermissionData (
         }
         return Json.encodeToString(jsonObj)
     }
+
+//    fun merge(other: PermissionData) : PermissionData {
+//        return PermissionData(
+//            other.table,
+//            other.role,
+//            other.operation,
+//            if (other.json != NOTSET) other.json else this.json,
+//            if (other.columns.isNotEmpty()) other.columns else this.columns,
+//            if (other.computedFields.isNotEmpty()) other.computedFields else this.computedFields,
+//            if (other.fieldPresets.isNotEmpty()) other.fieldPresets else this.fieldPresets,
+//            if (other.allowAggregations) other.allowAggregations else this.allowAggregations
+//        )
+//    }
 }
 

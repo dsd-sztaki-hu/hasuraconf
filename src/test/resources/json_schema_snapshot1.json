@@ -827,12 +827,18 @@
           "type" : "string",
           "format" : "date-time"
         },
+        "description" : {
+          "type" : "string"
+        },
         "id" : {
           "type" : "integer",
           "hasura" : {
             "graphqlType" : "bigint"
           },
           "readOnly" : true
+        },
+        "name" : {
+          "type" : "string"
         },
         "tag" : {
           "type" : "string",

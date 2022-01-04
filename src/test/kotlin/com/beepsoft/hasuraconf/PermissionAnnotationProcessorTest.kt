@@ -2,6 +2,8 @@ package com.beepsoft.hasuraconf
 
 import com.beepsoft.hasuraconf.model.Calendar
 import com.beepsoft.hasuraconf.model.Day
+import com.beepsoft.hasuraconf.model.Layout
+import com.beepsoft.hasuraconf.model.Operation
 import org.hibernate.SessionFactory
 import org.hibernate.internal.SessionFactoryImpl
 import org.hibernate.metamodel.model.domain.spi.EntityTypeDescriptor
@@ -130,8 +132,82 @@ class PermissionAnnotationProcessorTest {
         val daySnapshot2 = readFileUsingGetResource("/day_perm_snapshot2.json")
         JSONAssert.assertEquals("Read permission on Day (with @include from jsonFile)", permissions[1].json, daySnapshot1, false)
         JSONAssert.assertEquals("Full day SELECT permission metadata (with @include from jsonFile)", permissions[1].toHasuraApiJson(), daySnapshot2, false)
+    }
 
+    @DisplayName("Test Hasura permission annotations with defaults")
+    @Test
+    fun testAnnotationsWithDefaults() {
+        val proc = PermissionAnnotationProcessor(entityManagerFactory)
+
+        val sessionFactoryImpl = entityManagerFactory.unwrap(SessionFactory::class.java) as SessionFactoryImpl
+        val metaModel = sessionFactoryImpl.metamodel as MetamodelImplementor
+        var entity: EntityTypeDescriptor<*> = metaModel.entity(Layout::class.java)
+        var permissions = proc.process(entity)
+
+        // Generates hasuraMetadataJsons to stdout so that we can copy it back to test when it changes
+        printHasuraMetadataJson(permissions)
+
+        var hasuraMetadataJsons = listOf(
+            listOf("SELECT", """{"role":"WORKER","permission":{"columns":["media_query","min_height"],"allow_aggregations":true,"filter":{}}}"""),
+            listOf("SELECT", """{"role":"EDITOR","permission":{"columns":"*","allow_aggregations":true,"filter":{}}}"""),
+            listOf("UPDATE", """{"role":"EDITOR","permission":{"columns":["created_at","tag","updated_at","data","description","max_height","max_width","media_query","min_height","min_width","mnemonic","theme_id","user_agent_regexp","id"],"check":null,"set":{},"filter":{}}}"""),
+            listOf("DELETE", """{"role":"EDITOR","permission":{"filter":{}}}"""),
+            listOf("SELECT", """{"role":"ALLDEFAULTS","permission":{"columns":["mnemonic","media_query"],"allow_aggregations":true,"filter":{"media_query":{"_eq":"10"}}}}"""),
+            listOf("UPDATE", """{"role":"ALLDEFAULTS","permission":{"columns":["mnemonic","media_query"],"check":null,"set":{},"filter":{"media_query":{"_eq":"99"}}}}"""),
+            listOf("SELECT", """{"role":"ROLE1","permission":{"columns":"*","allow_aggregations":true,"filter":{}}}"""),
+            listOf("UPDATE", """{"role":"ROLE1","permission":{"columns":["created_at","tag","updated_at","data","description","max_height","max_width","media_query","min_height","min_width","mnemonic","theme_id","user_agent_regexp","id"],"check":null,"set":{},"filter":{"mnemonic":{"_eq":"foo"}}}}"""),
+            listOf("INSERT", """{"role":"ROLE1","permission":{"columns":"*","check":{"mnemonic":{"_eq":"foo"}},"set":{}}}"""),
+            listOf("UPDATE", """{"role":"ROLE2","permission":{"columns":["created_at","tag","updated_at","data","description","max_height","max_width","media_query","min_height","min_width","mnemonic","theme_id","user_agent_regexp","id"],"check":null,"set":{},"filter":{"mnemonic":{"_eq":"foo"}}}}"""),
+            listOf("INSERT", """{"role":"ROLE2","permission":{"columns":"*","check":{"mnemonic":{"_eq":"foo"}},"set":{}}}"""),
+        )
+
+        permissions.forEachIndexed { index, permissionData ->
+            Assertions.assertEquals(hasuraMetadataJsons[index][0], permissionData.operation.toString())
+            Assertions.assertEquals(hasuraMetadataJsons[index][1], permissionData.toJsonObject().toString())
+        }
+    }
+
+    @DisplayName("Test Hasura permission annotations with permutations")
+    @Test
+    fun testAnnotationsWithPermutations() {
+        val proc = PermissionAnnotationProcessor(entityManagerFactory)
+
+        val sessionFactoryImpl = entityManagerFactory.unwrap(SessionFactory::class.java) as SessionFactoryImpl
+        val metaModel = sessionFactoryImpl.metamodel as MetamodelImplementor
+        var entity: EntityTypeDescriptor<*> = metaModel.entity(Operation::class.java)
+        var permissions = proc.process(entity)
+
+        // Generates hasuraMetadataJsons to stdout so that we can copy it back to test when it changes
+        printHasuraMetadataJson(permissions)
+
+        var hasuraMetadataJsons = listOf(
+            listOf("SELECT", """{"role":"AUTHOR","permission":{"columns":"*","allow_aggregations":false,"filter":{"id":{"_gt":10}}}}"""),
+            listOf("SELECT", """{"role":"EDITOR","permission":{"columns":"*","allow_aggregations":false,"filter":{"id":{"_gt":10}}}}"""),
+            listOf("INSERT", """{"role":"AUTHOR","permission":{"columns":"*","check":{"id":{"_gt":10}},"set":{}}}"""),
+            listOf("INSERT", """{"role":"EDITOR","permission":{"columns":"*","check":{"id":{"_gt":10}},"set":{}}}"""),
+            listOf("UPDATE", """{"role":"AUTHOR","permission":{"columns":"*","check":null,"set":{},"filter":{"id":{"_gt":10}}}}"""),
+            listOf("UPDATE", """{"role":"EDITOR","permission":{"columns":"*","check":null,"set":{},"filter":{"id":{"_gt":10}}}}"""),
+            listOf("DELETE", """{"role":"AUTHOR","permission":{"filter":{"id":{"_gt":10}}}}"""),
+            listOf("DELETE", """{"role":"EDITOR","permission":{"filter":{"id":{"_gt":10}}}}"""),
+            listOf("SELECT", """{"role":"WORKER","permission":{"columns":"*","allow_aggregations":true,"filter":{"name":{"_like":"%some_value%"}}}}"""),
+            listOf("SELECT", """{"role":"BOSS","permission":{"columns":"*","allow_aggregations":true,"filter":{"name":{"_like":"%some_value%"}}}}"""),
+            listOf("UPDATE", """{"role":"WORKER","permission":{"columns":"*","check":null,"set":{},"filter":{"name":{"_like":"%some_value%"}}}}"""),
+            listOf("UPDATE", """{"role":"BOSS","permission":{"columns":"*","check":null,"set":{},"filter":{"name":{"_like":"%some_value%"}}}}"""),
+        )
+
+        permissions.forEachIndexed { index, permissionData ->
+            Assertions.assertEquals(hasuraMetadataJsons[index][0], permissionData.operation.toString())
+            Assertions.assertEquals(hasuraMetadataJsons[index][1], permissionData.toJsonObject().toString())
+        }
 
     }
 
+    private fun printHasuraMetadataJson(permissions: List<PermissionData>)  {
+        // Generates hasuraMetadataJsons to stdout so that we can copy it back to test when it changes
+        println("""        var hasuraMetadataJsons = listOf(""")
+        permissions.forEach {
+            println("            listOf(\"${it.operation}\", \"\"\"${it.toJsonObject()}\"\"\"),")
+        }
+        println("""        )""")
+    }
 }

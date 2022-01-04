@@ -78,8 +78,8 @@
         "foreign_key_constraint_on" : {
           "column" : "parents_id",
           "table" : {
-            "name" : "calendar_parents",
-            "schema" : "public"
+            "schema" : "public",
+            "name" : "calendar_parents"
           }
         }
       }
@@ -89,8 +89,8 @@
         "foreign_key_constraint_on" : {
           "column" : "calendar_id",
           "table" : {
-            "name" : "day",
-            "schema" : "public"
+            "schema" : "public",
+            "name" : "day"
           }
         }
       }
@@ -100,8 +100,8 @@
         "foreign_key_constraint_on" : {
           "column" : "children_id",
           "table" : {
-            "name" : "calendar_parents",
-            "schema" : "public"
+            "schema" : "public",
+            "name" : "calendar_parents"
           }
         }
       }
@@ -111,8 +111,8 @@
         "foreign_key_constraint_on" : {
           "column" : "calendar_id",
           "table" : {
-            "name" : "calendar_role",
-            "schema" : "public"
+            "schema" : "public",
+            "name" : "calendar_role"
           }
         }
       }
@@ -122,8 +122,8 @@
         "foreign_key_constraint_on" : {
           "column" : "the_calendar_id",
           "table" : {
-            "name" : "user_calendar",
-            "schema" : "public"
+            "schema" : "public",
+            "name" : "user_calendar"
           }
         }
       }
@@ -335,8 +335,8 @@
         "foreign_key_constraint_on" : {
           "column" : "the_user_id",
           "table" : {
-            "name" : "user_calendar",
-            "schema" : "public"
+            "schema" : "public",
+            "name" : "user_calendar"
           }
         }
       }
@@ -346,8 +346,8 @@
         "foreign_key_constraint_on" : {
           "column" : "calendar_user_id",
           "table" : {
-            "name" : "calendar_user_friends",
-            "schema" : "public"
+            "schema" : "public",
+            "name" : "calendar_user_friends"
           }
         }
       }
@@ -392,8 +392,8 @@
         "foreign_key_constraint_on" : {
           "column" : "day_id",
           "table" : {
-            "name" : "event",
-            "schema" : "public"
+            "schema" : "public",
+            "name" : "event"
           }
         }
       }
@@ -610,6 +610,113 @@
       "using" : {
         "foreign_key_constraint_on" : "theme_id"
       }
+    } ],
+    "insert_permissions" : [ {
+      "role" : "ROLE1",
+      "permission" : {
+        "columns" : "*",
+        "check" : {
+          "mnemonic" : {
+            "_eq" : "foo"
+          }
+        },
+        "set" : { }
+      }
+    }, {
+      "role" : "ROLE2",
+      "permission" : {
+        "columns" : "*",
+        "check" : {
+          "mnemonic" : {
+            "_eq" : "foo"
+          }
+        },
+        "set" : { }
+      }
+    } ],
+    "select_permissions" : [ {
+      "role" : "WORKER",
+      "permission" : {
+        "columns" : [ "media_query", "min_height" ],
+        "allow_aggregations" : true,
+        "filter" : { }
+      }
+    }, {
+      "role" : "EDITOR",
+      "permission" : {
+        "columns" : "*",
+        "allow_aggregations" : true,
+        "filter" : { }
+      }
+    }, {
+      "role" : "ALLDEFAULTS",
+      "permission" : {
+        "columns" : [ "mnemonic", "media_query" ],
+        "allow_aggregations" : true,
+        "filter" : {
+          "media_query" : {
+            "_eq" : "10"
+          }
+        }
+      }
+    }, {
+      "role" : "ROLE1",
+      "permission" : {
+        "columns" : "*",
+        "allow_aggregations" : true,
+        "filter" : { }
+      }
+    } ],
+    "update_permissions" : [ {
+      "role" : "EDITOR",
+      "permission" : {
+        "columns" : [ "created_at", "tag", "updated_at", "data", "description", "max_height", "max_width", "media_query", "min_height", "min_width", "mnemonic", "theme_id", "user_agent_regexp", "id" ],
+        "check" : null,
+        "set" : { },
+        "filter" : { }
+      }
+    }, {
+      "role" : "ALLDEFAULTS",
+      "permission" : {
+        "columns" : [ "mnemonic", "media_query" ],
+        "check" : null,
+        "set" : { },
+        "filter" : {
+          "media_query" : {
+            "_eq" : "99"
+          }
+        }
+      }
+    }, {
+      "role" : "ROLE1",
+      "permission" : {
+        "columns" : [ "created_at", "tag", "updated_at", "data", "description", "max_height", "max_width", "media_query", "min_height", "min_width", "mnemonic", "theme_id", "user_agent_regexp", "id" ],
+        "check" : null,
+        "set" : { },
+        "filter" : {
+          "mnemonic" : {
+            "_eq" : "foo"
+          }
+        }
+      }
+    }, {
+      "role" : "ROLE2",
+      "permission" : {
+        "columns" : [ "created_at", "tag", "updated_at", "data", "description", "max_height", "max_width", "media_query", "min_height", "min_width", "mnemonic", "theme_id", "user_agent_regexp", "id" ],
+        "check" : null,
+        "set" : { },
+        "filter" : {
+          "mnemonic" : {
+            "_eq" : "foo"
+          }
+        }
+      }
+    } ],
+    "delete_permissions" : [ {
+      "role" : "EDITOR",
+      "permission" : {
+        "filter" : { }
+      }
     } ]
   }, {
     "table" : {
@@ -639,8 +746,144 @@
         "foreign_key_constraint_on" : {
           "column" : "operation_id",
           "table" : {
-            "name" : "task_operation",
-            "schema" : "public"
+            "schema" : "public",
+            "name" : "task_operation"
+          }
+        }
+      }
+    } ],
+    "insert_permissions" : [ {
+      "role" : "AUTHOR",
+      "permission" : {
+        "columns" : "*",
+        "check" : {
+          "id" : {
+            "_gt" : 10
+          }
+        },
+        "set" : { }
+      }
+    }, {
+      "role" : "EDITOR",
+      "permission" : {
+        "columns" : "*",
+        "check" : {
+          "id" : {
+            "_gt" : 10
+          }
+        },
+        "set" : { }
+      }
+    } ],
+    "select_permissions" : [ {
+      "role" : "AUTHOR",
+      "permission" : {
+        "columns" : "*",
+        "allow_aggregations" : false,
+        "filter" : {
+          "id" : {
+            "_gt" : 10
+          }
+        }
+      }
+    }, {
+      "role" : "EDITOR",
+      "permission" : {
+        "columns" : "*",
+        "allow_aggregations" : false,
+        "filter" : {
+          "id" : {
+            "_gt" : 10
+          }
+        }
+      }
+    }, {
+      "role" : "WORKER",
+      "permission" : {
+        "columns" : "*",
+        "allow_aggregations" : true,
+        "filter" : {
+          "name" : {
+            "_like" : "%some_value%"
+          }
+        }
+      }
+    }, {
+      "role" : "BOSS",
+      "permission" : {
+        "columns" : "*",
+        "allow_aggregations" : true,
+        "filter" : {
+          "name" : {
+            "_like" : "%some_value%"
+          }
+        }
+      }
+    } ],
+    "update_permissions" : [ {
+      "role" : "AUTHOR",
+      "permission" : {
+        "columns" : "*",
+        "check" : null,
+        "set" : { },
+        "filter" : {
+          "id" : {
+            "_gt" : 10
+          }
+        }
+      }
+    }, {
+      "role" : "EDITOR",
+      "permission" : {
+        "columns" : "*",
+        "check" : null,
+        "set" : { },
+        "filter" : {
+          "id" : {
+            "_gt" : 10
+          }
+        }
+      }
+    }, {
+      "role" : "WORKER",
+      "permission" : {
+        "columns" : "*",
+        "check" : null,
+        "set" : { },
+        "filter" : {
+          "name" : {
+            "_like" : "%some_value%"
+          }
+        }
+      }
+    }, {
+      "role" : "BOSS",
+      "permission" : {
+        "columns" : "*",
+        "check" : null,
+        "set" : { },
+        "filter" : {
+          "name" : {
+            "_like" : "%some_value%"
+          }
+        }
+      }
+    } ],
+    "delete_permissions" : [ {
+      "role" : "AUTHOR",
+      "permission" : {
+        "filter" : {
+          "id" : {
+            "_gt" : 10
+          }
+        }
+      }
+    }, {
+      "role" : "EDITOR",
+      "permission" : {
+        "filter" : {
+          "id" : {
+            "_gt" : 10
           }
         }
       }
@@ -702,8 +945,8 @@
         "foreign_key_constraint_on" : {
           "column" : "task_id",
           "table" : {
-            "name" : "task_operation",
-            "schema" : "public"
+            "schema" : "public",
+            "name" : "task_operation"
           }
         }
       }
@@ -739,8 +982,8 @@
         "foreign_key_constraint_on" : {
           "column" : "theme_id",
           "table" : {
-            "name" : "theme_names",
-            "schema" : "public"
+            "schema" : "public",
+            "name" : "theme_names"
           }
         }
       }
@@ -750,8 +993,8 @@
         "foreign_key_constraint_on" : {
           "column" : "theme_id",
           "table" : {
-            "name" : "layout",
-            "schema" : "public"
+            "schema" : "public",
+            "name" : "layout"
           }
         }
       }

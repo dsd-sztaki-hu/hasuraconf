@@ -1,5 +1,6 @@
 package com.beepsoft.hasuraconf.model
 
+import com.beepsoft.hasuraconf.annotation.AllowAggregationsEnum
 import com.beepsoft.hasuraconf.annotation.HasuraOperation
 import com.beepsoft.hasuraconf.annotation.HasuraPermission
 import com.beepsoft.hasuraconf.annotation.HasuraPermissions
@@ -11,6 +12,31 @@ import javax.persistence.*
         Index(columnList = "updatedAt"),
         Index(columnList = "id"))
 )
+// Testing permutated permission definitions, ie. a single HasuraPermission causing the generation of multiple
+// permission definitions
+@HasuraPermissions([
+     HasuraPermission(
+         operation = HasuraOperation.ALL,
+         roles = ["AUTHOR", "EDITOR"],
+         json="""
+         {
+           id: {_gt:10}
+         }
+        """
+     ),
+    HasuraPermission(
+        operations = [HasuraOperation.SELECT, HasuraOperation.UPDATE],
+        roles = ["WORKER", "BOSS"],
+        json="""
+             {
+                "name": {
+                    "_like": "%some_value%"
+                }
+             }
+         """,
+        allowAggregations = AllowAggregationsEnum.TRUE
+    )
+])
 class Operation : BaseObject() {
     /**
      * Task the operation belongs to.
@@ -41,4 +67,7 @@ class Operation : BaseObject() {
         )
     ])
     private val tasks: Set<Task>? = null
+
+    private val name: String? = null
+    private val description: String? = null
 }

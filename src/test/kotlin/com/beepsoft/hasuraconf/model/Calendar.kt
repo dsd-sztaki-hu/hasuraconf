@@ -28,7 +28,7 @@ import kotlin.jvm.Transient
                     operation = HasuraOperation.SELECT,
                     role = "USER",
                     json = "{roles: { user_id: { _eq: 'X-Hasura-User-Id' } }}",
-                    allowAggregations = true
+                    allowAggregations = AllowAggregationsEnum.TRUE
             ),
             HasuraPermission(
                     operation = HasuraOperation.UPDATE,
@@ -45,7 +45,7 @@ import kotlin.jvm.Transient
                 role = "FRIEND",
                 fields = ["tag", "titleAndDescription"],
                 json = "{roles: { user_id: { _eq: 'X-Hasura-User-Id' } }}",
-                allowAggregations = true
+                allowAggregations = AllowAggregationsEnum.TRUE
             ),
         ]
 )
