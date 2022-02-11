@@ -103,6 +103,8 @@ data class UserAndCalendarInput(
     val description: String,
     val isPublic: Boolean,
     val hasColors: Boolean?,
+    @HasuraIgnoreField
+    val runtimeField: Map<String, Any>
 )
 
 

@@ -453,6 +453,10 @@ class HasuraActionGenerator(
             val relationshipFields = mutableListOf<Field>()
             putJsonArray("fields") {
                 t.declaredFields.forEachIndexed { ix, field ->
+                    // @HasuraIgnoreField marks a runtime field, which should not be exposed to graphql
+                    if (field.isAnnotationPresent(HasuraIgnoreField::class.java)) {
+                        return@forEachIndexed
+                    }
                     addJsonObject {
                         var nullable: Boolean? = null
                         field.kotlinProperty?.let {
