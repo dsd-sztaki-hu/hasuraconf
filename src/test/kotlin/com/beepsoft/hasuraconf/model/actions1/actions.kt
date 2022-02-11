@@ -2,6 +2,7 @@ package com.beepsoft.hasuraconf.model.actions1
 
 import com.beepsoft.hasuraconf.annotation.*
 import com.beepsoft.hasuraconf.model.Calendar
+import org.springframework.http.ResponseEntity
 
 // createUserAndCalendar and createUserAndCalendar2 have same input params, but will have differenet input types
 // because the params are all primitives
@@ -41,11 +42,12 @@ fun createUserAndCalendar3(
 
 class ActionTest {
     @HasuraAction(
-        handler = "{{HANDLER_URL}}"
+        handler = "{{HANDLER_URL}}",
+        outputType = UserAndCalendar::class
     )
     fun createUserAndCalendar4(
         args: UserAndCalendarInput,
-    ): UserAndCalendar
+    ): ResponseEntity<UserAndCalendar>
     {
         TODO()
     }

@@ -220,8 +220,13 @@ class HasuraActionGenerator(
 
                 // Generate and set output type
                 // Use the class's name as the default
-                var typeForTypeName = method.returnType
-                if (method.returnType.isArray) {
+                var outputType = method.returnType
+                if (annot.outputType != Void::class) {
+                    // output tye may be overriden by annotation
+                    outputType = annot.outputType.java
+                }
+                var typeForTypeName = outputType
+                if (outputType.isArray) {
                     typeForTypeName = typeForTypeName.componentType
                 }
                 var returnTypeName = typeForTypeName.simpleName
@@ -240,7 +245,7 @@ class HasuraActionGenerator(
                     returnTypeName = annot.outputTypeName
                 }
                 // Now we have the final returnTypeName
-                put("output_type", generateReturnTypeDefinition(method.returnType, returnTypeName))
+                put("output_type", generateReturnTypeDefinition(outputType, returnTypeName))
 
                 // Generate input args and their types
                 if (annot.wrapArgsInType) {

@@ -1,7 +1,9 @@
 package com.beepsoft.hasuraconf.annotation
 
+import java.lang.annotation.Inherited
 import java.lang.annotation.Retention
 import java.lang.annotation.RetentionPolicy
+import kotlin.reflect.KClass
 
 /**
  * Marks a function as a template for defining the types of a Hasura action.
@@ -65,6 +67,13 @@ annotation class HasuraAction (
     val outputTypeName: String = "",
 
     /**
+     * Alternative output type to use instead of what is declared for the action. Eg. when the action is a Spring
+     * and the return type is a `ResponseEntity<ActualOutputType>` the outputType should be set to ActualOutputType
+     * so that the action generator doesn't try to map ResponseEntity  to graphql.
+     */
+    val outputType: KClass<*> = Void::class,
+
+    /**
      * Request transformation for a REST call to be exposed as this action
      */
     val requestTransform: HasuraRequestTransform = HasuraRequestTransform(
@@ -92,5 +101,4 @@ enum class HasuraActionKind {
     SYNCHRONOUS,
     ASYNCHRONOUS
 }
-
 
