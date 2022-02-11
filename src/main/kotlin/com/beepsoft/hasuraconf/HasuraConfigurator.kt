@@ -745,7 +745,7 @@ class HasuraConfigurator(
                         put("type", "run_sql")
                         putJsonObject("args") {
                             val sql = buildString {
-                                entityClass.fields.forEach { enumField ->
+                                entityClass.fields.filter { it.isEnumConstant }.forEach { enumField ->
                                     val enumVal = java.lang.Enum.valueOf(entityClass as Class<out Enum<*>?>, enumField.name)
                                     val descriptionField = entityClass.declaredFields.first { it.name == "description" }
                                     descriptionField.isAccessible = true
