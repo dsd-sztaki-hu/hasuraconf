@@ -740,8 +740,10 @@ class HasuraConfigurator(
                 put("is_enum", true)
                 // Generate SQL for enum values liek ths:
                 // INSERT INTO public.todo_item_status (value, description) VALUES ('STARTED', 'Started - todo item started') ON CONFLICT DO NOTHING;
-                runSqlDefs.add(
+                // enum insertions always come first, any other sql, like computed field function come after
+                runSqlDefs.add(0,
                     buildJsonObject {
+                        put("hasuraconfComment", """Enum values for ${entityClass.simpleName}""")
                         put("type", "run_sql")
                         putJsonObject("args") {
                             val sql = buildString {
@@ -785,6 +787,7 @@ class HasuraConfigurator(
                 if (annot.functionDefinition.isNotEmpty()) {
                     runSqlDefs.add(
                         buildJsonObject {
+                            put("hasuraconfComment", """Computed feld ${field.name} SQL function""")
                             put("type", "run_sql")
                             putJsonObject("args") {
                                 put("source", "default")
