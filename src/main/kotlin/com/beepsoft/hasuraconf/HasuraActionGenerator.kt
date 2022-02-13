@@ -358,17 +358,20 @@ class HasuraActionGenerator(
         return generateTypeDefinition(type, explicitName, TypeDefinitionKind.OUTPUT)
     }
 
-    private fun generateTypeDefinition(type: Class<*>, explicitName: String?, kind: TypeDefinitionKind, field: Field? = null, fieldAnnot: HasuraField? = null, failForOutputTypeRecursion: Boolean? = false) : String {
-        if (type.isPrimitive
-            || type == Boolean::class.javaObjectType
-            || type == Boolean::class.java
-            || type == String::class.javaObjectType
-            || type == String::class.java
-            || type == Date::class.java
-            || type == Timestamp::class.java
-            || Number::class.java.isAssignableFrom(type)
+    private inline fun isSimpleType(type: Class<*>): Boolean {
+        return (type.isPrimitive
+                || type == Boolean::class.javaObjectType
+                || type == Boolean::class.java
+                || type == String::class.javaObjectType
+                || type == String::class.java
+                || type == Date::class.java
+                || type == Timestamp::class.java
+                || Number::class.java.isAssignableFrom(type)
         )
-        {
+    }
+
+    private fun generateTypeDefinition(type: Class<*>, explicitName: String?, kind: TypeDefinitionKind, field: Field? = null, fieldAnnot: HasuraField? = null, failForOutputTypeRecursion: Boolean? = false) : String {
+        if (isSimpleType(type)) {
             var typeName = explicitName ?: getHasuraTypeOf(type)!!
             fieldAnnot?.let {
                 var cleanTypeName = typeName.replace("!", "")
@@ -394,8 +397,9 @@ class HasuraActionGenerator(
         if (type.isArray) {
             val compoType = type.componentType
             actualTypeName = explicitName ?: compoType.simpleName
-            if (compoType.isPrimitive || compoType == String::class.java) {
-                return "[" + (actualTypeName ?: getHasuraTypeOf(compoType)!!) + "!]"
+            if (isSimpleType(compoType)) {
+                // here we work with explicitName and not actualTypeName
+                return "[" + (explicitName ?: getHasuraTypeOf(compoType)!!) + "!]"
             }
             else if (compoType.isEnum) {
                 actualTypeName = calcEnumTypeName(compoType, actualTypeName, explicitName)
