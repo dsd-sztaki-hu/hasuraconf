@@ -6,15 +6,16 @@ jobs:
       image: ubuntu-2004:202201-02
     steps:
       - checkout
+      # Defaults to JDK 11 now
       - run: java -version
       - run: mvn -B clean install
-      # Run with JDK 11 as well
+      # Run with JDK 8 as well
       - run:
-          name: Install OpenJDK 11
+          name: Install OpenJDK 8
           command: |
-            sudo apt-get update && sudo apt-get install openjdk-11-jdk
-            sudo update-alternatives --set java /usr/lib/jvm/java-11-openjdk-amd64/bin/java
-            sudo update-alternatives --set javac /usr/lib/jvm/java-11-openjdk-amd64/bin/javac
+            sudo apt-get update && sudo apt-get install openjdk-8-jdk
+            sudo update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/bin/java
+            sudo update-alternatives --set javac /usr/lib/jvm/java-8-openjdk-amd64/bin/javac
             java -version
       - run: java -version
       - run: mvn -B clean install
