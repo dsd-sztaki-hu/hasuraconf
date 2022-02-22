@@ -136,16 +136,19 @@ class Calendar : BaseObject() {
     @Entity
     @Table(name = "calendar_availability")
     @HasuraEnum
-    enum class Availability(
-            @Column(columnDefinition = "TEXT")
-            var description: String) {
-        PRIVATE("Only users with explicit role have read/write access to the calendar"),
-        PUBLIC("Anyone has read access to the calendar");
-
-
+    class Availability(
         @Id
         @Column(columnDefinition = "TEXT")
-        var value = toString()
+        var value: String,
+        @Column(columnDefinition = "TEXT")
+        var description: String,
+    ) {
+        companion object {
+            @HasuraEnumValue
+            const val PRIVATE = "Only users with explicit role have read/write access to the calendar"
+            @HasuraEnumValue
+            const val PUBLIC = "Anyone has read access to the calendar"
+        }
     }
 
 

@@ -17,6 +17,7 @@ import org.hibernate.persister.collection.BasicCollectionPersister
 import org.hibernate.persister.entity.AbstractEntityPersister
 import org.hibernate.type.*
 import org.springframework.http.MediaType
+import org.springframework.util.ReflectionUtils
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.WebClientResponseException
 import reactor.core.publisher.Mono
@@ -736,7 +737,7 @@ class HasuraConfigurator(
             }
 
             val entityClass = entity.javaType
-            if (Enum::class.java.isAssignableFrom(entityClass) && entityClass.isAnnotationPresent(HasuraEnum::class.java)) {
+            if (entityClass.isAnnotationPresent(HasuraEnum::class.java)) {
                 put("is_enum", true)
                 // Generate SQL for enum values liek ths:
                 // INSERT INTO public.todo_item_status (value, description) VALUES ('STARTED', 'Started - todo item started') ON CONFLICT DO NOTHING;
@@ -752,6 +753,13 @@ class HasuraConfigurator(
                                     val descriptionField = entityClass.declaredFields.first { it.name == "description" }
                                     descriptionField.isAccessible = true
                                     append("INSERT INTO $schemaName.$tableName (value, description) VALUES ('${enumField.name}', '${descriptionField.get(enumVal)}') ON CONFLICT DO NOTHING;\n")
+                                }
+                                entityClass.fields
+                                    .filter { ReflectionUtils.isPublicStaticFinal(it) && it.isAnnotationPresent(HasuraEnumValue::class.java) }
+                                    .forEach { staticField ->
+                                        staticField.isAccessible = true
+                                        append("INSERT INTO $schemaName.$tableName (value, description) VALUES ('${staticField.name}', '${staticField.get(entityClass)}') ON CONFLICT DO NOTHING;\n")
+
                                 }
                             }
                             put("source", "default")

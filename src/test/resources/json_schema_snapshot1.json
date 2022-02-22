@@ -46,8 +46,33 @@
       }
     },
     "Availability" : {
-      "type" : "string",
-      "enum" : [ "PRIVATE", "PUBLIC" ]
+      "type" : "object",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "value" : {
+          "type" : "string",
+          "hasura" : {
+            "graphqlType" : "String"
+          }
+        }
+      },
+      "hasura" : {
+        "graphqlType" : "calendar_availability",
+        "idProp" : "value",
+        "rootFieldNames" : {
+          "delete" : "deleteCalendarAvailabilities",
+          "deleteByPk" : "deleteCalendarAvailability",
+          "insert" : "createCalendarAvailabilities",
+          "insertOne" : "createCalendarAvailability",
+          "select" : "calendarAvailabilities",
+          "selectAggregate" : "calendarAvailabilityAggregate",
+          "selectByPk" : "calendarAvailability",
+          "update" : "updateCalendarAvailabilities",
+          "updateByPk" : "updateCalendarAvailability"
+        }
+      }
     },
     "CalendarRole" : {
       "type" : "object",

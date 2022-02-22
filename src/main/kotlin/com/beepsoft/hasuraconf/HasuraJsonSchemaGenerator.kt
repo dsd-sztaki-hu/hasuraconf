@@ -195,6 +195,8 @@ class HasuraJsonSchemaGenerator(
         var resultSchema: ObjectNode = ObjectMapper().createObjectNode()
         resultSchema.putObject(defsName);
         for (someClass in forClass) {
+            // TODO: Calendar.Availability is not an "enum" now, but it should really act like that. Should we
+            // make it look like an enum in the JSON schema?
             var classSchema = generator.generateSchema(someClass) as ObjectNode
             moveRefs(classSchema, resultSchema, someClass);
         }
