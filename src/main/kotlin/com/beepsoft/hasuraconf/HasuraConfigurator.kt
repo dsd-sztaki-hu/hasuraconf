@@ -748,13 +748,15 @@ class HasuraConfigurator(
                         put("type", "run_sql")
                         putJsonObject("args") {
                             val sql = buildString {
-                                entityClass.fields.filter { it.isEnumConstant }.forEach { enumField ->
-                                    val enumVal = java.lang.Enum.valueOf(entityClass as Class<out Enum<*>?>, enumField.name)
-                                    val descriptionField = entityClass.declaredFields.first { it.name == "description" }
-                                    descriptionField.isAccessible = true
-                                    append("INSERT INTO $schemaName.$tableName (value, description) VALUES ('${enumField.name}', '${descriptionField.get(enumVal)}') ON CONFLICT DO NOTHING;\n")
+                                entityClass.declaredFields
+                                    .filter { it.isEnumConstant }
+                                    .forEach { enumField ->
+                                        val enumVal = java.lang.Enum.valueOf(entityClass as Class<out Enum<*>?>, enumField.name)
+                                        val descriptionField = entityClass.declaredFields.first { it.name == "description" }
+                                        descriptionField.isAccessible = true
+                                        append("INSERT INTO $schemaName.$tableName (value, description) VALUES ('${enumField.name}', '${descriptionField.get(enumVal)}') ON CONFLICT DO NOTHING;\n")
                                 }
-                                entityClass.fields
+                                entityClass.declaredFields
                                     .filter { ReflectionUtils.isPublicStaticFinal(it) && it.isAnnotationPresent(HasuraEnumValue::class.java) }
                                     .forEach { staticField ->
                                         staticField.isAccessible = true
