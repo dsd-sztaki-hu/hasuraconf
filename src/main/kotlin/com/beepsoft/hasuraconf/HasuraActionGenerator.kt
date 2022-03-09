@@ -466,6 +466,12 @@ class HasuraActionGenerator(
                     if (field.isAnnotationPresent(HasuraIgnoreField::class.java)) {
                         return@forEachIndexed
                     }
+                    // Some implicitly ignored fields:
+                    // - Companion: Kotlin generates this for @Serializable classes, so users cannot put an explicit
+                    //  @HasuraIgnoreField annotation on it, so we ignore it here
+                    if (listOf("Companion").contains(field.name)) {
+                        return@forEachIndexed
+                    }
                     addJsonObject {
                         var nullable: Boolean? = null
                         field.kotlinProperty?.let {
