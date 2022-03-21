@@ -360,13 +360,25 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
         return roles
     }
 
+    private fun collectAnnotations(entity: EntityType<*>): Array<Annotation>
+    {
+        val annots = mutableListOf<Annotation>()
+        var javaType: Class<*>?  =  entity.javaType
+        while (javaType != null) {
+            annots.addAll(javaType.annotations)
+            javaType = javaType.superclass
+        }
+        return annots.toTypedArray()
+    }
+
     fun process(entity: EntityType<*>): List<PermissionData> {
         //val permissions = mutableListOf<PermissionData>()
         val classMetadata = metaModel.entityPersister(entity.javaType.typeName) as AbstractEntityPersister
         val tableName = classMetadata.tableName
 
-        val defaultPermissions = collectDefaultPermissionValues(entity.javaType.annotations)
-        val permissions = processAnnotations(entity.javaType.annotations) { annot ->
+        val annots = collectAnnotations(entity)
+        val defaultPermissions = collectDefaultPermissionValues(annots)
+        val permissions = processAnnotations(annots) { annot ->
             if (!annot.default) {
                 // A single annotations my cause generation of multiple permission definitions per operation and
                 // per role, so first calc all the ops and roles and permutate permission defnitions based on this
