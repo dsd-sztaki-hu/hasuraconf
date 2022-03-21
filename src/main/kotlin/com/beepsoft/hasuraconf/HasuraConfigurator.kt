@@ -17,12 +17,12 @@ import org.hibernate.persister.collection.BasicCollectionPersister
 import org.hibernate.persister.entity.AbstractEntityPersister
 import org.hibernate.type.*
 import org.springframework.http.MediaType
-import org.springframework.util.ReflectionUtils
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.WebClientResponseException
 import reactor.core.publisher.Mono
 import java.io.PrintWriter
 import java.lang.reflect.Field
+import java.lang.reflect.Modifier
 import javax.persistence.EntityManagerFactory
 import javax.persistence.OneToMany
 import javax.persistence.OneToOne
@@ -757,7 +757,7 @@ class HasuraConfigurator(
                                         append("INSERT INTO $schemaName.$tableName (value, description) VALUES ('${enumField.name}', '${descriptionField.get(enumVal)}') ON CONFLICT DO NOTHING;\n")
                                 }
                                 entityClass.declaredFields
-                                    .filter { ReflectionUtils.isPublicStaticFinal(it) && it.isAnnotationPresent(HasuraEnumValue::class.java) }
+                                    .filter { Modifier.isStatic(it.modifiers) && Modifier.isFinal(it.modifiers)  && it.isAnnotationPresent(HasuraEnumValue::class.java) }
                                     .forEach { staticField ->
                                         staticField.isAccessible = true
                                         append("INSERT INTO $schemaName.$tableName (value, description) VALUES ('${staticField.name}', '${staticField.get(entityClass)}') ON CONFLICT DO NOTHING;\n")
