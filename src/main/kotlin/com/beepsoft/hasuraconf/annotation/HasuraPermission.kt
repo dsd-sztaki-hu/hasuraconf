@@ -100,7 +100,8 @@ data class HasuraPermissionValues(
     var fields: List<String> = listOf(NOTSET),
     var excludeFields: List<String> = listOf(NOTSET),
     var fieldPresets:  List<HasuraFieldPresetValues> = listOf(HasuraFieldPresetValues(NOTSET, NOTSET, "")),
-    var allowAggregations: AllowAggregationsEnum = AllowAggregationsEnum.NOTSET
+    var allowAggregations: AllowAggregationsEnum = AllowAggregationsEnum.NOTSET,
+    val default: Boolean = false,
     ) {
     companion object {
         fun from(annot: HasuraPermission) =
@@ -114,7 +115,8 @@ data class HasuraPermissionValues(
                 annot.fields.toList(),
                 annot.excludeFields.toList(),
                 annot.fieldPresets.value.toList().map { hasuraFieldPreset ->  HasuraFieldPresetValues.from(hasuraFieldPreset)},
-                annot.allowAggregations
+                annot.allowAggregations,
+                annot.default
             )
     }
 
@@ -137,6 +139,7 @@ data class HasuraPermissionValues(
 }
 
 const val NOTSET = "__NOTSET__"
+const val EMPTY = "__EMPTY__"
 
 enum class AllowAggregationsEnum {
     NOTSET,

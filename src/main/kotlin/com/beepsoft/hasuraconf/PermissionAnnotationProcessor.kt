@@ -247,6 +247,12 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
     private fun calcJson(jsonString: String, jsonFile: String, entity: EntityType<*>?, m2mData: HasuraConfigurator.M2MData?): String
     {
         var json = jsonString.trim()
+
+        // If intentionally empty, then we are done: no restrictions applied
+        if (json == EMPTY && jsonFile.length == 0) {
+            return ""
+        }
+
         if (json.length == 0 && jsonFile.length != 0) {
             try {
                 json = HasuraConfigurator::class.java.getResource(jsonFile).readText()
