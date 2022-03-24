@@ -12,6 +12,15 @@ import java.lang.annotation.RetentionPolicy
  *  in a HasuraIgnoreField so that the action function as all the information not just the dedicated
  *  input data.
  */
+//@Target(AnnotationTarget.FIELD, AnnotationTarget.VALUE_PARAMETER)
 @Target(AnnotationTarget.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
 annotation class HasuraIgnoreField()
+
+
+/**
+ * Ignore parameter of an action method.
+ */
+@Target(AnnotationTarget.VALUE_PARAMETER)
+@Retention(RetentionPolicy.RUNTIME)
+annotation class HasuraIgnoreParameter()

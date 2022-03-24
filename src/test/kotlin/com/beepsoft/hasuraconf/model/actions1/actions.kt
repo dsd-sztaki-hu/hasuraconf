@@ -35,7 +35,9 @@ fun createUserAndCalendar2(
     handler = "{{HANDLER_URL}}"
 )
 fun createUserAndCalendar3(
-    args: UserAndCalendarInput
+    args: UserAndCalendarInput,
+    @HasuraIgnoreParameter
+    ignorable: String,
 ): Array<String> {
     TODO()
 }

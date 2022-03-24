@@ -253,7 +253,7 @@ class HasuraActionGenerator(
                 }
                 else {
                     putJsonArray("arguments") {
-                        method.parameters.forEachIndexed() { ix, p ->
+                        method.parameters.filter { !it.isAnnotationPresent(HasuraIgnoreParameter::class.java)}.forEachIndexed() { ix, p ->
                             addJsonObject {
                                 var nullable: Boolean? = null
                                 method.kotlinFunction?.let {

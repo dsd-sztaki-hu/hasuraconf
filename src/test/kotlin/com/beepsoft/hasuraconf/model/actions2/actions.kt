@@ -12,7 +12,9 @@ import com.beepsoft.hasuraconf.model.CalendarRole
 fun createUserAndCalendar(
     name: String,
     description: String,
-    calendarRoleType: CalendarRole.RoleType
+    calendarRoleType: CalendarRole.RoleType,
+    @HasuraIgnoreParameter
+    runtimeParamToIgnore: String
 ): String {
     TODO()
 }
