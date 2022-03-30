@@ -132,7 +132,7 @@ data class HasuraPermissionValues(
             if (other.jsonFile != NOTSET) other.jsonFile else this.jsonFile,
             if (!other.fields.contains(NOTSET)) other.fields else this.fields,
             if (!other.excludeFields.contains(NOTSET)) other.excludeFields else this.excludeFields,
-            if (!other.fieldPresets.isNotEmpty() && other.fieldPresets[0].value != NOTSET) other.fieldPresets else this.fieldPresets,
+            if (other.fieldPresets.isNotEmpty() && other.fieldPresets[0].value != NOTSET) other.fieldPresets else this.fieldPresets,
             if (other.allowAggregations != AllowAggregationsEnum.NOTSET) other.allowAggregations else this.allowAggregations,
         )
 
