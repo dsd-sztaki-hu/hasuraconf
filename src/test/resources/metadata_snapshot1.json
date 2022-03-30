@@ -680,7 +680,9 @@
       "permission" : {
         "columns" : [ "mnemonic", "media_query" ],
         "check" : null,
-        "set" : { },
+        "set" : {
+          "description" : "Default description"
+        },
         "filter" : {
           "media_query" : {
             "_eq" : "99"

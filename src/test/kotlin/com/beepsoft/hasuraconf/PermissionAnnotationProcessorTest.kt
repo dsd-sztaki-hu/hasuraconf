@@ -153,7 +153,7 @@ class PermissionAnnotationProcessorTest {
             listOf("UPDATE", """{"role":"EDITOR","permission":{"columns":["created_at","tag","updated_at","data","description","max_height","max_width","media_query","min_height","min_width","mnemonic","theme_id","user_agent_regexp","id"],"check":null,"set":{},"filter":{}}}"""),
             listOf("DELETE", """{"role":"EDITOR","permission":{"filter":{}}}"""),
             listOf("SELECT", """{"role":"ALLDEFAULTS","permission":{"columns":["mnemonic","media_query"],"allow_aggregations":true,"filter":{"media_query":{"_eq":"10"}}}}"""),
-            listOf("UPDATE", """{"role":"ALLDEFAULTS","permission":{"columns":["mnemonic","media_query"],"check":null,"set":{},"filter":{"media_query":{"_eq":"99"}}}}"""),
+            listOf("UPDATE", """{"role":"ALLDEFAULTS","permission":{"columns":["mnemonic","media_query"],"check":null,"set":{"description":"Default description"},"filter":{"media_query":{"_eq":"99"}}}}"""),
             listOf("SELECT", """{"role":"ROLE1","permission":{"columns":"*","allow_aggregations":true,"filter":{}}}"""),
             listOf("UPDATE", """{"role":"ROLE1","permission":{"columns":["created_at","tag","updated_at","data","description","max_height","max_width","media_query","min_height","min_width","mnemonic","theme_id","user_agent_regexp","id"],"check":null,"set":{},"filter":{"mnemonic":{"_eq":"foo"}}}}"""),
             listOf("INSERT", """{"role":"ROLE1","permission":{"columns":"*","check":{"mnemonic":{"_eq":"foo"}},"set":{}}}"""),
@@ -162,6 +162,7 @@ class PermissionAnnotationProcessorTest {
         )
 
         permissions.forEachIndexed { index, permissionData ->
+            println("index: $index")
             Assertions.assertEquals(hasuraMetadataJsons[index][0], permissionData.operation.toString())
             Assertions.assertEquals(hasuraMetadataJsons[index][1], permissionData.toJsonObject().toString())
         }
