@@ -206,6 +206,9 @@ class HasuraActionGenerator(
                 if (annot.forwardClientHeaders) {
                     put("forward_client_headers", annot.forwardClientHeaders)
                 }
+                if (annot.timeout != 0L) {
+                    put("timeout", annot.timeout)
+                }
                 if (annot.headers.isNotEmpty()) {
                     putJsonArray("headers") {
                         annot.headers.forEach { h ->
