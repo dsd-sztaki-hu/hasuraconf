@@ -35,7 +35,7 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
         metaModel = sessionFactoryImpl.metamodel as MetamodelImplementor
     }
 
-    private fun createPresetFieldsMap(m2mData: HasuraConfigurator.M2MData, fieldPresets: List<HasuraFieldPresetValues>) =
+    private fun createPresetFieldsMap(m2mData: M2MData, fieldPresets: List<HasuraFieldPresetValues>) =
         fieldPresets.map {
             if(it.column.isNotEmpty() && it.column != NOTSET) {
                 if (it.column == m2mData.keyColumn) {
@@ -109,7 +109,7 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
     private fun KClass<*>.isSubclassOf(base: Array<KClass<*>>): Boolean =
             base.firstOrNull { this.isSubclassOf(it) } != null
 
-    private fun calcFinalFields(fields: List<String>, excludeFields: List<String>, m2mData: HasuraConfigurator.M2MData): List<String>
+    private fun calcFinalFields(fields: List<String>, excludeFields: List<String>, m2mData: M2MData): List<String>
     {
         // If no include/exclude given, then we will allow all fields
         if (fields.size == 0 && excludeFields.size == 0) {
@@ -204,10 +204,10 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
     private val atIncludeRegex = "[\"']\\s*@include\\((.*?)\\)\\s*[\"']".toRegex()
 
 
-    private fun resolveIncludes(json: String, entity: EntityType<*>?, m2mData: HasuraConfigurator.M2MData?): String
+    private fun resolveIncludes(json: String, entity: EntityType<*>?, m2mData: M2MData?): String
     {
         // Does actual @include resolving recursively processing @includes in included files
-        fun doResolveIncludes(json: String, jsonFile: String?, entity: EntityType<*>?, m2mData: HasuraConfigurator.M2MData?): String
+        fun doResolveIncludes(json: String, jsonFile: String?, entity: EntityType<*>?, m2mData: M2MData?): String
         {
             var resolvedJson = json+"" // make a copy
 
@@ -215,7 +215,7 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
                 val inc = it.groupValues[0]
                 val file = it.groupValues[1]
                 try {
-                    var includedJson = HasuraConfigurator::class.java.getResource(file).readText()
+                    var includedJson = HasuraConfiguratorV2::class.java.getResource(file).readText()
                     // Recursively process includes in the included json
                     includedJson = doResolveIncludes(includedJson, file, null, null)
                     resolvedJson = resolvedJson.replace(inc, includedJson)
@@ -244,7 +244,7 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
      * other files via {@code @include(/path/to/file)} this way the permission JSON can be defined modularly where
      * JSON fragments can be reused.
      */
-    private fun calcJson(jsonString: String, jsonFile: String, entity: EntityType<*>?, m2mData: HasuraConfigurator.M2MData?): String
+    private fun calcJson(jsonString: String, jsonFile: String, entity: EntityType<*>?, m2mData: M2MData?): String
     {
         var json = jsonString.trim()
 
@@ -255,7 +255,7 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
 
         if (json.length == 0 && jsonFile.length != 0) {
             try {
-                json = HasuraConfigurator::class.java.getResource(jsonFile).readText()
+                json = HasuraConfiguratorV2::class.java.getResource(jsonFile).readText()
             }
             catch(ex: Throwable) {
                 if (entity != null) {
@@ -469,9 +469,9 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
 
     /**
      * Process permissions on a many-to-many field. Such fields have no mapped java classes, so we have to work on the
-     * HasuraConfigurator.M2MData objects, which represent the many-to-many join attributes
+     * M2MData objects, which represent the many-to-many join attributes
      */
-    fun process(m2mData: HasuraConfigurator.M2MData): List<PermissionData> {
+    fun process(m2mData: M2MData): List<PermissionData> {
         val defaultPermissions = collectDefaultPermissionValues(m2mData.field.annotations)
         val permissions = processAnnotations(m2mData.field.annotations) { annot ->
             if (!annot.default) {
@@ -499,7 +499,7 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
     }
 
     private fun createPermissionData(
-        m2mData: HasuraConfigurator.M2MData,
+        m2mData: M2MData,
         permissionValues: HasuraPermissionValues,
         defaults: Map<String,HasuraPermissionValues>? = null,
     ): PermissionData
@@ -580,7 +580,7 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
 //        return permissions
 //    }
 //
-//    fun collectDefaultPermissions(m2mData: HasuraConfigurator.M2MData): List<PermissionData> {
+//    fun collectDefaultPermissions(m2mData: M2MData): List<PermissionData> {
 //    }
 
 
@@ -698,7 +698,6 @@ data class PermissionData (
             }
         }
     }
-
     fun toHasuraApiJson(schema: String = "public") : String {
         val jsonObj = buildJsonObject {
             put("type", "create_${operation.name.toLowerCase()}_permission")

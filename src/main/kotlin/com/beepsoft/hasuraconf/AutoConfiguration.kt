@@ -14,16 +14,10 @@ class AutoConfiguration
     @ConditionalOnMissingBean
     fun hasuraConfigurator(
             entityManagerFactory: EntityManagerFactory,
-            @Value("\${hasuraconf.confFile:hasura-conf.json}") confFile: String?,
-            @Value("\${hasuraconf.loadConf:false}") loadConf: Boolean,
-            @Value("\${hasuraconf.metadataFile:metadata.json}") metadataJsonFile: String?,
-            @Value("\${hasuraconf.loadMetadata:false}") loadMetadata: Boolean,
-            @Value("\${hasuraconf.cascadeDeleteFile:cascade-delete.json}") cascadeDeleteJsonFile: String?,
-            @Value("\${hasuraconf.loadCascadeDelete:false}") loadCascadeDelete: Boolean,
             @Value("\${hasuraconf.schemaName:public}") schemaName: String,
-            @Value("\${hasuraconf.hasuraEndpoint:http://localhost:8080/v1/query}") hasuraEndpoint: String,
+            @Value("\${hasuraconf.hasuraSchemaEndpoint:http://localhost:8080/v2/query}") hasuraSchemaEndpoint: String,
+            @Value("\${hasuraconf.hasuraMetadataEndpoint:http://localhost:8080/v2/query}") hasuraMetadataEndpoint: String,
             @Value("\${hasuraconf.hasuraAdminSecret:#{null}}") hasuraAdminSecret: String?,
-            @Value("\${hasuraconf.jsonSchema.schemaFile:hasura-json-schema.json}") schemaFile: String?,
             @Value("\${hasuraconf.jsonSchema.schemaVersion:DRAFT_2019_09}") schemaVersion: String,
             @Value("\${hasuraconf.jsonSchema.customPropsFieldName:hasura}") customPropsFieldName: String,
             @Value("\${hasuraconf.jsonSchema.ignore:false}") ignoreJsonSchema: Boolean,
@@ -32,16 +26,10 @@ class AutoConfiguration
     ): HasuraConfigurator {
         return HasuraConfigurator(
                 entityManagerFactory,
-                confFile,
-                loadConf,
-                metadataJsonFile,
-                loadMetadata,
-                cascadeDeleteJsonFile,
-                loadCascadeDelete,
                 schemaName,
-                hasuraEndpoint,
+                hasuraSchemaEndpoint,
+                hasuraMetadataEndpoint,
                 hasuraAdminSecret,
-                schemaFile,
                 schemaVersion,
                 customPropsFieldName,
                 ignoreJsonSchema,
@@ -63,11 +51,12 @@ class AutoConfiguration
     @Bean
     @ConditionalOnMissingBean
     fun hasuraStaticConfigurator(
-            @Value("\${hasuraconf.hasuraEndpoint:http://localhost:8080/v1/query}") hasuraEndpoint: String,
-            @Value("\${hasuraconf.hasuraAdminSecret:#{null}}") hasuraAdminSecret: String?
+        @Value("\${hasuraconf.hasuraSchemaEndpoint:http://localhost:8080/v2/query}") hasuraSchemaEndpoint: String,
+        @Value("\${hasuraconf.hasuraMetadataEndpoint:http://localhost:8080/v2/query}") hasuraMetadataEndpoint: String,
+        @Value("\${hasuraconf.hasuraAdminSecret:#{null}}") hasuraAdminSecret: String?
     ) : HasuraStaticConfigurator
     {
-        return HasuraStaticConfigurator(hasuraEndpoint, hasuraAdminSecret)
+        return HasuraStaticConfigurator(hasuraSchemaEndpoint, hasuraMetadataEndpoint, hasuraAdminSecret)
     }
 //    @Bean
 //    @ConditionalOnMissingBean

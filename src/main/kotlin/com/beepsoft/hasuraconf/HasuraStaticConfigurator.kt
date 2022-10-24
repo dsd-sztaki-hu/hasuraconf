@@ -126,15 +126,24 @@ import reactor.core.publisher.Mono
  * If `hasuraconfIgnoreError` is an array the error will be ignored if any of the ignore objects match the Hasura error.
  */
 class HasuraStaticConfigurator(
-        var hasuraEndpoint: String,
-        var hasuraAdminSecret: String? = null
+    var hasuraSchemaEndpoint: String,
+    var hasuraMetadataEndpoint: String,
+    var hasuraAdminSecret: String? = null
 ) {
 
-    fun loadStaticConf(staticConf: String) {
+    fun loadStaticSchmaConf(staticConf: String) {
+        loadStaticConf(staticConf, hasuraSchemaEndpoint)
+    }
+
+    fun loadStaticMetadataConf(staticConf: String) {
+        loadStaticConf(staticConf, hasuraMetadataEndpoint)
+    }
+
+    private fun loadStaticConf(staticConf: String, endpoint: String) {
         val confJson = Json.parseToJsonElement(staticConf) as JsonObject
         var loadSeparately = false
         if ((confJson["type"] as JsonPrimitive).content == "bulk" &&
-                confJson.containsKey("hasuraconfLoadSeparately") && (confJson["hasuraconfLoadSeparately"] as JsonPrimitive).boolean == true) {
+            confJson.containsKey("hasuraconfLoadSeparately") && (confJson["hasuraconfLoadSeparately"] as JsonPrimitive).boolean == true) {
             loadSeparately = true
         }
 
@@ -142,19 +151,19 @@ class HasuraStaticConfigurator(
         if (loadSeparately) {
             val args = confJson.get("args") as JsonArray
             for (o in args) {
-                doLoadStaticInit(o as JsonObject)
+                doLoadStaticInit(o as JsonObject, endpoint)
             }
         } else {
-            doLoadStaticInit(confJson)
+            doLoadStaticInit(confJson, endpoint)
         }
     }
 
-    private fun doLoadStaticInit(confJson: JsonObject) {
-        HasuraConfigurator.LOG.info("Executing static Hasura initialization JSON:")
-        HasuraConfigurator.LOG.info(confJson.toString())
+    private fun doLoadStaticInit(confJson: JsonObject, endpoint: String) {
+        HasuraConfiguratorV2.LOG.info("Executing static Hasura initialization JSON:")
+        HasuraConfiguratorV2.LOG.info(confJson.toString())
         val client = WebClient
                 .builder()
-                .baseUrl(hasuraEndpoint)
+                .baseUrl(endpoint)
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
                 .defaultHeader("X-Hasura-Admin-Secret", hasuraAdminSecret)
@@ -163,18 +172,18 @@ class HasuraStaticConfigurator(
         try {
             val result = client.post().body(Mono.just<String>(Json.encodeToString(confJson)), String::class.java)
                     .retrieve().bodyToMono(String::class.java).block()
-            HasuraConfigurator.LOG.info("Static Hasura initialization done {}", result)
+            HasuraConfiguratorV2.LOG.info("Static Hasura initialization done {}", result)
         } catch (ex: WebClientResponseException) {
 
             // Check if we received an "expected" error, ie. one that matched the error defined in the
             // confJson's diwasIgnoreError field. If we have a match, we ignore this error. It must be an error
             // which is eg. about some value already set. In this case we can ignore this error safely.
             if (canIgnoreError(confJson, Json.parseToJsonElement(ex.responseBodyAsString) as JsonObject)) {
-                HasuraConfigurator.LOG.info("Static Hasura configuration had error, but can be ignored: {}", ex.responseBodyAsString)
+                HasuraConfiguratorV2.LOG.info("Static Hasura configuration had error, but can be ignored: {}", ex.responseBodyAsString)
                 return
             }
-            HasuraConfigurator.LOG.error("Hasura configuration failed", ex)
-            HasuraConfigurator.LOG.error("Response text: {}", ex.responseBodyAsString)
+            HasuraConfiguratorV2.LOG.error("Hasura configuration failed", ex)
+            HasuraConfiguratorV2.LOG.error("Response text: {}", ex.responseBodyAsString)
             throw ex
         } finally {
         }

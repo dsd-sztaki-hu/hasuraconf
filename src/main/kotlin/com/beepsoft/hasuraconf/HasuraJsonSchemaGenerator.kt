@@ -13,7 +13,7 @@ import kotlin.reflect.full.memberProperties
 
 /**
  * Generates JSON schema adding hasura specific extensions to the schema. Data for the extensions
- * are collected by the [HasuraConfigurator] and set on [HasuraJsonSchemaGenerator] via
+ * are collected by the [HasuraConfiguratorV2] and set on [HasuraJsonSchemaGenerator] via
  * [addJoinType] and [addSpecValue]
  *
  */

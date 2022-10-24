@@ -58,7 +58,6 @@ fun List<String>.toJson() : String =
  * Returns true if any parent of the class managed by EntityType has
  * @Inheritance(strategy = InheritanceType.SINGLE_TABLE).
  */
-@UseExperimental(ExperimentalStdlibApi::class)
 fun EntityType<*>.parentHasSingleTableInheritance() : Boolean {
     this.javaType.kotlin.allSuperclasses.forEach {superClass ->
         superClass.annotations.forEach {

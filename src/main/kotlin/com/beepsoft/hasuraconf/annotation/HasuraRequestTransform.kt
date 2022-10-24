@@ -1,5 +1,6 @@
 package com.beepsoft.hasuraconf.annotation
 
+import io.hasura.metadata.v3.TransformHeaders
 import java.lang.annotation.Retention
 import java.lang.annotation.RetentionPolicy
 
@@ -21,5 +22,18 @@ annotation class HasuraRequestTransform (
     val method: HasuraHttpMethod,
     val queryParams:Array<HasuraQueryParam> = [],
     val templateEngine: String = "Kriti",
+    val requestHeaders: HasuraTransformHeaders = HasuraTransformHeaders(),
+)
 
-    )
+@Retention(RetentionPolicy.RUNTIME)
+annotation class HasuraTransformHeaders(
+    val addHeaders:Array<HasuraTransformHeader> = [],
+    val removeHeaders: Array<String> = []
+)
+
+@Retention(RetentionPolicy.RUNTIME)
+annotation class HasuraTransformHeader(
+    val name: String,
+    val value: String
+)
+

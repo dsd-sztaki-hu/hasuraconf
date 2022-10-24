@@ -45,7 +45,7 @@ annotation class HasuraComputedField (
 
     /**
      * The SQL function definition. If not provided, then expected to be available in the database
-     * already. If provided HasuraConfigurator.sqlFunctionDefinitions will contain at the end the
+     * already. If provided HasuraConfiguratorV2.sqlFunctionDefinitions will contain at the end the
      * "run_sql" commands that can be run on Hasura to generate the functions.
      */
     val functionDefinition: String = "",

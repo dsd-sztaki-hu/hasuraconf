@@ -1,5 +1,7 @@
 package com.beepsoft.hasuraconf
 import com.beepsoft.hasuraconf.annotation.*
+import io.hasura.metadata.v3.*
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.*
 import net.pearx.kasechange.toCamelCase
 import org.hibernate.dialect.PostgreSQL9Dialect
@@ -35,6 +37,11 @@ class HasuraActionGenerator(
         INPUT,
         OUTPUT
     }
+
+    data class ActionsAndCustomTypes(
+        val actions: List<Action>,
+        val customTypes: CustomTypes
+    )
 
     // https://docs.oracle.com/cd/E19830-01/819-4721/beajw/index.html
     // 	Java Type            JDBC Type          Nullability
@@ -116,10 +123,10 @@ class HasuraActionGenerator(
     //		registerColumnType( Types.NUMERIC, "numeric($p, $s)" );
     //		registerColumnType( Types.OTHER, "uuid" );
 
-    // Uses HasuraConfigurator.postgresqlNames to map from Java type to JDBC type to SQL type to postgresql name
+    // Uses HasuraConfiguratorV2.postgresqlNames to map from Java type to JDBC type to SQL type to postgresql name
     // for the type
     inline fun getHasuraTypeOf(clazz: Class<*>) =
-        HasuraConfigurator.postgresqlNames[dialect.getTypeName(javaTypeToJDBCype[clazz] as Int)]
+        HasuraConfiguratorV2.postgresqlNames[dialect.getTypeName(javaTypeToJDBCype[clazz] as Int)]
 
     inline fun isBuiltinGraphqlType(type: String) =
         when(type) {
@@ -131,14 +138,13 @@ class HasuraActionGenerator(
             else -> false
         }
 
-    val actions = mutableMapOf<String, JsonObject>()
+    val actions = mutableMapOf<String, Action>()
     val inputTypes = mutableMapOf<String, JsonObject>()
     val outputTypes = mutableMapOf<String, JsonObject>()
     val scalars = mutableMapOf<String, JsonObject>()
     val enums = mutableMapOf<String, JsonObject>()
 
-    // https://hasura.io/docs/latest/graphql/core/api-reference/syntax-defs.html#actiondefinition
-    fun generateActionMetadata(roots: List<String>): JsonObject {
+    fun configureActions(roots: List<String>): ActionsAndCustomTypes {
         roots.forEach { root ->
             val reflections = Reflections(root, Scanners.values())
 
@@ -153,168 +159,193 @@ class HasuraActionGenerator(
 
                 actions.put(generateActionName(method, annot), generateAction(method, annot))
             }
+        }
 
-        }
-        return buildJsonObject {
-            put("actions", buildJsonArray { actions.values.forEach { add(it) } })
-            putJsonObject("custom_types") {
-                putJsonArray("input_objects") {
-                    inputTypes.values.forEach { add(it)  }
-                }
-                putJsonArray("objects") {
-                    outputTypes.values.forEach { add(it) }
-                }
-                putJsonArray("scalars") {
-                    scalars.values.forEach { add(it) }
-                }
-                putJsonArray("enums") {
-                    enums.values.forEach { add(it) }
-                }
-            }
-        }
+        return ActionsAndCustomTypes(
+            actions = actions.values.toList(),
+            // For now we keep the custom types in JsonObject-s and we create metadata objects from
+            // these
+            customTypes = CustomTypes(
+                inputObjects = inputTypes.values.map{ Json.decodeFromJsonElement(it) },
+                objects = outputTypes.values.map{ Json {ignoreUnknownKeys=true }.decodeFromJsonElement(it) },
+                enums = enums.values.map{ Json.decodeFromJsonElement(it) },
+                scalars = scalars.values.map{ Json.decodeFromJsonElement(it) }
+            )
+        )
     }
 
     /**
      * Generate action definition for the given method.
      */
-    private fun generateAction(method: Method, annot: HasuraAction) : JsonObject {
-        return buildJsonObject {
+    private fun generateAction(method: Method, annot: HasuraAction) : Action {
 
-            put("name", generateActionName(method, annot))
+        if (annot.handler.isEmpty()) {
+            throw HasuraConfiguratorException("handler is not set for @HasuraAction on method $method")
+        }
 
-            if (annot.comment.isNotEmpty()) {
-                put("comment", annot.comment)
+        val action = Action(
+            name = generateActionName(method, annot),
+            comment = if (annot.comment.isNotEmpty()) annot.comment else null,
+            definition = ActionDefinition(
+                handler = annot.handler,
+                type = ActionDefinitionType.valueOf(annot.type.name),
+                kind = annot.kind.name.toLowerCase(),
+                forwardClientHeaders = annot.forwardClientHeaders,
+                timeout = if (annot.timeout != 0L) annot.timeout else null,
+                headers = generateActionHeaders(annot),
+                requestTransform = generateRequestTransform(annot.requestTransform),
+                responseTransform = generateResponseTransform(annot.responseTransform),
+                outputType = generateOutputType(method, annot),
+                arguments = generateArguments(method, annot),
+            ),
+            permissions = when {
+                annot.permissions.size > 0 -> annot.permissions.map { role -> Permission(role) }
+                else -> null
             }
+        )
 
-            if (annot.permissions.isNotEmpty()) {
-                putJsonArray("permissions") {
-                    annot.permissions.forEach { role ->
-                        addJsonObject {
-                            put("role", role)
-                        }
+        return action
+    }
+
+    @OptIn(ExperimentalStdlibApi::class)
+    private fun generateArguments(method: Method, annot: HasuraAction): List<InputArgument> {
+        // Generate input args and their types
+        if (annot.wrapArgsInType) {
+            TODO()
+        }
+        else {
+            return method.parameters.filter { !it.isAnnotationPresent(HasuraIgnoreParameter::class.java)}.mapIndexed { ix, p ->
+                var nullable: Boolean? = null
+                method.kotlinFunction?.let {
+                    nullable = it.parameters[ix].type.isMarkedNullable
+                }
+
+                val fieldAnnot = p.getDeclaredAnnotation(HasuraField::class.java)
+                var fieldName = p.name
+                // May override default name with annotation value
+                if (fieldAnnot != null) {
+                    nullable = if (fieldAnnot.nullable != Nullable.UNSET) fieldAnnot.nullable.name.toLowerCase().toBoolean() else nullable
+                    if (fieldAnnot.value.isNotEmpty()) {
+                        fieldName = fieldAnnot.value
+                    }
+                    else if (fieldAnnot.name.isNotEmpty()) {
+                        fieldName = fieldAnnot.name
                     }
                 }
-            }
 
-            putJsonObject("definition") {
-                if (annot.handler.isEmpty()) {
-                    throw HasuraConfiguratorException("handler is not set for @HasuraAction on method $method")
+                var typeForAnnot = p.type
+                if (typeForAnnot.isArray) {
+                    typeForAnnot = typeForAnnot.componentType
                 }
-                put("handler", annot.handler)
-                put("type", annot.type.name.toLowerCase())
-                put("kind", annot.kind.name.toLowerCase())
-                if (annot.forwardClientHeaders) {
-                    put("forward_client_headers", annot.forwardClientHeaders)
-                }
-                if (annot.timeout != 0L) {
-                    put("timeout", annot.timeout)
-                }
-                if (annot.headers.isNotEmpty()) {
-                    putJsonArray("headers") {
-                        annot.headers.forEach { h ->
-                            addJsonObject {
-                                put("name", h.name)
-                                put("value", h.value)
-                            }
-                        }
-                    }
-                }
-                generateRequestTransform(this, annot.requestTransform)
 
-                // Generate and set output type
-                // Use the class's name as the default
-                var outputType = method.returnType
-                if (annot.outputType != Void::class) {
-                    // output tye may be overriden by annotation
-                    outputType = annot.outputType.java
+                val typeName = calcExplicitName(typeForAnnot.getAnnotation(HasuraType::class.java), fieldAnnot)
+                if (nullable == null) {
+                    nullable = true
                 }
-                var typeForTypeName = outputType
-                if (outputType.isArray) {
-                    typeForTypeName = typeForTypeName.componentType
-                }
-                var returnTypeName = typeForTypeName.simpleName
-                // If class has a @HasuraType annotation, use the value/name from there
-                val hasuraTypeAnnot = typeForTypeName.getAnnotation(HasuraType::class.java)
-                if (hasuraTypeAnnot != null) {
-                    if (hasuraTypeAnnot.value.isNotEmpty()) {
-                        returnTypeName = hasuraTypeAnnot.value
-                    }
-                    else if (hasuraTypeAnnot.name.isNotEmpty()) {
-                        returnTypeName = hasuraTypeAnnot.name
-                    }
-                }
-                // @HasuraAction(outputTypeName=...) may override @HasuraType
-                if (annot.outputTypeName.isNotEmpty()) {
-                    returnTypeName = annot.outputTypeName
-                }
-                // Now we have the final returnTypeName
-                put("output_type", generateReturnTypeDefinition(outputType, returnTypeName))
 
-                // Generate input args and their types
-                if (annot.wrapArgsInType) {
-                    TODO()
-                }
-                else {
-                    putJsonArray("arguments") {
-                        method.parameters.filter { !it.isAnnotationPresent(HasuraIgnoreParameter::class.java)}.forEachIndexed() { ix, p ->
-                            addJsonObject {
-                                var nullable: Boolean? = null
-                                method.kotlinFunction?.let {
-                                    nullable = it.parameters[ix].type.isMarkedNullable
-                                }
-
-                                val fieldAnnot = p.getDeclaredAnnotation(HasuraField::class.java)
-                                var fieldName = p.name
-                                // May override default name with annotation value
-                                if (fieldAnnot != null) {
-                                    nullable = if (fieldAnnot.nullable != Nullable.UNSET) fieldAnnot.nullable.name.toLowerCase().toBoolean() else nullable
-                                    if (fieldAnnot.value.isNotEmpty()) {
-                                        fieldName = fieldAnnot.value
-                                    }
-                                    else if (fieldAnnot.name.isNotEmpty()) {
-                                        fieldName = fieldAnnot.name
-                                    }
-                                }
-                                put("name", fieldName)
-                                var typeForAnnot = p.type
-                                if (typeForAnnot.isArray) {
-                                    typeForAnnot = typeForAnnot.componentType
-                                }
-
-                                val typeName = calcExplicitName(typeForAnnot.getAnnotation(HasuraType::class.java), fieldAnnot)
-                                if (nullable == null) {
-                                    nullable = true
-                                }
-                                put("type", generateParameterTypeDefinition(p.type, typeName) + if(!nullable!!) "!" else "")
-                            }
-                        }
-                    }
-                }
+                InputArgument(
+                    name = fieldName,
+                    type = generateParameterTypeDefinition(p.type, typeName) + if(!nullable!!) "!" else ""
+                )
             }
         }
+
+    }
+
+    private fun generateOutputType(method: Method, annot: HasuraAction): String {
+        // Generate and set output type
+        // Use the class's name as the default
+        var outputType = method.returnType
+        if (annot.outputType != Void::class) {
+            // output tye may be overriden by annotation
+            outputType = annot.outputType.java
+        }
+        var typeForTypeName = outputType
+        if (outputType.isArray) {
+            typeForTypeName = typeForTypeName.componentType
+        }
+        var returnTypeName = typeForTypeName.simpleName
+        // If class has a @HasuraType annotation, use the value/name from there
+        val hasuraTypeAnnot = typeForTypeName.getAnnotation(HasuraType::class.java)
+        if (hasuraTypeAnnot != null) {
+            if (hasuraTypeAnnot.value.isNotEmpty()) {
+                returnTypeName = hasuraTypeAnnot.value
+            }
+            else if (hasuraTypeAnnot.name.isNotEmpty()) {
+                returnTypeName = hasuraTypeAnnot.name
+            }
+        }
+        // @HasuraAction(outputTypeName=...) may override @HasuraType
+        if (annot.outputTypeName.isNotEmpty()) {
+            returnTypeName = annot.outputTypeName
+        }
+        // Now we have the final returnTypeName
+        return generateReturnTypeDefinition(outputType, returnTypeName)
+    }
+
+    private fun generateActionHeaders(annot: HasuraAction)  =
+            if (annot.headers.isNotEmpty()) {
+                annot.headers.map { h ->
+                    Header(
+                        name = h.name,
+                        value = if (h.value.isNotEmpty()) h.value else null,
+                        valueFromEnv = if (h.valueFromEnv.isNotEmpty()) h.value else null
+                    )
+                }
+            }
+            else null
+
+    @OptIn(ExperimentalStdlibApi::class)
+    private fun generateResponseTransform(annot: HasuraResponseTransform): ResponseTransformation?
+    {
+        if (annot.body.isEmpty()) {
+            return null
+        }
+        return ResponseTransformation(
+            body = BodyTransform.StringValue(annot.body),
+            templateEngne = annot.templateEngine
+        )
     }
 
     // TODO: this might be usable for event transforms as well
-    private fun generateRequestTransform(builder: JsonObjectBuilder, annot: HasuraRequestTransform)
+    @OptIn(ExperimentalStdlibApi::class)
+    private fun generateRequestTransform(annot: HasuraRequestTransform): RequestTransformation?
     {
         // If not set, then nothing to do
         if (annot.url == "<<<empty>>>") {
-            return
+            return null
         }
 
-        builder.putJsonObject("request_transform") {
-            // cannto have tabs in front, etc., so reformat it
-            put("body", annot.body.replace("\\s".toRegex(), ""))
-            put("url", annot.url)
-            put("content_type", annot.contentType)
-            put("method", annot.method.name)
-            putJsonObject("query_params") {
+        return RequestTransformation(
+            body = BodyTransform.StringValue(annot.body.replace("\\s".toRegex(), "")),
+            url = annot.url,
+            contentType = annot.contentType,
+            method = annot.method.name,
+            queryParams = buildMap {
                 annot.queryParams.forEach {
                     put(it.key, it.value)
                 }
+            },
+            templateEngne = annot.templateEngine,
+            requestHeaders = let {
+                var h: TransformHeaders? = null
+                if (annot.requestHeaders.addHeaders.size != 0) {
+                    h = TransformHeaders()
+                    h.addHeaders = buildMap {
+                        annot.requestHeaders.addHeaders.forEach {
+                            put(it.name, it.value)
+                        }
+                    }
+                }
+                if (annot.requestHeaders.removeHeaders.size != 0) {
+                    if (h == null) {
+                        h = TransformHeaders()
+                    }
+                    h.removeHeaders = annot.requestHeaders.removeHeaders.toList()
+                }
+                h
             }
-            put("template_engine", annot.templateEngine)
-        }
+        )
     }
 
     private fun calcExplicitName(hasuraType: HasuraType?, hasuraField: HasuraField?): String?
@@ -373,6 +404,12 @@ class HasuraActionGenerator(
         )
     }
 
+    /**
+     * Generates type name for an action argument (input type) or return type (output type) and at the same type
+     * generates a definition of the type if necessary into inputTypes, outputTypes, scalars or enums. These are
+     * now generated as JsonObjects, which are later decoded to actual metadata objects when stored in an
+     * ActionsAndCustomTypes object
+     */
     private fun generateTypeDefinition(type: Class<*>, explicitName: String?, kind: TypeDefinitionKind, field: Field? = null, fieldAnnot: HasuraField? = null, failForOutputTypeRecursion: Boolean? = false) : String {
         if (isSimpleType(type)) {
             var typeName = explicitName ?: getHasuraTypeOf(type)!!
@@ -416,7 +453,9 @@ class HasuraActionGenerator(
         if (Collection::class.java.isAssignableFrom(actualType)) {
                 throw HasuraConfiguratorException("Invalid type $actualType. Collection classes cannot be used in Hasura action input and output types")
         }
-        generateTypeDefinitionForClass(actualType, actualTypeName, kind)
+
+        generateTypeDefinitionForClassOld(actualType, actualTypeName, kind)
+
         if (type.isArray) {
             return "[$actualTypeName!]"
         }
@@ -448,6 +487,213 @@ class HasuraActionGenerator(
     /**
      * kind is either "input" or "output"
      */
+    private fun generateTypeDefinitionForClassOld(t: Class<*>, typeName: String, kind: TypeDefinitionKind): JsonObject {
+        // Don't generate if already exists
+        when(kind) {
+            TypeDefinitionKind.INPUT -> if (inputTypes.contains(typeName)) return inputTypes[typeName]!!
+            TypeDefinitionKind.OUTPUT -> if (outputTypes.contains(typeName)) return outputTypes[typeName]!!
+        }
+
+        val typeDef = buildJsonObject {
+            put("name", typeName)
+            val hasuraType = t.getAnnotation(HasuraType::class.java)
+            if (hasuraType != null && hasuraType.description.isNotEmpty()) {
+                put("description", hasuraType.description)
+            }
+
+            val relationshipFields = mutableListOf<Field>()
+            putJsonArray("fields") {
+                t.declaredFields.forEachIndexed { ix, field ->
+                    // @HasuraIgnoreField marks a runtime field, which should not be exposed to graphql
+                    if (field.isAnnotationPresent(HasuraIgnoreField::class.java)) {
+                        return@forEachIndexed
+                    }
+                    // Some implicitly ignored fields:
+                    // - Companion: Kotlin generates this for @Serializable classes, so users cannot put an explicit
+                    //  @HasuraIgnoreField annotation on it, so we ignore it here
+                    if (listOf("Companion").contains(field.name)) {
+                        return@forEachIndexed
+                    }
+                    addJsonObject {
+                        var nullable: Boolean? = null
+                        field.kotlinProperty?.let {
+                            nullable = it.returnType.isMarkedNullable
+                        }
+
+                        val hasuraFieldAnnot = field.getAnnotation(HasuraField::class.java)
+                        var name = field.name
+                        if (hasuraFieldAnnot != null) {
+                            nullable = if (hasuraFieldAnnot.nullable != Nullable.UNSET) hasuraFieldAnnot.nullable.name.toLowerCase().toBoolean() else nullable
+                            if (hasuraFieldAnnot.value.isNotEmpty()) {
+                                name = hasuraFieldAnnot.value
+                            }
+                            else if (hasuraFieldAnnot.name.isNotEmpty()) {
+                                name = hasuraFieldAnnot.name
+                            }
+
+                            if (hasuraFieldAnnot.description.isNotEmpty()) {
+                                put("description", hasuraFieldAnnot.description)
+                            }
+                        }
+
+                        var fieldType = field.type
+
+
+                        // fieldType is a class, so recurse. Note: this can now only be an input type at this point,
+                        // output types cannot recurse
+
+                        // Get type name override from the field's type
+                        var explicitFieldTypeName: String? = calcExplicitName(
+                            fieldType.getAnnotation(HasuraType::class.java),
+                            hasuraFieldAnnot
+                        )
+
+                        // Collect fields with re;lationships, these will be generated later
+                        val relationship = field.getAnnotation(HasuraRelationship::class.java)
+                        if (relationship != null) {
+                            relationshipFields.add(field)
+                        }
+
+                        // If field references a class and has a @HasuraRelationship then we won't recurse as the
+                        // type is only here for relationship reference, no graphql type will be generated for it.
+                        // Here we set name and graphqlType either with explicit values from  @HasuraRelationship
+                        // or calc from Hibernate mappings
+                        val classType = getClassType(fieldType)
+                        var graphqlType: String? = null
+                        if (classType != null) {
+                            if (relationship != null) {
+                                if (relationship.graphqlFieldName.isNotEmpty()) {
+                                    name = relationship.graphqlFieldName
+                                }
+                                else {
+                                    name = field.name+"Id"
+                                }
+                                if (relationship.graphqlFieldType.isEmpty()) {
+                                    if (metaModel != null) {
+                                        val entity = metaModel.entity(fieldType)
+                                        val targetEntityClassMetadata = metaModel.entityPersister(entity.javaType.typeName) as AbstractEntityPersister
+                                        graphqlType = HasuraConfiguratorV2.graphqlTypeFor(metaModel, targetEntityClassMetadata.identifierType, targetEntityClassMetadata)
+                                    }
+                                    else {
+                                        throw HasuraConfiguratorException("graphqlFieldType must be specified for a @HasuraRelationship referring to an object type type on field $field")
+                                    }
+                                }
+                                else {
+                                    graphqlType = relationship.graphqlFieldType
+                                }
+                            }
+                            else {
+                                if (classType.isAnnotationPresent(Entity::class.java)) {
+                                    throw HasuraConfiguratorException("Hasura managed entity class $classType must have a @HasuraRelationship annotation")
+                                }
+                            }
+                        }
+
+                        put("name", name)
+                        // If graphqlType has not been set as the result of @HasuraRelationship, then generate it now
+                        if (graphqlType == null) {
+                            graphqlType = generateTypeDefinition(fieldType, explicitFieldTypeName, kind, field, hasuraFieldAnnot, true)
+                        }
+                        else {
+                            hasuraFieldAnnot?.let {
+                                addOptionalScalar(graphqlType, hasuraFieldAnnot)
+                            }
+                        }
+                        // If not set default to nullable
+                        if (nullable == null) {
+                            nullable = true
+                        }
+                        put("type", graphqlType + if (!nullable!!) "!" else "")
+                    }
+                }
+            }
+
+            if (relationshipFields.isNotEmpty()) {
+                putJsonArray("relationships") {
+                    relationshipFields.forEach { field ->
+                        val annot = field.getAnnotation(HasuraRelationship::class.java)
+
+                        //
+                        // TODO: Handle relationships to Hasura managed entities.
+                        //
+                        //  Figure out remote table, refercne ID, etc. based on entityManager. Later these migght be
+                        //  overriden by @HasuraRelationship values
+                        var fieldType = field.type
+                        var relationshipType: HasuraRelationshipType? = null
+                        if (fieldType.isArray) {
+                            fieldType = fieldType.componentType
+                        }
+                        var remoteTable: String? = null
+                        var graphqlFieldName: String? = null
+                        var fromId: String? = null
+                        var toId: String? = null
+                        var hasuraManagedEntityRelationship = false
+                        if (metaModel != null && fieldType.isAnnotationPresent(Entity::class.java)) {
+                            hasuraManagedEntityRelationship = true
+                            val entity = metaModel.entity(fieldType)
+                            val targetEntityClassMetadata = metaModel.entityPersister(entity.javaType.typeName) as AbstractEntityPersister
+                            remoteTable = targetEntityClassMetadata.tableName
+                            toId = targetEntityClassMetadata.keyColumnNames[0]
+                            graphqlFieldName = field.name.toCamelCase()+"Id"
+                            fromId = graphqlFieldName
+                            relationshipType = if(field.type.isArray) HasuraRelationshipType.ARRAY
+                                                else HasuraRelationshipType.OBJECT
+                        }
+                        else {
+                            //
+                            // Handle explicitly configured relations ships
+                            //
+
+                            // Sanity check
+                            if (annot.fieldMappings.isEmpty()) {
+                                throw HasuraConfiguratorException("@HasuraRelationship.fieldMappings vannot be empty for field $field")
+                            }
+                            if (annot.remoteTable.isEmpty()) {
+                                throw HasuraConfiguratorException("@HasuraRelationship.tableName is not specified for field $field")
+                            }
+                        }
+
+                        addJsonObject {
+                            put("name", if (annot.name.isNotEmpty()) annot.name else field.name)
+                            // If we have a calculated value for a hasuraManagedEntityRelationship then use that
+                            if (relationshipType != null) {
+                                put("type", relationshipType.name.toLowerCase())
+                            }
+                            else {
+                                put("type", annot.type.name.toLowerCase())
+                            }
+                            putJsonObject("remote_table") {
+                                val schema = if(annot.remoteSchema.isNotEmpty()) annot.remoteSchema else "public"
+                                val tableName = if (remoteTable != null)  remoteTable else annot.remoteTable
+                                val schemaAndName = actualSchemaAndName(schema, tableName)
+                                put("schema", schemaAndName.first)
+                                put("name", schemaAndName.second)
+                            }
+                            putJsonObject("field_mapping") {
+                                if (hasuraManagedEntityRelationship) {
+                                    put(fromId!!, toId!!)
+                                }
+                                else {
+                                    annot.fieldMappings.forEach {mapping ->
+                                        put(mapping.fromField, mapping.toField)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Save in either inputTypes or outputTypes
+        when(kind) {
+            TypeDefinitionKind.INPUT -> inputTypes[typeName] = typeDef
+            TypeDefinitionKind.OUTPUT -> outputTypes[typeName] = typeDef
+        }
+
+        return typeDef
+    }
+
     private fun generateTypeDefinitionForClass(t: Class<*>, typeName: String, kind: TypeDefinitionKind): JsonObject {
         // Don't generate if already exists
         when(kind) {
@@ -533,7 +779,7 @@ class HasuraActionGenerator(
                                     if (metaModel != null) {
                                         val entity = metaModel.entity(fieldType)
                                         val targetEntityClassMetadata = metaModel.entityPersister(entity.javaType.typeName) as AbstractEntityPersister
-                                        graphqlType = HasuraConfigurator.graphqlTypeFor(metaModel, targetEntityClassMetadata.identifierType, targetEntityClassMetadata)
+                                        graphqlType = HasuraConfiguratorV2.graphqlTypeFor(metaModel, targetEntityClassMetadata.identifierType, targetEntityClassMetadata)
                                     }
                                     else {
                                         throw HasuraConfiguratorException("graphqlFieldType must be specified for a @HasuraRelationship referring to an object type type on field $field")
@@ -598,7 +844,7 @@ class HasuraActionGenerator(
                             graphqlFieldName = field.name.toCamelCase()+"Id"
                             fromId = graphqlFieldName
                             relationshipType = if(field.type.isArray) HasuraRelationshipType.ARRAY
-                                                else HasuraRelationshipType.OBJECT
+                            else HasuraRelationshipType.OBJECT
                         }
                         else {
                             //

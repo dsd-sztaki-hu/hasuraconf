@@ -2,6 +2,7 @@ package com.beepsoft.hasuraconf
 
 import com.beepsoft.hasuraconf.annotation.*
 import com.google.common.net.HttpHeaders
+import io.hasura.metadata.v3.*
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
@@ -9,7 +10,6 @@ import net.pearx.kasechange.CaseFormat
 import net.pearx.kasechange.toCamelCase
 import net.pearx.kasechange.toCase
 import org.apache.commons.text.CaseUtils
-import org.atteo.evo.inflector.English
 import org.hibernate.SessionFactory
 import org.hibernate.internal.SessionFactoryImpl
 import org.hibernate.metamodel.spi.MetamodelImplementor
@@ -20,7 +20,6 @@ import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.WebClientResponseException
 import reactor.core.publisher.Mono
-import java.io.PrintWriter
 import java.lang.reflect.Field
 import java.lang.reflect.Modifier
 import javax.persistence.EntityManagerFactory
@@ -114,22 +113,16 @@ import javax.persistence.metamodel.EntityType
 </pre> *
  */
 class HasuraConfigurator(
-        var entityManagerFactory: EntityManagerFactory,
-        var confFile: String?,
-        var loadConf: Boolean,
-        var metadataJsonFile: String?,
-        var loadMetadata: Boolean,
-        var cascadeDeleteJsonFile: String?,
-        var loadCascadeDelete: Boolean,
-        var schemaName: String,
-        var hasuraEndpoint: String,
-        var hasuraAdminSecret: String?,
-        var schemaFile: String?,
-        var schemaVersion: String,
-        var customPropsFieldName: String,
-        var ignoreJsonSchema: Boolean = false,
-        var actionRoots: List<String>? = null,
-        var rootFieldNameProvider: RootFieldNameProvider = DefaultRootFieldNameProvider()
+    var entityManagerFactory: EntityManagerFactory,
+    var schemaName: String,
+    var hasuraSchemaEndpoint: String,
+    var hasuraMetadataEndpoint: String,
+    var hasuraAdminSecret: String?,
+    var schemaVersion: String,
+    var customPropsFieldName: String,
+    var ignoreJsonSchema: Boolean = false,
+    var actionRoots: List<String>? = null,
+    var rootFieldNameProvider: RootFieldNameProvider = DefaultRootFieldNameProvider()
 ) {
 
     companion object {
@@ -165,7 +158,7 @@ class HasuraConfigurator(
             "real" to "Float",
         )
 
-         fun graphqlTypeFor(metaModel: MetamodelImplementor, columnType: Type, classMetadata: AbstractEntityPersister): String {
+        fun graphqlTypeFor(metaModel: MetamodelImplementor, columnType: Type, classMetadata: AbstractEntityPersister): String {
             val sqlType = columnType.sqlTypes(metaModel.sessionFactory as SessionFactoryImpl)[0];
             val keyTypeName = classMetadata.factory.jdbcServices.dialect.getTypeName(sqlType)
             if (postgresqlNames[keyTypeName] == null) {
@@ -176,27 +169,6 @@ class HasuraConfigurator(
     }
 
     inner class CascadeDeleteFields(var table: String, var field: String, var joinedTable: String)
-
-    var confJson: String? = null
-        private set // the setter is private and has the default implementation
-
-    var jsonSchema: String? = null
-        private set // the setter is private and has the default implementation
-
-    var metadataJsonObject: JsonObject = JsonObject(mutableMapOf())
-        private set // the setter is private and has the default implementation
-
-    var metadataJson: String? = null
-        private set // the setter is private and has the default implementation
-
-    var cascadeDeleteJson: String? = null
-        private set // the setter is private and has the default implementation
-
-    var actions: String? = null
-        private set // the setter is private and has the default implementation
-
-    var runSqlDefinitions: String? = null
-        private set // the setter is private and has the default implementation
 
     private var sessionFactoryImpl: SessionFactory
     private var metaModel: MetamodelImplementor
@@ -211,6 +183,10 @@ class HasuraConfigurator(
     private lateinit var manyToManyEntities: MutableMap<String, ManyToManyEntity>
     private lateinit var extraTableNames: MutableSet<String>
     private lateinit var classToTableName: MutableMap<Class<out Any>, String>
+
+    private lateinit var metadataAndSql: HasuraConfiguration
+    private lateinit var enumTableConfigs: MutableList<EnumTableConfig>
+
     // {
     //  "type": "bulk",
     //  "source": "default",
@@ -243,30 +219,24 @@ class HasuraConfigurator(
         permissionAnnotationProcessor = PermissionAnnotationProcessor(entityManagerFactory)
     }
 
-    data class ProcessorParams(
-            val entity: EntityType<*>,
-            val classMetadata: AbstractEntityPersister,
-            val field: Field,
-            val columnName: String,
-            val columnType: Type,
-            val propName: String
-    )
-
-    data class ManyToManyEntity(
-            val entity: EntityType<*>,
-            val join1: BasicCollectionPersister,
-            var join2: BasicCollectionPersister? = null,
-            val field1: Field,
-            var field2: Field? = null,
-    )
 
     /**
      * Creates hasura-conf.json containing table tracking and field/relationship name customizations
      * at bean creation time automatically.
      */
+    @OptIn(ExperimentalStdlibApi::class)
     @Throws(HasuraConfiguratorException::class)
-    fun configure()
-    {
+    fun configure(
+        sourceName: String = DEFAULT_SOURCE_NAME,
+        sourceConfig: Configuration = Configuration(
+            connectionInfo = SourceConnectionInfo(
+                databaseURL = DatabaseURL.PGConnectionParametersClassValue(
+                    PGConnectionParametersClass(fromEnv = "HASURA_GRAPHQL_DATABASE_URL")
+                )
+            )
+        ),
+        backendKind: BackendKind = BackendKind.Postgres
+    ): HasuraConfiguration {
         jsonSchemaGenerator = HasuraJsonSchemaGenerator(schemaVersion, customPropsFieldName)
         actionGenerator = HasuraActionGenerator(metaModel)
         cascadeDeleteFields = mutableSetOf<CascadeDeleteFields>()
@@ -276,408 +246,385 @@ class HasuraConfigurator(
         classToTableName = mutableMapOf()
         entityClasses = mutableSetOf<Class<out Any>>()
         runSqlDefs = mutableListOf()
+        enumTableConfigs = mutableListOf()
 
         // Get metaModel.entities sorted by name. We do this sorting to make result more predictable (eg. for testing)
         val entities = sortedSetOf(
-                Comparator { o1, o2 ->  o1.name.compareTo(o2.name)},
-                *metaModel.entities.toTypedArray() )
+            Comparator { o1, o2 -> o1.name.compareTo(o2.name) },
+            *metaModel.entities.toTypedArray()
+        )
 
-        val tables = buildJsonArray {
-            // Add config for entities that have Jave class mappings
-            for (entity in entities) {
-                // Ignore subclasses of classes with @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
-                // In this case all subclasse's fields will be stored in the parent's table and therefore subclasses
-                // cannot have root operations.
-                if (entity.parentHasSingleTableInheritance()) {
-                    continue
-                }
+//        metadataAndSql = HasuraConfiguration(HasuraMetadataV3(), mutableListOf())
+        val actionsAndTypes = actionGenerator.configureActions(actionRoots!!)
+        val meta = HasuraMetadataV3(
+            version = 3.0,
+            sources = buildList {
+                add(Source(
+                    name = sourceName,
+                    kind = backendKind,
+                    configuration = sourceConfig,
+                    tables = buildList {
+                        for (entity in entities) {
+                            // Ignore subclasses of classes with @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
+                            // In this case all subclasse's fields will be stored in the parent's table and therefore subclasses
+                            // cannot have root operations.
+                            if (entity.parentHasSingleTableInheritance()) {
+                                continue
+                            }
+                            // Add TableEntry for entity
+                            add(configureTableEntry(entity, entities, sourceName))
 
-                add(configureEntity(entity, entities))
-            }
-            // Add config for many-to-many join tables, which have no Java class representation but still
-            // want to have access to them
-            for (m2m in manyToManyEntities.values) {
-                configureManyToManyEntity(m2m)?.let {
-                    add(it)
-                }
-            }
-
-            // Add tracking to extra table names. For now these could be join tables of array relations
-            for (tableName in extraTableNames) {
-                // if tableName is also present in standard tableNames, it means it was either a Java mappes
-                // entity or an m2m join table which we handle previously
-                if (tableNames.contains(tableName)) {
-                    continue
-                }
-                // It is really an extra table name, add it
-                add(buildJsonObject {
-                    putJsonObject("table") {
-                        val schemaAndName = actualSchemaAndName(schemaName, tableName)
-                        put("schema", schemaAndName.first)
-                        put("name", schemaAndName.second)
-                    }
-                })
-            }
-        }
-
-        metadataJsonObject = buildJsonObject {
-            put("version", 2)
-            put("tables", tables)
-        }
-        metadataJson = Json.encodeToString(metadataJsonObject).reformatJson()
-
-        if (runSqlDefs.isNotEmpty()) {
-            runSqlDefinitions = buildJsonObject {
-                put("type", "bulk")
-                put("source", "default")
-                put("args", JsonArray(runSqlDefs))
-            }.toString()
-        }
-
-        if (metadataJsonFile != null && metadataJsonFile != "null" && metadataJsonFile!!.trim() != "") {
-            PrintWriter(metadataJsonFile).use { out -> out.println(metadataJson) }
-        }
-        if (loadMetadata && metadataJson != null) {
-            loadMetadataIntoHasura()
-        }
-
-        if (cascadeDeleteFields.isNotEmpty()) {
-            cascadeDeleteJson = Json.encodeToString(buildJsonObject {
-                put("type", "bulk")
-                put("args", configureCascadeDeleteTriggers())
-            }).reformatJson()
-
-            cascadeDeleteJsonFile?.let {
-                PrintWriter(it).use { out -> out.println(cascadeDeleteJson) }
-            }
-
-            if (loadCascadeDelete && cascadeDeleteJson != null) {
-                loadCascadeDeleteIntoHasura()
-            }
-        }
-
-        // This creates confJson
-        createBulkConfJson()
-
-        if (confFile != null && confFile != "null" && confFile!!.trim() != "") {
-            PrintWriter(confFile).use { out -> out.println(confJson) }
-        }
-        if (loadConf && confJson != null) {
-            loadConfIntoHasura()
-        }
-
-        if (!ignoreJsonSchema) {
-            jsonSchema = jsonSchemaGenerator.generateSchema(*entityClasses.toTypedArray()).toString().reformatJson()
-            if (schemaFile != null && schemaFile != "null" && schemaFile!!.trim() != "") {
-                PrintWriter(schemaFile).use { out -> out.println(jsonSchema) }
-            }
-        }
-
-        if (actionRoots != null) {
-            actions = actionGenerator.generateActionMetadata(actionRoots!!).toString()
-        }
-    }
-
-    /**
-     * Takes the metadataJson and creates a Metadata API Json
-     */
-    private fun createBulkConfJson()
-    {
-        val apiJson = buildJsonObject {
-            put("type", "bulk")
-            putJsonArray("args") {
-                // {
-                //    "type" : "clear_metadata",
-                //    "args" : { }
-                //  }
-                add(buildJsonObject {
-                    put("type", "clear_metadata")
-                    put("args", buildJsonObject{})
-                })
-
-                // track_table
-                // set_table_is_enum
-                (metadataJsonObject["tables"] as JsonArray).forEach { table ->
-                    val tableObject = table as JsonObject
-
-                    // {
-                    //    "type" : "track_table",
-                    //    "args" : {
-                    //      "schema" : "public",
-                    //      "name" : "calendar_availability"
-                    //    }
-                    //  }
-                    add(buildJsonObject {
-                        put("type", "track_table")
-                        put("args", tableObject["table"]!!.clone())
-                    })
-
-                    // {
-                    //    "type" : "set_table_is_enum",
-                    //    "args" : {
-                    //      "table" : {
-                    //        "schema" : "public",
-                    //        "name" : "calendar_availability"
-                    //      },
-                    //      "is_enum" : true
-                    //    }
-                    //  }
-                    // If it is an enum table set_table_is_enum
-                    if (table["is_enum"] != null && (table["is_enum"] as JsonPrimitive).boolean == true) {
-                        add(buildJsonObject {
-                            put("type", "set_table_is_enum")
-                            put("args", buildJsonObject {
-                                put("table", tableObject["table"]!!.clone())
-                                put("is_enum", true)
-                            })
-                        })
-                    }
-                }
-
-                // set_table_custom_fields
-                // create_object_relationship
-                // create_array_relationship
-                // create_insert_permission
-                // create_select_permission
-                // create_update_permission
-                // create_delete_permission
-                (metadataJsonObject["tables"] as JsonArray).forEach { table ->
-                    // {
-                    //    "type" : "set_table_custom_fields",
-                    //    "version" : 2,
-                    //    "args" : {
-                    //      "table" : "book_series",
-                    //      "schema" : "public",
-                    //      "custom_root_fields" : {
-                    //        "select" : "bookSeriesMulti",
-                    //        "select_by_pk" : "bookSeries",
-                    //        "select_aggregate" : "bookSeriesAggregate",
-                    //        "insert" : "createBookSeriesMulti",
-                    //        "insert_one" : "createBookSeries",
-                    //        "update" : "updateBookSeriesMulti",
-                    //        "update_by_pk" : "updateBookSeries",
-                    //        "delete" : "deleteBookSeriesMulti",
-                    //        "delete_by_pk" : "deleteBookSeries"
-                    //      },
-                    //      "custom_column_names" : {
-                    //        "created_at" : "createdAt",
-                    //        "updated_at" : "updatedAt"
-                    //      }
-                    //    }
-                    //  }
-                    val tableObject = table as JsonObject
-
-                    if (tableObject["configuration"] != null) {
-                        add(buildJsonObject {
-                            put("type", "set_table_custom_fields")
-                            put("version", 2)
-                            put("args", buildJsonObject {
-                                val nameAndSchema = tableObject["table"]!! as JsonObject
-                                put("table", nameAndSchema["name"]!!)
-                                put("schema", nameAndSchema["schema"]!!)
-
-                                // Copy custom_root_fields and custom_column_names from configuration to the
-                                // api operation
-                                val rootFieldsAndColumNames = tableObject["configuration"]!!.clone() as JsonObject
-                                rootFieldsAndColumNames.forEach { k, v ->
-                                    this.put(k, v)
+                            // Add config for many-to-many join tables, which have no Java class representation but still
+                            // want to have access to them
+                            for (m2m in manyToManyEntities.values) {
+                                configureManyToManyEntity(m2m).let {
+                                    add(it)
                                 }
-                            })
-                        })
-                    }
+                            }
 
-                    // Same logic for:
-                    // create_object_relationship
-                    // create_array_relationship
-                    // create_insert_permission
-                    // create_select_permission
-                    // create_update_permission
-                    // create_delete_permission
-                    fun addAllFromArray(metaJsonName: String, metaApiJsonName: String)
-                    {
-                        (tableObject[metaJsonName] as JsonArray?)?.let {elems ->
-                            elems.forEach {elem ->
-                                add(buildJsonObject {
-                                    put("type", metaApiJsonName)
-                                    put("args", buildJsonObject {
-                                        put("table", (table as JsonObject)["table"]!!.clone())
-                                        // add rrole, permission
-                                        val elemClone = elem.clone() as JsonObject
-                                        elemClone.forEach { k, v ->
-                                            this.put(k, v)
-                                        }
+                            // Add tracking to extra table names. For now these could be join tables of array relations
+                            for (tableName in extraTableNames) {
+                                // if tableName is also present in standard tableNames, it means it was either a Java
+                                // mapped entity or an m2m join table which we handle previously
+                                if (tableNames.contains(tableName)) {
+                                    continue
+                                }
 
-                                    })
-
-                                })
+                                // It is really an extra table name, add it without any further config
+                                add(TableEntry(actualQualifiedTable(schemaName, tableName)))
                             }
                         }
                     }
+                ))
+            },
+            actions = actionsAndTypes.actions,
+            customTypes = actionsAndTypes.customTypes,
+            // TODO:
+            // cronTriggers =
+            // remoteSchemas =
+            // restEndpoints =
+            // allowlist =
+            // inheritedRoles =
+            // queryCollections =
+        )
 
-                    // {
-                    //    "type" : "create_object_relationship",
-                    //    "args" : {
-                    //      "table" : {
-                    //        "name" : "calendar",
-                    //        "schema" : "public"
-                    //      },
-                    //      "name" : "availability",
-                    //      "using" : {
-                    //        "foreign_key_constraint_on" : "availability_value"
-                    //      }
-                    //    }
-                    //  }
-                    addAllFromArray("object_relationships", "create_object_relationship")
-
-                    addAllFromArray("computed_fields", "add_computed_field")
-
-
-                    // {
-                    //    "type" : "create_array_relationship",
-                    //    "args" : {
-                    //      "table" : {
-                    //        "name" : "calendar",
-                    //        "schema" : "public"
-                    //      },
-                    //      "name" : "children",
-                    //      "using" : {
-                    //        "foreign_key_constraint_on" : {
-                    //          "table" : {
-                    //            "name" : "calendar_parents",
-                    //            "schema" : "public"
-                    //          },
-                    //          "column" : "parents_id"
-                    //        }
-                    //      }
-                    //    }
-                    //  }
-                    addAllFromArray("array_relationships", "create_array_relationship")
-
-                    // {
-                    //    "type" : "create_insert_permission",
-                    //    "args" : {
-                    //      "table" : {
-                    //        "name" : "calendar",
-                    //        "schema" : "public"
-                    //      },
-                    //      "role" : "USER",
-                    //      "permission" : {
-                    //        "set" : { },
-                    //        "columns" : "*",
-                    //        "allow_aggregations" : true,
-                    //        "check" : { }
-                    //      }
-                    //    }
-                    //  }
-                    addAllFromArray("insert_permissions", "create_insert_permission")
-
-                    // {
-                    //    "type" : "create_select_permission",
-                    //    "args" : {
-                    //      "table" : {
-                    //        "name" : "calendar",
-                    //        "schema" : "public"
-                    //      },
-                    //      "role" : "USER",
-                    //      "permission" : {
-                    //        "set" : { },
-                    //        "columns" : "*",
-                    //        "allow_aggregations" : true,
-                    //        "filter" : {
-                    //          "roles" : {
-                    //            "user_id" : {
-                    //              "_eq" : "X-Hasura-User-Id"
-                    //            }
-                    //          }
-                    //        }
-                    //      }
-                    //    }
-                    //  }
-                    addAllFromArray("select_permissions", "create_select_permission")
-
-                    // {
-                    //    "type" : "create_update_permission",
-                    //    "args" : {
-                    //      "table" : {
-                    //        "name" : "calendar",
-                    //        "schema" : "public"
-                    //      },
-                    //      "role" : "USER",
-                    //      "permission" : {
-                    //        "set" : { },
-                    //        "columns" : "*",
-                    //        "allow_aggregations" : true,
-                    //        "filter" : {
-                    //          "_and" : [ {
-                    //            "roles" : {
-                    //              "user_id" : {
-                    //                "_eq" : "X-Hasura-User-Id"
-                    //              }
-                    //            }
-                    //          }, {
-                    //            "roles" : {
-                    //              "role_value" : {
-                    //                "_in" : [ "OWNER", "EDITOR" ]
-                    //              }
-                    //            }
-                    //          } ]
-                    //        }
-                    //      }
-                    //    }
-                    //  }
-                    addAllFromArray("update_permissions", "create_update_permission")
-
-                    // {
-                    //    "type" : "create_delete_permission",
-                    //    "args" : {
-                    //      "table" : {
-                    //        "name" : "calendar",
-                    //        "schema" : "public"
-                    //      },
-                    //      "role" : "USER",
-                    //      "permission" : {
-                    //        "set" : { },
-                    //        "columns" : [ "created_at", "updated_at", "availability_value", "id", "description", "locale_country", "next_version_id", "published", "theme_id", "theme_config", "title", "version" ],
-                    //        "allow_aggregations" : true,
-                    //        "filter" : {
-                    //          "_and" : [ {
-                    //            "roles" : {
-                    //              "user_id" : {
-                    //                "_eq" : "X-Hasura-User-Id"
-                    //              }
-                    //            }
-                    //          }, {
-                    //            "roles" : {
-                    //              "role_value" : {
-                    //                "_in" : [ "OWNER", "EDITOR" ]
-                    //              }
-                    //            }
-                    //          } ]
-                    //        }
-                    //      }
-                    //    }
-                    //  }
-                    addAllFromArray("delete_permissions", "create_delete_permission")
-                }
-
-                // {
-                //    "type" : "run_sql",
-                //    "args" : {
-                //      "sql" : "DROP TRIGGER IF EXISTS calendar_next_version_id_cascade_delete_trigger ON calendar;; DROP FUNCTION  IF EXISTS calendar_next_version_id_cascade_delete(); CREATE FUNCTION calendar_next_version_id_cascade_delete() RETURNS trigger AS $body$ BEGIN     IF TG_WHEN <> 'AFTER' OR TG_OP <> 'DELETE' THEN         RAISE EXCEPTION 'calendar_next_version_id_cascade_delete may only run as a AFTER DELETE trigger';     END IF;      DELETE FROM calendar where id=OLD.next_version_id;     RETURN OLD; END; $body$ LANGUAGE plpgsql;; CREATE TRIGGER calendar_next_version_id_cascade_delete_trigger AFTER DELETE ON calendar     FOR EACH ROW EXECUTE PROCEDURE calendar_next_version_id_cascade_delete();;                       "
-                //    }
-                //  }
-                configureCascadeDeleteTriggers().forEach {
-                    add(it)
-                }
-            }
+        // Collect all sqls
+        runSqlDefs.addAll(enumTableConfigs.flatMap { it.runSqls })
+        if (cascadeDeleteFields.isNotEmpty()) {
+            runSqlDefs.addAll(configureCascadeDeleteTriggers())
         }
-        confJson = Json.encodeToString(apiJson).reformatJson()
+
+        return HasuraConfiguration(
+            metadata = meta,
+            runSqls = runSqlDefs,
+            jsonSchema = when {
+                ignoreJsonSchema -> jsonSchemaGenerator.generateSchema(*entityClasses.toTypedArray()).toString()
+                    .reformatJson()
+                else -> null
+            }
+        )
     }
 
-    private fun JsonElement.clone(): JsonElement =
-            Json.decodeFromString(Json.encodeToString(this))
+//    /**
+//     * Takes the metadataJson and creates a Metadata API Json
+//     */
+//    private fun createBulkConfJson()
+//    {
+//        val apiJson = buildJsonObject {
+//            put("type", "bulk")
+//            putJsonArray("args") {
+//                // {
+//                //    "type" : "clear_metadata",
+//                //    "args" : { }
+//                //  }
+//                add(buildJsonObject {
+//                    put("type", "clear_metadata")
+//                    put("args", buildJsonObject{})
+//                })
+//
+//                // track_table
+//                // set_table_is_enum
+//                (metadataJsonObject["tables"] as JsonArray).forEach { table ->
+//                    val tableObject = table as JsonObject
+//
+//                    // {
+//                    //    "type" : "track_table",
+//                    //    "args" : {
+//                    //      "schema" : "public",
+//                    //      "name" : "calendar_availability"
+//                    //    }
+//                    //  }
+//                    add(buildJsonObject {
+//                        put("type", "track_table")
+//                        put("args", tableObject["table"]!!.clone())
+//                    })
+//
+//                    // {
+//                    //    "type" : "set_table_is_enum",
+//                    //    "args" : {
+//                    //      "table" : {
+//                    //        "schema" : "public",
+//                    //        "name" : "calendar_availability"
+//                    //      },
+//                    //      "is_enum" : true
+//                    //    }
+//                    //  }
+//                    // If it is an enum table set_table_is_enum
+//                    if (table["is_enum"] != null && (table["is_enum"] as JsonPrimitive).boolean == true) {
+//                        add(buildJsonObject {
+//                            put("type", "set_table_is_enum")
+//                            put("args", buildJsonObject {
+//                                put("table", tableObject["table"]!!.clone())
+//                                put("is_enum", true)
+//                            })
+//                        })
+//                    }
+//                }
+//
+//                // set_table_custom_fields
+//                // create_object_relationship
+//                // create_array_relationship
+//                // create_insert_permission
+//                // create_select_permission
+//                // create_update_permission
+//                // create_delete_permission
+//                (metadataJsonObject["tables"] as JsonArray).forEach { table ->
+//                    // {
+//                    //    "type" : "set_table_custom_fields",
+//                    //    "version" : 2,
+//                    //    "args" : {
+//                    //      "table" : "book_series",
+//                    //      "schema" : "public",
+//                    //      "custom_root_fields" : {
+//                    //        "select" : "bookSeriesMulti",
+//                    //        "select_by_pk" : "bookSeries",
+//                    //        "select_aggregate" : "bookSeriesAggregate",
+//                    //        "insert" : "createBookSeriesMulti",
+//                    //        "insert_one" : "createBookSeries",
+//                    //        "update" : "updateBookSeriesMulti",
+//                    //        "update_by_pk" : "updateBookSeries",
+//                    //        "delete" : "deleteBookSeriesMulti",
+//                    //        "delete_by_pk" : "deleteBookSeries"
+//                    //      },
+//                    //      "custom_column_names" : {
+//                    //        "created_at" : "createdAt",
+//                    //        "updated_at" : "updatedAt"
+//                    //      }
+//                    //    }
+//                    //  }
+//                    val tableObject = table as JsonObject
+//
+//                    if (tableObject["configuration"] != null) {
+//                        add(buildJsonObject {
+//                            put("type", "set_table_custom_fields")
+//                            put("version", 2)
+//                            put("args", buildJsonObject {
+//                                val nameAndSchema = tableObject["table"]!! as JsonObject
+//                                put("table", nameAndSchema["name"]!!)
+//                                put("schema", nameAndSchema["schema"]!!)
+//
+//                                // Copy custom_root_fields and custom_column_names from configuration to the
+//                                // api operation
+//                                val rootFieldsAndColumNames = tableObject["configuration"]!!.clone() as JsonObject
+//                                rootFieldsAndColumNames.forEach { k, v ->
+//                                    this.put(k, v)
+//                                }
+//                            })
+//                        })
+//                    }
+//
+//                    // Same logic for:
+//                    // create_object_relationship
+//                    // create_array_relationship
+//                    // create_insert_permission
+//                    // create_select_permission
+//                    // create_update_permission
+//                    // create_delete_permission
+//                    fun addAllFromArray(metaJsonName: String, metaApiJsonName: String)
+//                    {
+//                        (tableObject[metaJsonName] as JsonArray?)?.let {elems ->
+//                            elems.forEach {elem ->
+//                                add(buildJsonObject {
+//                                    put("type", metaApiJsonName)
+//                                    put("args", buildJsonObject {
+//                                        put("table", (table as JsonObject)["table"]!!.clone())
+//                                        // add rrole, permission
+//                                        val elemClone = elem.clone() as JsonObject
+//                                        elemClone.forEach { k, v ->
+//                                            this.put(k, v)
+//                                        }
+//
+//                                    })
+//
+//                                })
+//                            }
+//                        }
+//                    }
+//
+//                    // {
+//                    //    "type" : "create_object_relationship",
+//                    //    "args" : {
+//                    //      "table" : {
+//                    //        "name" : "calendar",
+//                    //        "schema" : "public"
+//                    //      },
+//                    //      "name" : "availability",
+//                    //      "using" : {
+//                    //        "foreign_key_constraint_on" : "availability_value"
+//                    //      }
+//                    //    }
+//                    //  }
+//                    addAllFromArray("object_relationships", "create_object_relationship")
+//
+//                    addAllFromArray("computed_fields", "add_computed_field")
+//
+//
+//                    // {
+//                    //    "type" : "create_array_relationship",
+//                    //    "args" : {
+//                    //      "table" : {
+//                    //        "name" : "calendar",
+//                    //        "schema" : "public"
+//                    //      },
+//                    //      "name" : "children",
+//                    //      "using" : {
+//                    //        "foreign_key_constraint_on" : {
+//                    //          "table" : {
+//                    //            "name" : "calendar_parents",
+//                    //            "schema" : "public"
+//                    //          },
+//                    //          "column" : "parents_id"
+//                    //        }
+//                    //      }
+//                    //    }
+//                    //  }
+//                    addAllFromArray("array_relationships", "create_array_relationship")
+//
+//                    // {
+//                    //    "type" : "create_insert_permission",
+//                    //    "args" : {
+//                    //      "table" : {
+//                    //        "name" : "calendar",
+//                    //        "schema" : "public"
+//                    //      },
+//                    //      "role" : "USER",
+//                    //      "permission" : {
+//                    //        "set" : { },
+//                    //        "columns" : "*",
+//                    //        "allow_aggregations" : true,
+//                    //        "check" : { }
+//                    //      }
+//                    //    }
+//                    //  }
+//                    addAllFromArray("insert_permissions", "create_insert_permission")
+//
+//                    // {
+//                    //    "type" : "create_select_permission",
+//                    //    "args" : {
+//                    //      "table" : {
+//                    //        "name" : "calendar",
+//                    //        "schema" : "public"
+//                    //      },
+//                    //      "role" : "USER",
+//                    //      "permission" : {
+//                    //        "set" : { },
+//                    //        "columns" : "*",
+//                    //        "allow_aggregations" : true,
+//                    //        "filter" : {
+//                    //          "roles" : {
+//                    //            "user_id" : {
+//                    //              "_eq" : "X-Hasura-User-Id"
+//                    //            }
+//                    //          }
+//                    //        }
+//                    //      }
+//                    //    }
+//                    //  }
+//                    addAllFromArray("select_permissions", "create_select_permission")
+//
+//                    // {
+//                    //    "type" : "create_update_permission",
+//                    //    "args" : {
+//                    //      "table" : {
+//                    //        "name" : "calendar",
+//                    //        "schema" : "public"
+//                    //      },
+//                    //      "role" : "USER",
+//                    //      "permission" : {
+//                    //        "set" : { },
+//                    //        "columns" : "*",
+//                    //        "allow_aggregations" : true,
+//                    //        "filter" : {
+//                    //          "_and" : [ {
+//                    //            "roles" : {
+//                    //              "user_id" : {
+//                    //                "_eq" : "X-Hasura-User-Id"
+//                    //              }
+//                    //            }
+//                    //          }, {
+//                    //            "roles" : {
+//                    //              "role_value" : {
+//                    //                "_in" : [ "OWNER", "EDITOR" ]
+//                    //              }
+//                    //            }
+//                    //          } ]
+//                    //        }
+//                    //      }
+//                    //    }
+//                    //  }
+//                    addAllFromArray("update_permissions", "create_update_permission")
+//
+//                    // {
+//                    //    "type" : "create_delete_permission",
+//                    //    "args" : {
+//                    //      "table" : {
+//                    //        "name" : "calendar",
+//                    //        "schema" : "public"
+//                    //      },
+//                    //      "role" : "USER",
+//                    //      "permission" : {
+//                    //        "set" : { },
+//                    //        "columns" : [ "created_at", "updated_at", "availability_value", "id", "description", "locale_country", "next_version_id", "published", "theme_id", "theme_config", "title", "version" ],
+//                    //        "allow_aggregations" : true,
+//                    //        "filter" : {
+//                    //          "_and" : [ {
+//                    //            "roles" : {
+//                    //              "user_id" : {
+//                    //                "_eq" : "X-Hasura-User-Id"
+//                    //              }
+//                    //            }
+//                    //          }, {
+//                    //            "roles" : {
+//                    //              "role_value" : {
+//                    //                "_in" : [ "OWNER", "EDITOR" ]
+//                    //              }
+//                    //            }
+//                    //          } ]
+//                    //        }
+//                    //      }
+//                    //    }
+//                    //  }
+//                    addAllFromArray("delete_permissions", "create_delete_permission")
+//                }
+//
+//                // {
+//                //    "type" : "run_sql",
+//                //    "args" : {
+//                //      "sql" : "DROP TRIGGER IF EXISTS calendar_next_version_id_cascade_delete_trigger ON calendar;; DROP FUNCTION  IF EXISTS calendar_next_version_id_cascade_delete(); CREATE FUNCTION calendar_next_version_id_cascade_delete() RETURNS trigger AS $body$ BEGIN     IF TG_WHEN <> 'AFTER' OR TG_OP <> 'DELETE' THEN         RAISE EXCEPTION 'calendar_next_version_id_cascade_delete may only run as a AFTER DELETE trigger';     END IF;      DELETE FROM calendar where id=OLD.next_version_id;     RETURN OLD; END; $body$ LANGUAGE plpgsql;; CREATE TRIGGER calendar_next_version_id_cascade_delete_trigger AFTER DELETE ON calendar     FOR EACH ROW EXECUTE PROCEDURE calendar_next_version_id_cascade_delete();;                       "
+//                //    }
+//                //  }
+//                configureCascadeDeleteTriggers().forEach {
+//                    add(it)
+//                }
+//            }
+//        }
+//        confJson = Json.encodeToString(apiJson).reformatJson()
+//    }
 
-    private fun configureEntity(entity: EntityType<*>, entities: Set<EntityType<*>>) : JsonObject
+    private fun JsonElement.clone(): JsonElement =
+        Json.decodeFromString(Json.encodeToString(this))
+
+    private fun configureTableEntry(entity: EntityType<*>, entities: Set<EntityType<*>>, sourceName: String) : TableEntry
     {
         val relatedEntities = entity.relatedEntities(entities)
         val targetEntityClassMetadata = metaModel.entityPersister(entity.javaType.typeName) as AbstractEntityPersister
@@ -690,7 +637,7 @@ class HasuraConfigurator(
         // Add ID field
         val f = Utils.findDeclaredFieldUsingReflection(entity.javaType, targetEntityClassMetadata.identifierPropertyName)
         jsonSchemaGenerator.addSpecValue(f!!,
-                HasuraSpecPropValues(graphqlType = graphqlTypeFor(metaModel, targetEntityClassMetadata.identifierType, targetEntityClassMetadata)))
+            HasuraSpecPropValues(graphqlType = graphqlTypeFor(metaModel, targetEntityClassMetadata.identifierType, targetEntityClassMetadata)))
 
         entityClasses.add(entity.javaType)
 
@@ -710,39 +657,62 @@ class HasuraConfigurator(
         val rootFieldNames = generateRootFieldNames(rootFields, entityName, entityNameLower, tableName)
 
         jsonSchemaGenerator.addSpecValue(entity.javaType,
-                HasuraSpecTypeValues(
-                        graphqlType=tableName,
-                        idProp=keyKolumnName,
-                        rootFieldNames = rootFieldNames))
+            HasuraSpecTypeValues(
+                graphqlType=tableName,
+                idProp=keyKolumnName,
+                rootFieldNames = rootFieldNames))
 
         collectCascadeDeleteCandidates(entity)
 
-        val tableJson = buildJsonObject {
-            put("table", buildJsonObject {
-                val schemaAndName = actualSchemaAndName(schemaName, tableName)
-                put("schema", schemaAndName.first)
-                put("name", schemaAndName.second)
-            })
-            put("configuration", buildJsonObject{
-                put("custom_root_fields", configureRootFieldNames(rootFieldNames))
-                put("custom_column_names", configureCustomColumnNames(relatedEntities))
-            })
-            val objRel = configureObjectRelationships(relatedEntities)
-            if (!objRel.isEmpty()) {
-                put("object_relationships", objRel)
+        val permissions = permissionAnnotationProcessor.process(entity)
+        val table = TableEntry(
+            table = actualQualifiedTable(schemaName, tableName),
+            configuration = TableConfig(
+                customRootFields = configureCustomRootFields(rootFieldNames),
+                customColumnNames = configureCustomColumnNamesMap(relatedEntities),
+            ),
+            objectRelationships = configureObjectRelationships(relatedEntities),
+            arrayRelationships = configureArrayRelationships(relatedEntities),
+            computedFields = configureComputedFields(entity, sourceName),
+            insertPermissions = configurePermission(permissions, HasuraOperation.INSERT),
+            selectPermissions = configurePermission(permissions, HasuraOperation.SELECT),
+            updatePermissions = configurePermission(permissions, HasuraOperation.UPDATE),
+            deletePermissions = configurePermission(permissions, HasuraOperation.DELETE),
+            isEnum = let {
+                // Check if table is enum, collect its config
+                configureEnumTable(entity, sourceName)?.let {
+                    enumTableConfigs.add(it)
+                    true
+                }
+                false
             }
-            val arrRel = configureArrayRelationships(relatedEntities)
-            if (!arrRel.isEmpty()) {
-                put("array_relationships", arrRel)
-            }
+        )
 
-            val entityClass = entity.javaType
-            if (entityClass.isAnnotationPresent(HasuraEnum::class.java)) {
-                put("is_enum", true)
-                // Generate SQL for enum values liek ths:
+        //
+
+        return table
+
+        //return tableJson
+    }
+
+    data class EnumTableConfig(
+        val tableName: String,
+        val runSqls: List<JsonObject>
+    )
+    @OptIn(ExperimentalStdlibApi::class)
+    private fun configureEnumTable(entity: EntityType<*>, sourceName: String) : EnumTableConfig?
+    {
+        val targetEntityClassMetadata = metaModel.entityPersister(entity.javaType.typeName) as AbstractEntityPersister
+        val tableName = targetEntityClassMetadata.tableName
+
+        val entityClass = entity.javaType
+        if (entityClass.isAnnotationPresent(HasuraEnum::class.java)) {
+            EnumTableConfig(
+                tableName = tableName,
+                // Generate SQL for enum values like ths:
                 // INSERT INTO public.todo_item_status (value, description) VALUES ('STARTED', 'Started - todo item started') ON CONFLICT DO NOTHING;
                 // enum insertions always come first, any other sql, like computed field function come after
-                runSqlDefs.add(0,
+                runSqls = buildList<JsonObject> {
                     buildJsonObject {
                         put("hasuraconfComment", """Enum values for ${entityClass.simpleName}""")
                         put("type", "run_sql")
@@ -755,36 +725,28 @@ class HasuraConfigurator(
                                         val descriptionField = entityClass.declaredFields.first { it.name == "description" }
                                         descriptionField.isAccessible = true
                                         append("INSERT INTO $schemaName.$tableName (value, description) VALUES ('${enumField.name}', '${descriptionField.get(enumVal)}') ON CONFLICT DO NOTHING;\n")
-                                }
+                                    }
                                 entityClass.declaredFields
                                     .filter { Modifier.isStatic(it.modifiers) && Modifier.isFinal(it.modifiers)  && it.isAnnotationPresent(HasuraEnumValue::class.java) }
                                     .forEach { staticField ->
                                         staticField.isAccessible = true
                                         append("INSERT INTO $schemaName.$tableName (value, description) VALUES ('${staticField.name}', '${staticField.get(entityClass)}') ON CONFLICT DO NOTHING;\n")
 
-                                }
+                                    }
                             }
-                            put("source", "default")
+                            put("source", sourceName)
                             put("sql", sql)
                             put("cascade", false)
                             put("read_only", false)
                         }
                     }
-                )
-            }
-
-            val computedFields = configureComputedFields(entity)
-            if (computedFields.isNotEmpty()) {
-                put("computed_fields", JsonArray(computedFields))
-            }
-            val permissions = permissionAnnotationProcessor.process(entity)
-            configurePermissions(permissions, this)
+                }
+            )
         }
-
-        return tableJson
+        return null
     }
 
-    private fun configureComputedFields(entity: EntityType<*>): List<JsonObject>
+    private fun configureComputedFields(entity: EntityType<*>, sourceName: String): List<ComputedField>
     {
         return entity.javaType.declaredFields
             .filter {
@@ -800,7 +762,7 @@ class HasuraConfigurator(
                             put("hasuraconfComment", """Computed feld ${field.name} SQL function""")
                             put("type", "run_sql")
                             putJsonObject("args") {
-                                put("source", "default")
+                                put("source", sourceName)
                                 put("sql", annot.functionDefinition)
                                 put("cascade", false)
                                 put("read_only", false)
@@ -810,65 +772,75 @@ class HasuraConfigurator(
                 }
 
                 // Generate the "computed_fields" object
-                buildJsonObject {
-                    put("name", field.name)
-                    if (annot.comment.isNotEmpty()) {
-                        put("comment", annot.comment)
-                    }
-                    putJsonObject("definition") {
-                        putJsonObject("function") {
-                            put("name", annot.functionName)
-                            if (annot.functionSchema.isNotEmpty()) {
-                                put("schema", annot.functionSchema)
-                            }
-                            else {
-                                put("schema", schemaName)
-                            }
-                        }
-                    }
-                }
+                ComputedField(
+                    name = field.name,
+                    comment = annot.comment.isNotEmpty()?.let {
+                        annot.comment
+                    },
+                    definition = ComputedFieldDefinition(
+                        function = if (annot.functionSchema.isNotEmpty())
+                                        FunctionName.QualifiedFunctionValue(QualifiedFunction(annot.functionName, annot.functionSchema))
+                                    else
+                                        FunctionName.StringValue(annot.functionName)
+
+                    )
+                )
             }
     }
 
-    private fun configurePermissions(permissions: List<PermissionData>, builder: JsonObjectBuilder)
+
+    private fun <T> configurePermission(permissions: List<PermissionData>, op:HasuraOperation) : List<T>?
     {
-        builder.apply {
+        val inserts = permissions.filter { it.operation==op }.map { permissionData ->
+            permissionData.toJsonObject()
+        }
+        if (inserts.isNotEmpty()) {
+            return Json.decodeFromJsonElement<List<T>>(JsonArray(inserts))
+        }
+        return null
+    }
+
+    private fun configurePermissions(permissions: List<PermissionData>, table: TableEntry)
+    {
+        let {
             val inserts = permissions.filter { it.operation==HasuraOperation.INSERT }.map { permissionData ->
                 permissionData.toJsonObject()
             }
             if (!inserts.isEmpty()) {
-                put("insert_permissions", JsonArray(inserts))
+                table.insertPermissions = Json.decodeFromJsonElement<List<InsertPermissionEntry>>(JsonArray(inserts))
             }
 
             val selects = permissions.filter { it.operation==HasuraOperation.SELECT }.map { permissionData ->
                 permissionData.toJsonObject()
             }
             if (!selects.isEmpty()) {
-                put("select_permissions", JsonArray(selects))
+                table.selectPermissions = Json.decodeFromJsonElement<List<SelectPermissionEntry>>(JsonArray(selects))
             }
 
             val updates = permissions.filter { it.operation==HasuraOperation.UPDATE }.map { permissionData ->
                 permissionData.toJsonObject()
             }
             if (!updates.isEmpty()) {
-                put("update_permissions", JsonArray(updates))
+                table.updatePermissions = Json.decodeFromJsonElement<List<UpdatePermissionEntry>>(JsonArray(updates))
             }
 
             val deletes = permissions.filter { it.operation==HasuraOperation.DELETE }.map { permissionData ->
                 permissionData.toJsonObject()
             }
             if (!deletes.isEmpty()) {
-                put("delete_permissions", JsonArray(deletes))
+                table.deletePermissions = Json.decodeFromJsonElement<List<DeletePermissionEntry>>(JsonArray(deletes))
             }
         }
     }
 
-    private fun configureCascadeDeleteTriggers(): JsonArray
+
+    @OptIn(ExperimentalStdlibApi::class)
+    private fun configureCascadeDeleteTriggers(): List<JsonObject>
     {
-        val triggers = buildJsonArray {
+        val triggers = buildList<JsonObject> {
             for (cdf in cascadeDeleteFields) {
                 val template =
-                        """
+                    """
                         DROP TRIGGER IF EXISTS ${cdf.table}_${cdf.field}_cascade_delete_trigger ON ${cdf.table};;
                         DROP FUNCTION  IF EXISTS ${cdf.table}_${cdf.field}_cascade_delete();
                         CREATE FUNCTION ${cdf.table}_${cdf.field}_cascade_delete() RETURNS trigger AS
@@ -899,38 +871,21 @@ class HasuraConfigurator(
         return triggers
     }
 
-    private fun configureRootFieldNames(rootFieldNames: RootFieldNames) : JsonObject
+    private fun configureCustomRootFields(rootFieldNames: RootFieldNames) : CustomRootFields
     {
-        return buildJsonObject {
-            put("select",           "${rootFieldNames.select}")
-            put("select_by_pk",     "${rootFieldNames.selectByPk}")
-            put("select_aggregate", "${rootFieldNames.selectAggregate}")
-            put("insert",           "${rootFieldNames.insert}")
-            put("insert_one",       "${rootFieldNames.insertOne}")
-            put("update",           "${rootFieldNames.update}")
-            put("update_by_pk",     "${rootFieldNames.updateByPk}")
-            put("delete",           "${rootFieldNames.delete}")
-            put("delete_by_pk",     "${rootFieldNames.deleteByPk}")
-        }
+        return CustomRootFields(
+            select = "${rootFieldNames.select}",
+            selectByPk = "${rootFieldNames.selectByPk}",
+            selectAggregate = "${rootFieldNames.selectAggregate}",
+            insert =  "${rootFieldNames.insert}",
+            insertOne = "${rootFieldNames.insertOne}",
+            update = "${rootFieldNames.update}",
+            updateByPk = "${rootFieldNames.updateByPk}",
+            delete = "${rootFieldNames.delete}",
+            deleteByPk = "${rootFieldNames.deleteByPk}",
+        )
     }
 
-    data class M2MData(
-            val join: BasicCollectionPersister,
-            val field: Field,
-            val tableName: String,
-            val entityName: String,
-            val entityNameLower: String,
-            val keyColumn: String,
-            val keyColumnAlias: String,
-            val keyColumnType: Type,
-            val relatedColumnName: String,
-            val relatedColumnNameAlias: String,
-            val relatedColumnType: Type,
-            var joinFieldName: String,
-            val relatedTableName: String,
-            val keyFieldName: String,
-            val rootFields: HasuraRootFields?
-    )
 
     /**
      * Calculates all kinds of ManyToManyEntity related values
@@ -991,21 +946,21 @@ class HasuraConfigurator(
         val keyFieldName = keyTableName.toCamelCase()
 
         return M2MData(
-                join,
-                field,
-                tableName,
-                entityName,
-                entityNameLower,
-                keyColumn,
-                keyColumnAlias,
-                keyColumnType,
-                relatedColumnName,
-                relatedColumnNameAlias,
-                relatedColumnType,
-                joinFieldName,
-                relatedTableName,
-                keyFieldName,
-                rootFields
+            join,
+            field,
+            tableName,
+            entityName,
+            entityNameLower,
+            keyColumn,
+            keyColumnAlias,
+            keyColumnType,
+            relatedColumnName,
+            relatedColumnNameAlias,
+            relatedColumnType,
+            joinFieldName,
+            relatedTableName,
+            keyFieldName,
+            rootFields
         )
     }
 
@@ -1021,107 +976,110 @@ class HasuraConfigurator(
      * defined we need to generate the object relationship for the two sides. For side1 we reuse the
      * M2MData created for the common parts, and for field2/join2 we generate a new M2MData.
      */
-    private fun configureManyToManyEntity(m2m: ManyToManyEntity) : JsonObject?
+    @OptIn(ExperimentalStdlibApi::class)
+    private fun configureManyToManyEntity(m2m: ManyToManyEntity) : TableEntry
     {
-        val tableJson = buildJsonObject {
-            // Get M2MData for the common definition parts
-            var m2mData = m2m.toM2MData(m2m.field1, m2m.join1)
+        // Generate a object_relationships element and also add necessary HasuraSpecPropValues
+        // and JoinType to jsonSchemaGenerator using this m2mData
+        fun addObjRel(m2mData: M2MData, list: MutableList<ObjectRelationship>) {
             with(m2mData) {
-                val rootFieldNames = generateRootFieldNames(rootFields, entityName, entityNameLower, tableName)
+                with(list) {
+                    add(
+                        ObjectRelationship(
+                            name = joinFieldName,
+                            using = ObjRelUsing(
+                                foreignKeyConstraintOn = relatedColumnName
+                            )
+                        )
+                    )
+                }
 
-                put("table", buildJsonObject {
-                    val schemaAndName = actualSchemaAndName(schemaName, tableName)
-                    put("schema", schemaAndName.first)
-                    put("name", schemaAndName.second)
-                })
-                put("configuration", buildJsonObject {
-                    put("custom_root_fields", configureRootFieldNames(rootFieldNames))
-                    putJsonObject("custom_column_names") {
-                        put(keyColumn, keyColumnAlias)
-                        put(relatedColumnName, relatedColumnNameAlias)
-                        // Add index columns names, ie. @OrderColumns
-                        m2m.join1.indexColumnNames?.forEach {
-                            put(it, it.toCamelCase())
-                        }
-                        if (m2m.join2 != null) {
-                            m2m.join2!!.indexColumnNames?.forEach {
+                val rootFieldNames = generateRootFieldNames(rootFields, entityName, entityNameLower, tableName)
+                val classMetadata = metaModel.entityPersister(m2m.entity.javaType.typeName) as AbstractEntityPersister
+
+                jsonSchemaGenerator.addSpecValue(field,
+                    HasuraSpecPropValues(
+                        relation = "many-to-many",
+                        type = tableName.toCase(CaseFormat.CAPITALIZED_CAMEL),
+                        reference = relatedColumnNameAlias,
+                        parentReference = keyColumnAlias,
+                        item = joinFieldName)
+                )
+
+                jsonSchemaGenerator.addJoinType(JoinType(
+                    name = tableName.toCase(CaseFormat.CAPITALIZED_CAMEL),
+                    tableName = tableName,
+                    fromIdName = keyColumnAlias,
+                    fromIdType = jsonSchemaTypeFor(join.keyType, classMetadata),
+                    fromIdGraphqlType = graphqlTypeFor(metaModel, join.keyType, classMetadata),
+                    fromAccessor = keyFieldName,
+                    fromAccessorType = m2m.entity.name,
+                    toIdName = relatedColumnNameAlias,
+                    toIdType = jsonSchemaTypeFor(relatedColumnType, classMetadata),
+                    toIdGraphqlType = graphqlTypeFor(metaModel, relatedColumnType, classMetadata),
+                    toAccessor = joinFieldName,
+                    toAccessorType = relatedTableName.toCase(CaseFormat.CAPITALIZED_CAMEL),
+                    orderField = join.indexColumnNames?.let {
+                        it[0].toCamelCase()
+                    },
+                    orderFieldType = join.indexColumnNames?.let {
+                        jsonSchemaTypeFor(join.indexType, classMetadata)
+                    },
+                    orderFieldGraphqlType = join.indexColumnNames?.let {
+                        graphqlTypeFor(metaModel, join.indexType, classMetadata)
+                    },
+                    rootFieldNames = rootFieldNames
+                ))
+            }
+        }
+
+        // Get M2MData for the common definition parts
+        var m2mData = m2m.toM2MData(m2m.field1, m2m.join1)
+
+        val permissions = permissionAnnotationProcessor.process(m2mData)
+        val table = TableEntry(
+            table = actualQualifiedTable(schemaName, m2mData.tableName),
+            configuration = let {
+                with(m2mData) {
+                    val rootFieldNames = generateRootFieldNames(rootFields, entityName, entityNameLower, tableName)
+
+                    TableConfig(
+                        customRootFields = configureCustomRootFields(rootFieldNames),
+                        customColumnNames = buildMap {
+                            put(keyColumn, keyColumnAlias)
+                            put(relatedColumnName, relatedColumnNameAlias)
+                            // Add index columns names, ie. @OrderColumns
+                            m2m.join1.indexColumnNames?.forEach {
                                 put(it, it.toCamelCase())
                             }
-                        }
-                    }
-                })
-            }
-
-            // Generate a object_relationships element and also add necessary HasuraSpecPropValues
-            // and JoinType to jsonSchemaGenerator using this m2mData
-            fun addObjRel(m2mData: M2MData, jsonArrayBuilder: JsonArrayBuilder) {
-                with(m2mData) {
-                    jsonArrayBuilder.add(buildJsonObject {
-                            put("name",  joinFieldName)
-                            putJsonObject("using") {
-                                put("foreign_key_constraint_on", relatedColumnName)
+                            if (m2m.join2 != null) {
+                                m2m.join2!!.indexColumnNames?.forEach {
+                                    put(it, it.toCamelCase())
+                                }
                             }
                         }
                     )
-
-                    val rootFieldNames = generateRootFieldNames(rootFields, entityName, entityNameLower, tableName)
-                    val classMetadata = metaModel.entityPersister(m2m.entity.javaType.typeName) as AbstractEntityPersister
-
-                    jsonSchemaGenerator.addSpecValue(field,
-                            HasuraSpecPropValues(
-                                    relation = "many-to-many",
-                                    type = tableName.toCase(CaseFormat.CAPITALIZED_CAMEL),
-                                    reference = relatedColumnNameAlias,
-                                    parentReference = keyColumnAlias,
-                                    item = joinFieldName)
-                    )
-
-                    jsonSchemaGenerator.addJoinType(JoinType(
-                            name = tableName.toCase(CaseFormat.CAPITALIZED_CAMEL),
-                            tableName = tableName,
-                            fromIdName = keyColumnAlias,
-                            fromIdType = jsonSchemaTypeFor(join.keyType, classMetadata),
-                            fromIdGraphqlType = graphqlTypeFor(metaModel, join.keyType, classMetadata),
-                            fromAccessor = keyFieldName,
-                            fromAccessorType = m2m.entity.name,
-                            toIdName = relatedColumnNameAlias,
-                            toIdType = jsonSchemaTypeFor(relatedColumnType, classMetadata),
-                            toIdGraphqlType = graphqlTypeFor(metaModel, relatedColumnType, classMetadata),
-                            toAccessor = joinFieldName,
-                            toAccessorType = relatedTableName.toCase(CaseFormat.CAPITALIZED_CAMEL),
-                            orderField = join.indexColumnNames?.let {
-                                it[0].toCamelCase()
-                            },
-                            orderFieldType = join.indexColumnNames?.let {
-                                jsonSchemaTypeFor(join.indexType, classMetadata)
-                            },
-                            orderFieldGraphqlType = join.indexColumnNames?.let {
-                                graphqlTypeFor(metaModel, join.indexType, classMetadata)
-                            },
-                            rootFieldNames = rootFieldNames
-                    ))
                 }
-            }
-
-            putJsonArray("object_relationships") {
-                // Add for field1 (note: we reuse m2mData use for common partts as well)
+            },
+            objectRelationships = buildList {
                 addObjRel(m2mData, this)
                 val joinFieldName1 = m2mData.joinFieldName
                 // Add for field2
                 if (m2m.field2 != null) {
-                    val m2mData = m2m.toM2MData(m2m.field2!!, m2m.join2!!)
-                    if (m2mData.joinFieldName == joinFieldName1) {
-                        LOG.warn("Many-to-many table '${m2mData.tableName}' recursively joins the same table (${m2mData.relatedTableName}). Consider using @HasuraAlias(..., joinFieldAlias=\"\") on both ends of the relationship on fields: '${m2m.field1}' and '${m2m.field2}'" )
-                        m2mData.joinFieldName += "2"
+                    val revM2mData = m2m.toM2MData(m2m.field2!!, m2m.join2!!)
+                    if (revM2mData.joinFieldName == joinFieldName1) {
+                        LOG.warn("Many-to-many table '${revM2mData.tableName}' recursively joins the same table (${revM2mData.relatedTableName}). Consider using @HasuraAlias(..., joinFieldAlias=\"\") on both ends of the relationship on fields: '${m2m.field1}' and '${m2m.field2}'" )
+                        revM2mData.joinFieldName += "2"
                     }
-                    addObjRel(m2mData, this)
+                    addObjRel(revM2mData, this)
                 }
-            }
-
-            val permissions = permissionAnnotationProcessor.process(m2mData)
-            configurePermissions(permissions, this)
-        }
-        return tableJson
+            },
+            insertPermissions = configurePermission(permissions, HasuraOperation.INSERT),
+            selectPermissions = configurePermission(permissions, HasuraOperation.SELECT),
+            updatePermissions = configurePermission(permissions, HasuraOperation.UPDATE),
+            deletePermissions = configurePermission(permissions, HasuraOperation.DELETE),
+        )
+        return table
     }
 
     private fun processProperties(relatedEntities: List<EntityType<*>>, processor: (params: ProcessorParams) -> Unit)
@@ -1180,9 +1138,10 @@ class HasuraConfigurator(
 
     }
 
-    private fun configureCustomColumnNames(relatedEntities: List<EntityType<*>>): JsonElement
+    @OptIn(ExperimentalStdlibApi::class)
+    private fun configureCustomColumnNamesMap(relatedEntities: List<EntityType<*>>): Map<String, String>
     {
-        val customColumnNames = buildJsonObject {
+        val customColumnNames = buildMap<String, String> {
             processProperties(relatedEntities) { params ->
                 if (!params.columnType.isAssociationType && params.propName != params.columnName) {
                     put(params.columnName, params.propName)
@@ -1203,9 +1162,11 @@ class HasuraConfigurator(
         return customColumnNames
     }
 
-    private fun configureObjectRelationships(relatedEntities: List<EntityType<*>>): JsonArray
+
+    @OptIn(ExperimentalStdlibApi::class)
+    private fun configureObjectRelationships(relatedEntities: List<EntityType<*>>): List<ObjectRelationship>
     {
-        val objectRelationships = buildJsonArray {
+        val objectRelationships = buildList<ObjectRelationship> {
             val added = mutableSetOf<String>()
             processProperties(relatedEntities) { params ->
                 if (added.contains(params.propName)) {
@@ -1218,33 +1179,35 @@ class HasuraConfigurator(
                     if (fkDir === ForeignKeyDirection.FROM_PARENT) {
                         // may need join.tableName?
                         val join = assocType.getAssociatedJoinable(sessionFactoryImpl as SessionFactoryImpl?)
-                        add(buildJsonObject {
-                            put("name", params.propName)
-                            putJsonObject("using") {
-                                put("foreign_key_constraint_on", params.columnName)
-                            }
-                        })
+                        add(
+                            ObjectRelationship(
+                                name = params.propName,
+                                using = ObjRelUsing(
+                                    foreignKeyConstraintOn = params.columnName
+                                )
+                            )
+                        )
                         val camelCasedIdName = CaseUtils.toCamelCase(params.columnName, false, '_')
                         jsonSchemaGenerator.addSpecValue(params.entity.javaType,
-                                HasuraSpecTypeValues(
-                                        referenceProp = HasuraReferenceProp(name=camelCasedIdName, type=jsonSchemaTypeFor(params.columnType, params.classMetadata)),
-                                        rootFieldNames = EmptyRootFieldNames
-                                ))
+                            HasuraSpecTypeValues(
+                                referenceProp = HasuraReferenceProp(name=camelCasedIdName, type=jsonSchemaTypeFor(params.columnType, params.classMetadata)),
+                                rootFieldNames = EmptyRootFieldNames
+                            ))
 
                         if (assocType is ManyToOneType && !assocType.isLogicalOneToOne) {
                             jsonSchemaGenerator.addSpecValue(params.field,
-                                    HasuraSpecPropValues(relation = "many-to-one",
-                                            reference = camelCasedIdName,
-                                            referenceType = jsonSchemaTypeFor(params.columnType, params.classMetadata)
-                                    )
+                                HasuraSpecPropValues(relation = "many-to-one",
+                                    reference = camelCasedIdName,
+                                    referenceType = jsonSchemaTypeFor(params.columnType, params.classMetadata)
+                                )
                             )
                         }
                         else {
                             jsonSchemaGenerator.addSpecValue(params.field,
-                                    HasuraSpecPropValues(relation = "one-to-one",
-                                            reference = camelCasedIdName,
-                                            referenceType = jsonSchemaTypeFor(params.columnType, params.classMetadata)
-                                    )
+                                HasuraSpecPropValues(relation = "one-to-one",
+                                    reference = camelCasedIdName,
+                                    referenceType = jsonSchemaTypeFor(params.columnType, params.classMetadata)
+                                )
                             )
                         }
                     }
@@ -1256,27 +1219,25 @@ class HasuraConfigurator(
                         // mappedBy=<foreign property name> and so it cannot be null. I'm not sure about it so I
                         // leave here a fallback of the default Hiberante tableName_keyColumn foreign key.
                         val mappedId = if (mappedBy != null) (join as AbstractEntityPersister).getPropertyColumnNames(mappedBy)[0]
-                                        else "${params.classMetadata.tableName}_${keyColumn}"
-                        add(buildJsonObject {
-                            put("name", params.propName)
-                            putJsonObject("using") {
-                                putJsonObject("manual_configuration") {
-                                    putJsonObject("remote_table") {
-                                        val schemaAndName = actualSchemaAndName(schemaName, join.tableName)
-                                        put("schema", schemaAndName.first)
-                                        put("name", schemaAndName.second)
-                                    }
-                                    putJsonObject("column_mapping") {
-                                        put(keyColumn, mappedId)
-                                    }
-                                }
-                            }
-                        })
-
+                        else "${params.classMetadata.tableName}_${keyColumn}"
+                        //val qualName = actualQualifiedTable(schemaName, join.tableName)
+                        add(
+                            ObjectRelationship(
+                                name = params.propName,
+                                using = ObjRelUsing(
+                                    manualConfiguration = ObjRelUsingManualMapping(
+                                        remoteTable = TableName.QualifiedTableValue(actualQualifiedTable(schemaName, join.tableName)),
+                                        columnMapping = buildMap {
+                                            put(keyColumn, mappedId)
+                                        }
+                                    )
+                                )
+                            )
+                        )
                         val oneToOne = params.field.getAnnotation(OneToOne::class.java)
                         oneToOne?.let {
                             jsonSchemaGenerator.addSpecValue(params.field,
-                                    HasuraSpecPropValues(relation="one-to-one", mappedBy=oneToOne.mappedBy))
+                                HasuraSpecPropValues(relation="one-to-one", mappedBy=oneToOne.mappedBy))
 
                         }
 
@@ -1287,9 +1248,10 @@ class HasuraConfigurator(
         return objectRelationships
     }
 
-    private fun configureArrayRelationships(relatedEntities: List<EntityType<*>>): JsonArray
+    @OptIn(ExperimentalStdlibApi::class)
+    private fun configureArrayRelationships(relatedEntities: List<EntityType<*>>): List<ArrayRelationship>
     {
-        val arrayRelationships = buildJsonArray {
+        val arrayRelationships = buildList<ArrayRelationship> {
             val added = mutableSetOf<String>()
             processProperties(relatedEntities) { params ->
                 if (added.contains(params.propName)) {
@@ -1302,19 +1264,18 @@ class HasuraConfigurator(
                     val keyColumn = join.keyColumnNames[0]
                     extraTableNames.add(join.tableName)
 
-                    add(buildJsonObject {
-                        put("name", params.propName)
-                        putJsonObject("using") {
-                            putJsonObject("foreign_key_constraint_on") {
-                                put("column", keyColumn)
-                                putJsonObject("table") {
-                                    val schemaAndName = actualSchemaAndName(schemaName, join.tableName)
-                                    put("schema", schemaAndName.first)
-                                    put("name", schemaAndName.second)
-                                }
-                            }
-                        }
-                    })
+                    //val qualName = actualQualifiedTable(schemaName, join.tableName)
+                    add(
+                        ArrayRelationship(
+                            name = params.propName,
+                            using = ArrRelUsing(
+                                foreignKeyConstraintOn = ArrRelUsingFKeyOn(
+                                    column = keyColumn,
+                                    table = TableName.QualifiedTableValue(actualQualifiedTable(schemaName, join.tableName))
+                                )
+                            )
+                        )
+                    )
 
                     // BasicCollectionPersister - despite the name - is for many-to-many associations
                     if (join is BasicCollectionPersister) {
@@ -1337,10 +1298,10 @@ class HasuraConfigurator(
                         val oneToMany = params.field.getAnnotation(OneToMany::class.java)
                         val parentRef = CaseUtils.toCamelCase(keyColumn, false, '_')
                         jsonSchemaGenerator.addSpecValue(params.field,
-                                HasuraSpecPropValues(
-                                        relation="one-to-many",
-                                        mappedBy=oneToMany.mappedBy,
-                                        parentReference=parentRef))
+                            HasuraSpecPropValues(
+                                relation="one-to-many",
+                                mappedBy=oneToMany.mappedBy,
+                                parentReference=parentRef))
 
                     }
                 }
@@ -1368,7 +1329,7 @@ class HasuraConfigurator(
         fun toJsonSchmeType(actualType: Type) : String
         {
             if (actualType is LongType || actualType is IntegerType || actualType is ShortType
-                    || actualType is BigDecimalType || actualType is BigIntegerType) {
+                || actualType is BigDecimalType || actualType is BigIntegerType) {
                 return "integer"
             }
             else if (actualType is StringType) {
@@ -1388,21 +1349,21 @@ class HasuraConfigurator(
     }
 
     private fun generateRootFieldNames(
-            rootFields: HasuraRootFields?,
-            entityName: String,
-            entityNameLower: String,
-            tableName: String) : RootFieldNames
+        rootFields: HasuraRootFields?,
+        entityName: String,
+        entityNameLower: String,
+        tableName: String) : RootFieldNames
     {
         val rootFieldNames = RootFieldNames(
-                select = "${if (rootFields != null && rootFields.select.isNotBlank()) rootFields.select else rootFieldNameProvider.rootFieldFor("select", entityName, entityNameLower, tableName)}",
-                selectByPk = "${if (rootFields != null && rootFields.selectByPk.isNotBlank()) rootFields.selectByPk else rootFieldNameProvider.rootFieldFor("selectByPk", entityName, entityNameLower, tableName)}",
-                selectAggregate = "${if (rootFields != null && rootFields.selectAggregate.isNotBlank()) rootFields.selectAggregate else rootFieldNameProvider.rootFieldFor("selectAggregate", entityName, entityNameLower, tableName)}",
-                insert = "${if (rootFields != null && rootFields.insert.isNotBlank()) rootFields.insert else rootFieldNameProvider.rootFieldFor("insert", entityName, entityNameLower, tableName)}",
-                insertOne =  "${if (rootFields != null && rootFields.insertOne.isNotBlank()) rootFields.insertOne else rootFieldNameProvider.rootFieldFor("insertOne", entityName, entityNameLower, tableName)}",
-                update = "${if (rootFields != null && rootFields.update.isNotBlank()) rootFields.update else rootFieldNameProvider.rootFieldFor("update", entityName, entityNameLower, tableName)}",
-                updateByPk = "${if (rootFields != null && rootFields.updateByPk.isNotBlank()) rootFields.updateByPk else rootFieldNameProvider.rootFieldFor("updateByPk", entityName, entityNameLower, tableName)}",
-                delete = "${if (rootFields != null && rootFields.delete.isNotBlank()) rootFields.delete else rootFieldNameProvider.rootFieldFor("delete", entityName, entityNameLower, tableName)}",
-                deleteByPk = "${if (rootFields != null && rootFields.deleteByPk.isNotBlank()) rootFields.deleteByPk else rootFieldNameProvider.rootFieldFor("deleteByPk", entityName, entityNameLower, tableName)}"
+            select = "${if (rootFields != null && rootFields.select.isNotBlank()) rootFields.select else rootFieldNameProvider.rootFieldFor("select", entityName, entityNameLower, tableName)}",
+            selectByPk = "${if (rootFields != null && rootFields.selectByPk.isNotBlank()) rootFields.selectByPk else rootFieldNameProvider.rootFieldFor("selectByPk", entityName, entityNameLower, tableName)}",
+            selectAggregate = "${if (rootFields != null && rootFields.selectAggregate.isNotBlank()) rootFields.selectAggregate else rootFieldNameProvider.rootFieldFor("selectAggregate", entityName, entityNameLower, tableName)}",
+            insert = "${if (rootFields != null && rootFields.insert.isNotBlank()) rootFields.insert else rootFieldNameProvider.rootFieldFor("insert", entityName, entityNameLower, tableName)}",
+            insertOne =  "${if (rootFields != null && rootFields.insertOne.isNotBlank()) rootFields.insertOne else rootFieldNameProvider.rootFieldFor("insertOne", entityName, entityNameLower, tableName)}",
+            update = "${if (rootFields != null && rootFields.update.isNotBlank()) rootFields.update else rootFieldNameProvider.rootFieldFor("update", entityName, entityNameLower, tableName)}",
+            updateByPk = "${if (rootFields != null && rootFields.updateByPk.isNotBlank()) rootFields.updateByPk else rootFieldNameProvider.rootFieldFor("updateByPk", entityName, entityNameLower, tableName)}",
+            delete = "${if (rootFields != null && rootFields.delete.isNotBlank()) rootFields.delete else rootFieldNameProvider.rootFieldFor("delete", entityName, entityNameLower, tableName)}",
+            deleteByPk = "${if (rootFields != null && rootFields.deleteByPk.isNotBlank()) rootFields.deleteByPk else rootFieldNameProvider.rootFieldFor("deleteByPk", entityName, entityNameLower, tableName)}"
         )
 
         // If the original field name was plural then we may have name clashes.
@@ -1410,8 +1371,8 @@ class HasuraConfigurator(
         // We fix that by adding an "es" to the plural operations.
         if (rootFieldNames.select == rootFieldNames.selectByPk) {
             LOG.warn("Generated plural name for select and selectByPk names '${rootFieldNames.select}' clash, "+
-                     "adding '-es' postfix to 'select'. " +
-                     "Consider using @HasuraRootFields on class ${entityName}")
+                    "adding '-es' postfix to 'select'. " +
+                    "Consider using @HasuraRootFields on class ${entityName}")
             rootFieldNames.select += "es"
         }
         if (rootFieldNames.insert == rootFieldNames.insertOne) {
@@ -1436,18 +1397,38 @@ class HasuraConfigurator(
         return rootFieldNames;
     }
 
-    private fun loadIntoHasura(json: String) {
+    fun  loadMetadata(conf: HasuraConfiguration) {
+        loadIntoHasura(Json.encodeToString(conf.metadata), hasuraMetadataEndpoint)
+    }
+
+    fun  loadMetadata(metadata: HasuraMetadataV3) {
+        loadIntoHasura(Json.encodeToString(metadata), hasuraMetadataEndpoint)
+    }
+
+    fun  loadMetadata(json: String) {
+        loadIntoHasura(json, hasuraMetadataEndpoint)
+    }
+
+    fun  loadBulkRunSqls(conf: HasuraConfiguration) {
+        loadIntoHasura(Json.encodeToString(conf.toBulkRunSql()), hasuraSchemaEndpoint)
+    }
+
+    fun  loadBulkRunSqls(json: String) {
+        loadIntoHasura(json, hasuraSchemaEndpoint)
+    }
+
+    private fun loadIntoHasura(json: String, endpoint: String) {
         val client = WebClient
-                .builder()
-                .baseUrl(hasuraEndpoint)
-                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
-                .defaultHeader("X-Hasura-Admin-Secret", hasuraAdminSecret)
-                .build()
+            .builder()
+            .baseUrl(endpoint)
+            .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+            .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+            .defaultHeader("X-Hasura-Admin-Secret", hasuraAdminSecret)
+            .build()
         val request = client.post()
-                .body<String, Mono<String>>(Mono.just(json), String::class.java)
-                .retrieve()
-                .bodyToMono(String::class.java)
+            .body<String, Mono<String>>(Mono.just(json), String::class.java)
+            .retrieve()
+            .bodyToMono(String::class.java)
         // Make it synchronous for now
         try {
             val result = request.block()
@@ -1464,77 +1445,39 @@ class HasuraConfigurator(
 //        );
     }
 
-    private fun loadConfIntoHasura() {
-        // Make sure SQL functions are loaded forst, so that computed_fields would work.
-        if (runSqlDefinitions != null) {
-            loadIntoHasura(runSqlDefinitions!!)
-        }
-        LOG.info("Executing Hasura bulk initialization JSON. This operation could be slow, consider using metadataJson instead ...")
-        loadIntoHasura(confJson!!)
-    }
-
-    private fun loadMetadataIntoHasura() {
-        // Make sure SQL functions are loaded forst, so that computed_fields would work.
-        if (runSqlDefinitions != null) {
-            loadIntoHasura(runSqlDefinitions!!)
-        }
-
-        LOG.info("Executing replace_metadata with metadata JSON.")
-
-        val replaceMetadata = Json.encodeToString(buildJsonObject {
-            // replace_metadata
-            put("type", "replace_metadata")
-            put("args", metadataJsonObject)
-        })
-
-        loadIntoHasura(replaceMetadata!!)
-    }
-
-    private fun loadCascadeDeleteIntoHasura() {
-        LOG.info("Executing Hasura cascade delete JSON.")
-        loadIntoHasura(cascadeDeleteJson!!)
-    }
+//    private fun loadConfIntoHasura() {
+//        // Make sure SQL functions are loaded forst, so that computed_fields would work.
+//        if (runSqlDefinitions != null) {
+//            loadIntoHasura(runSqlDefinitions!!)
+//        }
+//        LOG.info("Executing Hasura bulk initialization JSON. This operation could be slow, consider using metadataJson instead ...")
+//        loadIntoHasura(confJson!!)
+//    }
+//
+//    private fun loadMetadataIntoHasura() {
+//        // Make sure SQL functions are loaded forst, so that computed_fields would work.
+//        if (runSqlDefinitions != null) {
+//            loadIntoHasura(runSqlDefinitions!!)
+//        }
+//
+//        LOG.info("Executing replace_metadata with metadata JSON.")
+//
+//        val replaceMetadata = Json.encodeToString(buildJsonObject {
+//            // replace_metadata
+//            put("type", "replace_metadata")
+//            put("args", metadataJsonObject)
+//        })
+//
+//        loadIntoHasura(replaceMetadata!!)
+//    }
+//
+//    private fun loadCascadeDeleteIntoHasura() {
+//        LOG.info("Executing Hasura cascade delete JSON.")
+//        loadIntoHasura(cascadeDeleteJson!!)
+//    }
 
 }
 
-/**
- * Root field aliases for a specific type
- */
-class RootFieldNames(
-        var select : String,
-        var selectByPk : String,
-        var selectAggregate : String,
-        var insert : String,
-        var insertOne : String,
-        var update : String,
-        var updateByPk : String,
-        var delete : String,
-        var deleteByPk : String
-)
 
-/**
- * A dummy, empty RootFieldNames instance
- */
-val EmptyRootFieldNames = RootFieldNames("", "", "", "", "", "", "", "", "")
 
-interface RootFieldNameProvider {
-    fun rootFieldFor(fieldName: String, entityName: String, entityNameLower: String, tableName: String) : String
-}
 
-open class DefaultRootFieldNameProvider : RootFieldNameProvider
-{
-    override fun rootFieldFor(fieldName: String, entityName: String, entityNameLower: String, tableName: String) : String {
-        return when(fieldName) {
-            "select" -> English.plural(entityNameLower)
-            "selectByPk" -> entityNameLower
-            "selectAggregate" -> entityNameLower+"Aggregate"
-            "insert" -> "create"+English.plural(entityName)
-            "insertOne" -> "create"+entityName
-            "update" -> "update"+English.plural(entityName)
-            "updateByPk" -> "update"+entityName
-            "delete" -> "delete"+English.plural(entityName)
-            "deleteByPk" -> "delete"+entityName
-            else -> throw HasuraConfiguratorException("Unknown root field name: $fieldName")
-        }
-    }
-}

@@ -1,5 +1,6 @@
 package com.beepsoft.hasuraconf.annotation
 
+import io.hasura.metadata.v3.ResponseTransformation
 import java.lang.annotation.Inherited
 import java.lang.annotation.Retention
 import java.lang.annotation.RetentionPolicy
@@ -81,6 +82,8 @@ annotation class HasuraAction (
         method = HasuraHttpMethod.GET,
         url = "<<<empty>>>"
     ),
+
+    val responseTransform: HasuraResponseTransform = HasuraResponseTransform()
 )
 
 /**
@@ -89,7 +92,9 @@ annotation class HasuraAction (
 @Retention(RetentionPolicy.RUNTIME)
 annotation class HasuraHeader (
     val name: String,
-    val value: String
+    // Either value or valueFromEnv must be set
+    val value: String = "",
+    val valueFromEnv: String = ""
 )
 
 enum class HasuraActionType {

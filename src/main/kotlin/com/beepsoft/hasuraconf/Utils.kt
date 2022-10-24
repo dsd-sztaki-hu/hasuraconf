@@ -1,5 +1,6 @@
 package com.beepsoft.hasuraconf
 
+import io.hasura.metadata.v3.QualifiedTable
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.lang.reflect.Field
@@ -65,3 +66,13 @@ fun actualSchemaAndName(schemaName: String, tableName: String) : Pair<String, St
     }
     return Pair(schemaName, tableName)
 }
+
+fun actualQualifiedTable(schemaName: String, tableName: String) : QualifiedTable
+{
+    val schemaAndName = tableName.split(".")
+    if (schemaAndName.size > 1) {
+        return QualifiedTable(schemaAndName[1], schemaAndName[0])
+    }
+    return QualifiedTable(tableName, schemaName)
+}
+
