@@ -14,9 +14,6 @@ jobs:
           name: Install OpenJDK 8
           command: |
             sudo apt-get update && sudo apt-get install openjdk-8-jdk
-            echo "1111111"
-            echo 2 | update-alternatives --config java
-            echo "222222"
             sudo update-java-alternatives -s java-1.8.0-openjdk-amd64
             java -version
       - run: java -version
