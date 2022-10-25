@@ -168,7 +168,6 @@ class HasuraConfigurator(
         }
     }
 
-    inner class CascadeDeleteFields(var table: String, var field: String, var joinedTable: String)
 
     private var sessionFactoryImpl: SessionFactory
     private var metaModel: MetamodelImplementor
@@ -179,13 +178,14 @@ class HasuraConfigurator(
 
     private lateinit var tableNames: MutableSet<String>
     private lateinit var entityClasses: MutableSet<Class<out Any>>
-    private lateinit var cascadeDeleteFields: MutableSet<CascadeDeleteFields>
     private lateinit var manyToManyEntities: MutableMap<String, ManyToManyEntity>
     private lateinit var extraTableNames: MutableSet<String>
     private lateinit var classToTableName: MutableMap<Class<out Any>, String>
 
     private lateinit var metadataAndSql: HasuraConfiguration
     private lateinit var enumTableConfigs: MutableList<EnumTableConfig>
+    private lateinit var computedFieldConfigs: MutableList<ComputedFieldConfig>
+    private lateinit var cascadeDeleteFieldConfigs: MutableSet<CascadeDeleteFieldConfig>
 
     // {
     //  "type": "bulk",
@@ -239,7 +239,7 @@ class HasuraConfigurator(
     ): HasuraConfiguration {
         jsonSchemaGenerator = HasuraJsonSchemaGenerator(schemaVersion, customPropsFieldName)
         actionGenerator = HasuraActionGenerator(metaModel)
-        cascadeDeleteFields = mutableSetOf<CascadeDeleteFields>()
+        cascadeDeleteFieldConfigs = mutableSetOf<CascadeDeleteFieldConfig>()
         manyToManyEntities = mutableMapOf()
         extraTableNames = mutableSetOf()
         tableNames = mutableSetOf()
@@ -247,6 +247,7 @@ class HasuraConfigurator(
         entityClasses = mutableSetOf<Class<out Any>>()
         runSqlDefs = mutableListOf()
         enumTableConfigs = mutableListOf()
+        computedFieldConfigs = mutableListOf()
 
         // Get metaModel.entities sorted by name. We do this sorting to make result more predictable (eg. for testing)
         val entities = sortedSetOf(
@@ -255,9 +256,9 @@ class HasuraConfigurator(
         )
 
 //        metadataAndSql = HasuraConfiguration(HasuraMetadataV3(), mutableListOf())
-        val actionsAndTypes = actionGenerator.configureActions(actionRoots!!)
+        val actionsAndTypes = if (actionRoots != null) actionGenerator.configureActions(actionRoots!!) else null
         val meta = HasuraMetadataV3(
-            version = 3.0,
+            version = 3,
             sources = buildList {
                 add(Source(
                     name = sourceName,
@@ -273,32 +274,31 @@ class HasuraConfigurator(
                             }
                             // Add TableEntry for entity
                             add(configureTableEntry(entity, entities, sourceName))
+                        }
+                        // Add config for many-to-many join tables, which have no Java class representation but still
+                        // want to have access to them
+                        for (m2m in manyToManyEntities.values) {
+                            configureManyToManyEntity(m2m).let {
+                                add(it)
+                            }
+                        }
 
-                            // Add config for many-to-many join tables, which have no Java class representation but still
-                            // want to have access to them
-                            for (m2m in manyToManyEntities.values) {
-                                configureManyToManyEntity(m2m).let {
-                                    add(it)
-                                }
+                        // Add tracking to extra table names. For now these could be join tables of array relations
+                        for (tableName in extraTableNames) {
+                            // if tableName is also present in standard tableNames, it means it was either a Java
+                            // mapped entity or an m2m join table which we handle previously
+                            if (tableNames.contains(tableName)) {
+                                continue
                             }
 
-                            // Add tracking to extra table names. For now these could be join tables of array relations
-                            for (tableName in extraTableNames) {
-                                // if tableName is also present in standard tableNames, it means it was either a Java
-                                // mapped entity or an m2m join table which we handle previously
-                                if (tableNames.contains(tableName)) {
-                                    continue
-                                }
-
-                                // It is really an extra table name, add it without any further config
-                                add(TableEntry(actualQualifiedTable(schemaName, tableName)))
-                            }
+                            // It is really an extra table name, add it without any further config
+                            add(TableEntry(actualQualifiedTable(schemaName, tableName)))
                         }
                     }
                 ))
             },
-            actions = actionsAndTypes.actions,
-            customTypes = actionsAndTypes.customTypes,
+            actions = if(actionsAndTypes != null) actionsAndTypes!!.actions else null,
+            customTypes = if(actionsAndTypes != null)  actionsAndTypes!!.customTypes else null,
             // TODO:
             // cronTriggers =
             // remoteSchemas =
@@ -308,15 +308,11 @@ class HasuraConfigurator(
             // queryCollections =
         )
 
-        // Collect all sqls
-        runSqlDefs.addAll(enumTableConfigs.flatMap { it.runSqls })
-        if (cascadeDeleteFields.isNotEmpty()) {
-            runSqlDefs.addAll(configureCascadeDeleteTriggers())
-        }
-
         return HasuraConfiguration(
             metadata = meta,
-            runSqls = runSqlDefs,
+            enumTableConfigs = enumTableConfigs,
+            computedFieldConfigs = computedFieldConfigs,
+            cascadeDeleteFieldConfigs = cascadeDeleteFieldConfigs.toList(),
             jsonSchema = when {
                 ignoreJsonSchema -> jsonSchemaGenerator.generateSchema(*entityClasses.toTypedArray()).toString()
                     .reformatJson()
@@ -673,32 +669,37 @@ class HasuraConfigurator(
             ),
             objectRelationships = configureObjectRelationships(relatedEntities),
             arrayRelationships = configureArrayRelationships(relatedEntities),
-            computedFields = configureComputedFields(entity, sourceName),
+            computedFields = let {
+                val cfs = configureComputedFields(entity, sourceName)
+                if (cfs == null) {
+                    null
+                }
+                else {
+                    computedFieldConfigs.addAll(cfs)
+                    cfs.map { it.computedField }
+                }
+            },
             insertPermissions = configurePermission(permissions, HasuraOperation.INSERT),
             selectPermissions = configurePermission(permissions, HasuraOperation.SELECT),
             updatePermissions = configurePermission(permissions, HasuraOperation.UPDATE),
             deletePermissions = configurePermission(permissions, HasuraOperation.DELETE),
             isEnum = let {
                 // Check if table is enum, collect its config
-                configureEnumTable(entity, sourceName)?.let {
-                    enumTableConfigs.add(it)
+                val c = configureEnumTable(entity, sourceName)
+                if (c == null) {
+                    null
+                }
+                else {
+                    enumTableConfigs.add(c)
                     true
                 }
-                false
             }
         )
 
-        //
-
         return table
-
-        //return tableJson
     }
 
-    data class EnumTableConfig(
-        val tableName: String,
-        val runSqls: List<JsonObject>
-    )
+
     @OptIn(ExperimentalStdlibApi::class)
     private fun configureEnumTable(entity: EntityType<*>, sourceName: String) : EnumTableConfig?
     {
@@ -707,7 +708,7 @@ class HasuraConfigurator(
 
         val entityClass = entity.javaType
         if (entityClass.isAnnotationPresent(HasuraEnum::class.java)) {
-            EnumTableConfig(
+            return EnumTableConfig(
                 tableName = tableName,
                 // Generate SQL for enum values like ths:
                 // INSERT INTO public.todo_item_status (value, description) VALUES ('STARTED', 'Started - todo item started') ON CONFLICT DO NOTHING;
@@ -746,56 +747,53 @@ class HasuraConfigurator(
         return null
     }
 
-    private fun configureComputedFields(entity: EntityType<*>, sourceName: String): List<ComputedField>
+    private fun configureComputedFields(entity: EntityType<*>, sourceName: String): List<ComputedFieldConfig>?
     {
-        return entity.javaType.declaredFields
+        val fields = entity.javaType.declaredFields
             .filter {
                 it.isAnnotationPresent(HasuraComputedField::class.java)
             }
             .map { field ->
                 val annot = field.getAnnotation(HasuraComputedField::class.java)
 
-                // If we have an inline function definition add it to sqlFunctionRunSqlDefs
-                if (annot.functionDefinition.isNotEmpty()) {
-                    runSqlDefs.add(
-                        buildJsonObject {
-                            put("hasuraconfComment", """Computed feld ${field.name} SQL function""")
-                            put("type", "run_sql")
-                            putJsonObject("args") {
-                                put("source", sourceName)
-                                put("sql", annot.functionDefinition)
-                                put("cascade", false)
-                                put("read_only", false)
-                            }
-                        }
-                    )
-                }
+                ComputedFieldConfig(
+                    computedField = ComputedField(
+                        name = field.name,
+                        comment = if(annot.comment.isNotEmpty()) annot.comment else null,
+                        definition = ComputedFieldDefinition(
+                            function = if (annot.functionSchema.isNotEmpty())
+                                FunctionName.QualifiedFunctionValue(QualifiedFunction(annot.functionName, annot.functionSchema))
+                            else
+                                FunctionName.StringValue(annot.functionName)
 
-                // Generate the "computed_fields" object
-                ComputedField(
-                    name = field.name,
-                    comment = annot.comment.isNotEmpty()?.let {
-                        annot.comment
-                    },
-                    definition = ComputedFieldDefinition(
-                        function = if (annot.functionSchema.isNotEmpty())
-                                        FunctionName.QualifiedFunctionValue(QualifiedFunction(annot.functionName, annot.functionSchema))
-                                    else
-                                        FunctionName.StringValue(annot.functionName)
-
-                    )
+                        )
+                    ),
+                    runSql = if (annot.functionDefinition.isNotEmpty())
+                                buildJsonObject {
+                                    put("hasuraconfComment", """Computed feld ${field.name} SQL function""")
+                                    put("type", "run_sql")
+                                    putJsonObject("args") {
+                                        put("source", sourceName)
+                                        put("sql", annot.functionDefinition)
+                                        put("cascade", false)
+                                        put("read_only", false)
+                                    }
+                                }
+                            else null
                 )
+
             }
+        return if (fields.isNotEmpty()) fields else null
     }
 
 
-    private fun <T> configurePermission(permissions: List<PermissionData>, op:HasuraOperation) : List<T>?
+    private inline fun <reified T> configurePermission(permissions: List<PermissionData>, op:HasuraOperation) : List<T>?
     {
-        val inserts = permissions.filter { it.operation==op }.map { permissionData ->
+        val perms = permissions.filter { it.operation==op }.map { permissionData ->
             permissionData.toJsonObject()
         }
-        if (inserts.isNotEmpty()) {
-            return Json.decodeFromJsonElement<List<T>>(JsonArray(inserts))
+        if (perms.isNotEmpty()) {
+            return Json{ignoreUnknownKeys = true}.decodeFromJsonElement<List<T>>(JsonArray(perms))
         }
         return null
     }
@@ -835,40 +833,37 @@ class HasuraConfigurator(
 
 
     @OptIn(ExperimentalStdlibApi::class)
-    private fun configureCascadeDeleteTriggers(): List<JsonObject>
+    private fun configureCascadeDeleteTriggers(cascadeDeleteFields: MutableSet<CascadeDeleteFieldConfig>)
     {
-        val triggers = buildList<JsonObject> {
-            for (cdf in cascadeDeleteFields) {
-                val template =
-                    """
-                        DROP TRIGGER IF EXISTS ${cdf.table}_${cdf.field}_cascade_delete_trigger ON ${cdf.table};;
-                        DROP FUNCTION  IF EXISTS ${cdf.table}_${cdf.field}_cascade_delete();
-                        CREATE FUNCTION ${cdf.table}_${cdf.field}_cascade_delete() RETURNS trigger AS
-                        ${'$'}body${'$'}
-                        BEGIN
-                            IF TG_WHEN <> 'AFTER' OR TG_OP <> 'DELETE' THEN
-                                RAISE EXCEPTION '${cdf.table}_${cdf.field}_cascade_delete may only run as a AFTER DELETE trigger';
-                            END IF;
-                        
-                            DELETE FROM ${cdf.joinedTable} where id=OLD.${cdf.field};
-                            RETURN OLD;
-                        END;
-                        ${'$'}body${'$'}
-                        LANGUAGE plpgsql;;
-                        CREATE TRIGGER ${cdf.table}_${cdf.field}_cascade_delete_trigger AFTER DELETE ON ${cdf.table}
-                            FOR EACH ROW EXECUTE PROCEDURE ${cdf.table}_${cdf.field}_cascade_delete();;                       
-                    """.trimIndent()
-                val trigger = template.replace("\n", " ")
+        for (cdf in cascadeDeleteFields) {
+            val template =
+                """
+                    DROP TRIGGER IF EXISTS ${cdf.table}_${cdf.field}_cascade_delete_trigger ON ${cdf.table};;
+                    DROP FUNCTION  IF EXISTS ${cdf.table}_${cdf.field}_cascade_delete();
+                    CREATE FUNCTION ${cdf.table}_${cdf.field}_cascade_delete() RETURNS trigger AS
+                    ${'$'}body${'$'}
+                    BEGIN
+                        IF TG_WHEN <> 'AFTER' OR TG_OP <> 'DELETE' THEN
+                            RAISE EXCEPTION '${cdf.table}_${cdf.field}_cascade_delete may only run as a AFTER DELETE trigger';
+                        END IF;
+                    
+                        DELETE FROM ${cdf.joinedTable} where id=OLD.${cdf.field};
+                        RETURN OLD;
+                    END;
+                    ${'$'}body${'$'}
+                    LANGUAGE plpgsql;;
+                    CREATE TRIGGER ${cdf.table}_${cdf.field}_cascade_delete_trigger AFTER DELETE ON ${cdf.table}
+                        FOR EACH ROW EXECUTE PROCEDURE ${cdf.table}_${cdf.field}_cascade_delete();;                       
+                """.trimIndent()
+            val trigger = template.replace("\n", " ")
 
-                add(buildJsonObject {
-                    put("type", "run_sql")
-                    putJsonObject("args") {
-                        put("sql", trigger)
-                    }
-                })
+            cdf.runSql = buildJsonObject {
+                put("type", "run_sql")
+                putJsonObject("args") {
+                    put("sql", trigger)
+                }
             }
         }
-        return triggers
     }
 
     private fun configureCustomRootFields(rootFieldNames: RootFieldNames) : CustomRootFields
@@ -1164,7 +1159,7 @@ class HasuraConfigurator(
 
 
     @OptIn(ExperimentalStdlibApi::class)
-    private fun configureObjectRelationships(relatedEntities: List<EntityType<*>>): List<ObjectRelationship>
+    private fun configureObjectRelationships(relatedEntities: List<EntityType<*>>): List<ObjectRelationship>?
     {
         val objectRelationships = buildList<ObjectRelationship> {
             val added = mutableSetOf<String>()
@@ -1245,11 +1240,11 @@ class HasuraConfigurator(
                 }
             }
         }
-        return objectRelationships
+        return if (objectRelationships.isNotEmpty()) objectRelationships else null
     }
 
     @OptIn(ExperimentalStdlibApi::class)
-    private fun configureArrayRelationships(relatedEntities: List<EntityType<*>>): List<ArrayRelationship>
+    private fun configureArrayRelationships(relatedEntities: List<EntityType<*>>): List<ArrayRelationship>?
     {
         val arrayRelationships = buildList<ArrayRelationship> {
             val added = mutableSetOf<String>()
@@ -1307,7 +1302,7 @@ class HasuraConfigurator(
                 }
             }
         }
-        return arrayRelationships
+        return if (arrayRelationships.isNotEmpty()) arrayRelationships else null
     }
 
     private fun collectCascadeDeleteCandidates(entity: EntityType<*>) {
@@ -1318,8 +1313,8 @@ class HasuraConfigurator(
             val f = Utils.findDeclaredFieldUsingReflection(entityClass, propertyName)
             if (f!!.isAnnotationPresent(HasuraGenerateCascadeDeleteTrigger::class.java)) {
                 val fieldMetadata = metaModel.entityPersister(f.type.typeName) as AbstractEntityPersister
-                val cdf = CascadeDeleteFields(classMetadata.tableName, classMetadata.getPropertyColumnNames(propertyName)[0], fieldMetadata.tableName)
-                cascadeDeleteFields.add(cdf)
+                val cdf = CascadeDeleteFieldConfig(classMetadata.tableName, classMetadata.getPropertyColumnNames(propertyName)[0], fieldMetadata.tableName, buildJsonObject { /* dummy */})
+                cascadeDeleteFieldConfigs.add(cdf)
             }
         }
     }
@@ -1410,7 +1405,7 @@ class HasuraConfigurator(
     }
 
     fun  loadBulkRunSqls(conf: HasuraConfiguration) {
-        loadIntoHasura(Json.encodeToString(conf.toBulkRunSql()), hasuraSchemaEndpoint)
+        loadIntoHasura(Json.encodeToString(conf.bulkRunSqlJson), hasuraSchemaEndpoint)
     }
 
     fun  loadBulkRunSqls(json: String) {

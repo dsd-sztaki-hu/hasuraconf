@@ -193,7 +193,7 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
 //            val f = Utils.findDeclaredFieldUsingReflection(entityClass, propertyName)
 //            if (f!!.isAnnotationPresent(HasuraGenerateCascadeDeleteTrigger::class.java)) {
 //                val fieldMetadata = metaModel.entityPersister(f.type.typeName) as AbstractEntityPersister
-//                val cdf = CascadeDeleteFields(classMetadata.tableName, classMetadata.getPropertyColumnNames(propertyName)[0], fieldMetadata.tableName)
+//                val cdf = CascadeDeleteFieldConfig(classMetadata.tableName, classMetadata.getPropertyColumnNames(propertyName)[0], fieldMetadata.tableName)
 //                cascadeDeleteFields.add(cdf)
 //            }
             }
