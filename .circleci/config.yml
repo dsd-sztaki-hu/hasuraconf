@@ -15,7 +15,9 @@ jobs:
           command: |
             sudo apt-get update && sudo apt-get install openjdk-8-jdk
             update-alternatives --config java
-            sudo update-java-alternatives -s java-1.8.0-openjdk-amd64
+            sudo update-java-alternatives -s java-1.8.0-openjdk-amd64 << EOF
+            2
+            EOF
             java -version
       - run: java -version
       - run: mvn -B clean install
