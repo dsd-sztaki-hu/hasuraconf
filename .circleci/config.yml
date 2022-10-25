@@ -15,11 +15,10 @@ jobs:
           command: |
             sudo apt-get update && sudo apt-get install openjdk-8-jdk
             echo "1111111"
-            update-alternatives --config java
+            echo 2 | update-alternatives --config java
             echo "222222"
             sudo update-java-alternatives -s java-1.8.0-openjdk-amd64 << EOF
-            2
-            EOF
+
             java -version
       - run: java -version
       - run: mvn -B clean install
