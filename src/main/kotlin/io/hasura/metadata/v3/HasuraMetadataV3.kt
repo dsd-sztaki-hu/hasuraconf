@@ -784,11 +784,39 @@ data class FunctionConfiguration (
     var sessionArgument: String? = null
 )
 
-@Serializable
+@Serializable(with = FunctionNameSerializer::class)
 sealed class FunctionName {
     class QualifiedFunctionValue(val value: QualifiedFunction) : FunctionName()
     class StringValue(val value: String)                       : FunctionName()
 }
+
+
+class FunctionNameSerializer : KSerializer<FunctionName> {
+    override val descriptor: SerialDescriptor
+        get() = PrimitiveSerialDescriptor("FunctionNameSerializer", PrimitiveKind.STRING)
+
+    override fun deserialize(decoder: Decoder): FunctionName {
+        val input = decoder as? JsonDecoder
+            ?: throw SerializationException("Expected JsonInput for ${decoder::class}")
+        val jsonElem = input.decodeJsonElement()
+        if (jsonElem is JsonPrimitive) {
+            return FunctionName.StringValue(jsonElem.jsonPrimitive.content)
+        }
+        return FunctionName.QualifiedFunctionValue(Json.decodeFromJsonElement<QualifiedFunction>(jsonElem))
+    }
+
+    override fun serialize(encoder: Encoder, value: FunctionName) {
+        val jsonEncoder = encoder as? JsonEncoder
+            ?: throw SerializationException("Expected JsonEncoder for ${encoder::class}")
+        when (value) {
+            is FunctionName.QualifiedFunctionValue -> {
+                QualifiedFunction.serializer().serialize(encoder, value.value)
+            }
+            is FunctionName.StringValue -> encoder.encodeString(value.value)
+        }
+    }
+}
+
 
 @Serializable
 data class QualifiedFunction (
@@ -1173,14 +1201,37 @@ data class DeletePermission (
     /**
      * Only the rows where this precondition holds true are updatable
      */
-    var filter: Map<String, Filter>? = null
+    var filter: Filter? = null
 )
 
-@Serializable
+@Serializable(with = FilterSerializer::class)
 sealed class Filter {
     class AnythingMapValue(val value: JsonObject) : Filter()
-    class DoubleValue(val value: Double)          : Filter()
     class StringValue(val value: String)          : Filter()
+}
+
+class FilterSerializer : KSerializer<Filter> {
+    override val descriptor: SerialDescriptor
+        get() = PrimitiveSerialDescriptor("FilterSerializer", PrimitiveKind.STRING)
+
+    override fun deserialize(decoder: Decoder): Filter {
+        val input = decoder as? JsonDecoder
+            ?: throw SerializationException("Expected JsonInput for ${decoder::class}")
+        val jsonElem = input.decodeJsonElement()
+        if (jsonElem is JsonPrimitive) {
+            return Filter.StringValue(jsonElem.jsonPrimitive.content)
+        }
+        return Filter.AnythingMapValue(jsonElem.jsonObject)
+    }
+
+    override fun serialize(encoder: Encoder, value: Filter) {
+        val jsonEncoder = encoder as? JsonEncoder
+            ?: throw SerializationException("Expected JsonEncoder for ${encoder::class}")
+        when (value) {
+            is Filter.AnythingMapValue -> encoder.encodeJsonElement(value.value)
+            is Filter.StringValue -> encoder.encodeString(value.value)
+        }
+    }
 }
 
 /**
@@ -1266,16 +1317,47 @@ data class OperationSpec (
     var payload: EventTriggerColumns? = null
 )
 
-@Serializable
+@Serializable(with = EventTriggerColumnsSerializer::class)
 sealed class EventTriggerColumns {
     class EnumValue(val value: Columns)             : EventTriggerColumns()
     class StringArrayValue(val value: List<String>) : EventTriggerColumns()
+}
+
+class EventTriggerColumnsSerializer : KSerializer<EventTriggerColumns> {
+    override val descriptor: SerialDescriptor
+        get() = PrimitiveSerialDescriptor("EventTriggerColumnsSerializer", PrimitiveKind.STRING)
+
+    override fun deserialize(decoder: Decoder): EventTriggerColumns {
+        val input = decoder as? JsonDecoder
+            ?: throw SerializationException("Expected JsonInput for ${decoder::class}")
+        val jsonElem = input.decodeJsonElement()
+        if (jsonElem is JsonPrimitive) {
+            return EventTriggerColumns.EnumValue(Columns.Empty)
+        }
+        return EventTriggerColumns.StringArrayValue(Json.decodeFromJsonElement<List<String>>(jsonElem))
+    }
+
+    override fun serialize(encoder: Encoder, value: EventTriggerColumns) {
+        val jsonEncoder = encoder as? JsonEncoder
+            ?: throw SerializationException("Expected JsonEncoder for ${encoder::class}")
+        when (value) {
+            is EventTriggerColumns.EnumValue -> {
+                jsonEncoder.encodeJsonElement(JsonPrimitive("*"))
+            }
+            is EventTriggerColumns.StringArrayValue -> jsonEncoder.encodeJsonElement(buildJsonArray {
+                value.value.forEach {
+                    add(JsonPrimitive(it))
+                }
+            })
+        }
+    }
 }
 
 @Serializable
 enum class Columns(val value: String) {
     Empty("*");
 
+    @Serializer(forClass = Columns::class)
     companion object : KSerializer<Columns> {
         override val descriptor: SerialDescriptor get() {
             return PrimitiveSerialDescriptor("io.hasura.metadata.v3.Columns", PrimitiveKind.STRING)
@@ -1547,7 +1629,7 @@ data class SelectPermission (
     /**
      * Only the rows where this precondition holds true are selectable
      */
-    var filter: Map<String, Filter>? = null,
+    var filter: Filter? = null,
 
     /**
      * The maximum number of rows that can be returned
@@ -1588,7 +1670,7 @@ data class UpdatePermission (
     /**
      * Postcondition which must be satisfied by rows which have been updated
      */
-    var check: Map<String, Filter>? = null,
+    var check: Filter? = null,
 
     /**
      * Only these columns are selectable (or all when '*' is specified)
@@ -1598,7 +1680,7 @@ data class UpdatePermission (
     /**
      * Only the rows where this precondition holds true are updatable
      */
-    var filter: Map<String, Filter>? = null,
+    var filter: Filter? = null,
 
     /**
      * Preset values for columns that can be sourced from session variables or static values
@@ -1718,10 +1800,36 @@ data class PGSourceConnectionInfo (
  * The database connection URL as a string, as an environment variable, or as connection
  * parameters.
  */
-@Serializable
+@Serializable(with = DatabaseURLSerializer::class)
 sealed class DatabaseURL {
     class PGConnectionParametersClassValue(val value: PGConnectionParametersClass) : DatabaseURL()
     class StringValue(val value: String)                                           : DatabaseURL()
+}
+
+class DatabaseURLSerializer : KSerializer<DatabaseURL> {
+    override val descriptor: SerialDescriptor
+        get() = PrimitiveSerialDescriptor("DatabaseURLSerializer", PrimitiveKind.STRING)
+
+    override fun deserialize(decoder: Decoder): DatabaseURL {
+        val input = decoder as? JsonDecoder
+            ?: throw SerializationException("Expected JsonInput for ${decoder::class}")
+        val jsonElem = input.decodeJsonElement()
+        if (jsonElem is JsonPrimitive) {
+            return DatabaseURL.StringValue(jsonElem.jsonPrimitive.content)
+        }
+        return DatabaseURL.PGConnectionParametersClassValue(Json.decodeFromJsonElement<PGConnectionParametersClass>(jsonElem))
+    }
+
+    override fun serialize(encoder: Encoder, value: DatabaseURL) {
+        val jsonEncoder = encoder as? JsonEncoder
+            ?: throw SerializationException("Expected JsonEncoder for ${encoder::class}")
+        when (value) {
+            is DatabaseURL.PGConnectionParametersClassValue -> {
+                PGConnectionParametersClass.serializer().serialize(encoder, value.value)
+            }
+            is DatabaseURL.StringValue -> encoder.encodeString(value.value)
+        }
+    }
 }
 
 /**
@@ -2111,7 +2219,7 @@ data class HasuraMetadataV3 (
     var restEndpoints: List<RESTEndpoint>? = null,
 
     var sources: List<Source>,
-    var version: Double
+    var version: Int
 )
 
 @Serializable
