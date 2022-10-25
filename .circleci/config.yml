@@ -7,8 +7,8 @@ jobs:
     steps:
       - checkout
       # Defaults to JDK 11 now
-      - run: java -version
-      - run: mvn -B clean install
+      #- run: java -version
+      #- run: mvn -B clean install
       # Run with JDK 8 as well
       - run:
           name: Install OpenJDK 8
