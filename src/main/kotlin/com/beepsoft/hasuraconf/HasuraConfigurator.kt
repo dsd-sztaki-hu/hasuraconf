@@ -314,7 +314,7 @@ class HasuraConfigurator(
             computedFieldConfigs = computedFieldConfigs,
             cascadeDeleteFieldConfigs = cascadeDeleteFieldConfigs.toList(),
             jsonSchema = when {
-                ignoreJsonSchema -> jsonSchemaGenerator.generateSchema(*entityClasses.toTypedArray()).toString()
+                !ignoreJsonSchema -> jsonSchemaGenerator.generateSchema(*entityClasses.toTypedArray()).toString()
                     .reformatJson()
                 else -> null
             }
