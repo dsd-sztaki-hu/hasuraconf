@@ -1317,6 +1317,7 @@ class HasuraConfigurator(
                 cascadeDeleteFieldConfigs.add(cdf)
             }
         }
+        configureCascadeDeleteTriggers(cascadeDeleteFieldConfigs)
     }
 
     private fun jsonSchemaTypeFor(columnType: Type, classMetadata: AbstractEntityPersister): String {
