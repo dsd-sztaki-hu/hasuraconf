@@ -16,7 +16,7 @@ class AutoConfiguration
             entityManagerFactory: EntityManagerFactory,
             @Value("\${hasuraconf.schemaName:public}") schemaName: String,
             @Value("\${hasuraconf.hasuraSchemaEndpoint:http://localhost:8080/v2/query}") hasuraSchemaEndpoint: String,
-            @Value("\${hasuraconf.hasuraMetadataEndpoint:http://localhost:8080/v2/query}") hasuraMetadataEndpoint: String,
+            @Value("\${hasuraconf.hasuraMetadataEndpoint:http://localhost:8080/v1/metadata}") hasuraMetadataEndpoint: String,
             @Value("\${hasuraconf.hasuraAdminSecret:#{null}}") hasuraAdminSecret: String?,
             @Value("\${hasuraconf.jsonSchema.schemaVersion:DRAFT_2019_09}") schemaVersion: String,
             @Value("\${hasuraconf.jsonSchema.customPropsFieldName:hasura}") customPropsFieldName: String,
