@@ -665,7 +665,8 @@ class HasuraConfigurator(
             table = actualQualifiedTable(schemaName, tableName),
             configuration = TableConfig(
                 customRootFields = configureCustomRootFields(rootFieldNames),
-                customColumnNames = configureCustomColumnNamesMap(relatedEntities),
+                //customColumnNames = configureCustomColumnNamesMap(relatedEntities),
+                columnConfig = configureCustomColumnConfigs(relatedEntities)
             ),
             objectRelationships = configureObjectRelationships(relatedEntities),
             arrayRelationships = configureArrayRelationships(relatedEntities),
@@ -1040,19 +1041,34 @@ class HasuraConfigurator(
 
                     TableConfig(
                         customRootFields = configureCustomRootFields(rootFieldNames),
-                        customColumnNames = buildMap {
-                            put(keyColumn, keyColumnAlias)
-                            put(relatedColumnName, relatedColumnNameAlias)
+//                        customColumnNames = buildMap {
+//                            put(keyColumn, keyColumnAlias)
+//                            put(relatedColumnName, relatedColumnNameAlias)
+//                            // Add index columns names, ie. @OrderColumns
+//                            m2m.join1.indexColumnNames?.forEach {
+//                                put(it, it.toCamelCase())
+//                            }
+//                            if (m2m.join2 != null) {
+//                                m2m.join2!!.indexColumnNames?.forEach {
+//                                    put(it, it.toCamelCase())
+//                                }
+//                            }
+//                        },
+                        columnConfig = buildMap {
+                            put(keyColumn, ColumnConfigValue(keyColumnAlias))
+                            put(relatedColumnName, ColumnConfigValue(relatedColumnNameAlias))
                             // Add index columns names, ie. @OrderColumns
                             m2m.join1.indexColumnNames?.forEach {
-                                put(it, it.toCamelCase())
+                                put(it, ColumnConfigValue(it.toCamelCase()))
                             }
                             if (m2m.join2 != null) {
                                 m2m.join2!!.indexColumnNames?.forEach {
-                                    put(it, it.toCamelCase())
+                                    put(it, ColumnConfigValue(it.toCamelCase()))
                                 }
                             }
                         }
+
+
                     )
                 }
             },
@@ -1155,6 +1171,29 @@ class HasuraConfigurator(
             }
         }
         return customColumnNames
+    }
+
+    private fun configureCustomColumnConfigs(relatedEntities: List<EntityType<*>>): Map<String, ColumnConfigValue>
+    {
+        val customColumnConfigs = buildMap<String, ColumnConfigValue> {
+            processProperties(relatedEntities) { params ->
+                if (!params.columnType.isAssociationType && params.propName != params.columnName) {
+                    put(params.columnName, ColumnConfigValue(params.propName))
+                }
+                // Special case: for many-to-one or one-to-one, generate alias for the ID fields as well
+                if (params.columnType.isAssociationType && !params.columnType.isCollectionType) {
+                    val assocType = params.columnType as AssociationType
+                    val fkDir = assocType.foreignKeyDirection
+                    if (fkDir === ForeignKeyDirection.FROM_PARENT) {
+                        // Also add customization for the ID field name
+                        val camelCasedIdName = CaseUtils.toCamelCase(params.columnName, false, '_')
+                        put(params.columnName, ColumnConfigValue(camelCasedIdName))
+                    }
+                }
+
+            }
+        }
+        return customColumnConfigs
     }
 
 
@@ -1434,44 +1473,7 @@ class HasuraConfigurator(
             LOG.error("Response text: {}", ex.responseBodyAsString)
             throw ex
         }
-        //        result.subscribe(
-//                value -> System.out.println(value),
-//                error -> error.printStackTrace(),
-//                () -> System.out.println("completed without a value")
-//        );
     }
-
-//    private fun loadConfIntoHasura() {
-//        // Make sure SQL functions are loaded forst, so that computed_fields would work.
-//        if (runSqlDefinitions != null) {
-//            loadIntoHasura(runSqlDefinitions!!)
-//        }
-//        LOG.info("Executing Hasura bulk initialization JSON. This operation could be slow, consider using metadataJson instead ...")
-//        loadIntoHasura(confJson!!)
-//    }
-//
-//    private fun loadMetadataIntoHasura() {
-//        // Make sure SQL functions are loaded forst, so that computed_fields would work.
-//        if (runSqlDefinitions != null) {
-//            loadIntoHasura(runSqlDefinitions!!)
-//        }
-//
-//        LOG.info("Executing replace_metadata with metadata JSON.")
-//
-//        val replaceMetadata = Json.encodeToString(buildJsonObject {
-//            // replace_metadata
-//            put("type", "replace_metadata")
-//            put("args", metadataJsonObject)
-//        })
-//
-//        loadIntoHasura(replaceMetadata!!)
-//    }
-//
-//    private fun loadCascadeDeleteIntoHasura() {
-//        LOG.info("Executing Hasura cascade delete JSON.")
-//        loadIntoHasura(cascadeDeleteJson!!)
-//    }
-
 }
 
 

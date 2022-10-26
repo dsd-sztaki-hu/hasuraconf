@@ -1082,6 +1082,12 @@ data class ComputedFieldDefinition (
     var tableArgument: String? = null
 )
 
+@Serializable
+data class ColumnConfigValue (
+    var customName: String? = null,
+    var comment: String? = null
+)
+
 /**
  * Configuration for the table/view
  *
@@ -1093,7 +1099,11 @@ data class TableConfig (
      * Customise the column names
      */
     @SerialName("custom_column_names")
+    @Deprecated("Deprecated, use columnConfig instead")
     var customColumnNames: Map<String, String>? = null,
+
+    @SerialName("column_config")
+    var columnConfig: Map<String, ColumnConfigValue>? = null,
 
     /**
      * Customise the table name
@@ -1888,6 +1898,7 @@ enum class IsolationLevel(val value: String) {
     RepeatableRead("repeatable-read"),
     Serializable("serializable");
 
+    @Serializer(forClass = IsolationLevel::class)
     companion object : KSerializer<IsolationLevel> {
         override val descriptor: SerialDescriptor get() {
             return PrimitiveSerialDescriptor("io.hasura.metadata.v3.IsolationLevel", PrimitiveKind.STRING)
@@ -2007,6 +2018,7 @@ enum class PGSourceKind(val value: String) {
     Citus("citus"),
     Postgres("postgres");
 
+    @Serializer(forClass = PGSourceKind::class)
     companion object : KSerializer<PGSourceKind> {
         override val descriptor: SerialDescriptor get() {
             return PrimitiveSerialDescriptor("io.hasura.metadata.v3.PGSourceKind", PrimitiveKind.STRING)
@@ -2090,6 +2102,7 @@ data class MSSQLPoolSettings (
 enum class MSSQLSourceKind(val value: String) {
     Mssql("mssql");
 
+    @Serializer(forClass = MSSQLSourceKind::class)
     companion object : KSerializer<MSSQLSourceKind> {
         override val descriptor: SerialDescriptor get() {
             return PrimitiveSerialDescriptor("io.hasura.metadata.v3.MSSQLSourceKind", PrimitiveKind.STRING)
@@ -2177,6 +2190,7 @@ data class RecordStringAnyClass (
 enum class BigQuerySourceKind(val value: String) {
     Bigquery("bigquery");
 
+    @Serializer(forClass = BigQuerySourceKind::class)
     companion object : KSerializer<BigQuerySourceKind> {
         override val descriptor: SerialDescriptor get() {
             return PrimitiveSerialDescriptor("io.hasura.metadata.v3.BigQuerySourceKind", PrimitiveKind.STRING)
@@ -2280,6 +2294,7 @@ sealed class UniqueParams {
 enum class UniqueParamsEnum(val value: String) {
     IP("IP");
 
+    @Serializer(forClass = UniqueParamsEnum::class)
     companion object : KSerializer<UniqueParamsEnum> {
         override val descriptor: SerialDescriptor get() {
             return PrimitiveSerialDescriptor("io.hasura.metadata.v3.UniqueParamsEnum", PrimitiveKind.STRING)
@@ -2332,6 +2347,7 @@ enum class Method(val value: String) {
     Post("POST"),
     Put("PUT");
 
+    @Serializer(forClass = Method::class)
     companion object : KSerializer<Method> {
         override val descriptor: SerialDescriptor get() {
             return PrimitiveSerialDescriptor("io.hasura.metadata.v3.Method", PrimitiveKind.STRING)
@@ -2500,6 +2516,7 @@ enum class BackendKind(val value: String) {
     Mssql("mssql"),
     Postgres("postgres");
 
+    @Serializer(forClass = BackendKind::class)
     companion object : KSerializer<BackendKind> {
         override val descriptor: SerialDescriptor get() {
             return PrimitiveSerialDescriptor("io.hasura.metadata.v3.BackendKind", PrimitiveKind.STRING)
