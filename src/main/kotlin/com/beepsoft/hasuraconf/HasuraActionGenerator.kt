@@ -245,7 +245,7 @@ class HasuraActionGenerator(
 
                 InputArgument(
                     name = fieldName,
-                    type = generateParameterTypeDefinition(p.type, typeName) + if(!nullable!!) "!" else ""
+                    type = generateParameterTypeDefinition(p.type, typeName) + if(typeName == null && !nullable!!) "!" else ""
                 )
             }
         }
@@ -560,6 +560,7 @@ class HasuraActionGenerator(
                         // or calc from Hibernate mappings
                         val classType = getClassType(fieldType)
                         var graphqlType: String? = null
+                        var explicitGraphqlType = false
                         if (classType != null) {
                             if (relationship != null) {
                                 if (relationship.graphqlFieldName.isNotEmpty()) {
@@ -572,7 +573,7 @@ class HasuraActionGenerator(
                                     if (metaModel != null) {
                                         val entity = metaModel.entity(fieldType)
                                         val targetEntityClassMetadata = metaModel.entityPersister(entity.javaType.typeName) as AbstractEntityPersister
-                                        graphqlType = HasuraConfiguratorV2.graphqlTypeFor(metaModel, targetEntityClassMetadata.identifierType, targetEntityClassMetadata)
+                                        graphqlType = HasuraConfigurator.graphqlTypeFor(metaModel, targetEntityClassMetadata.identifierType, targetEntityClassMetadata)
                                     }
                                     else {
                                         throw HasuraConfiguratorException("graphqlFieldType must be specified for a @HasuraRelationship referring to an object type type on field $field")
@@ -580,6 +581,7 @@ class HasuraActionGenerator(
                                 }
                                 else {
                                     graphqlType = relationship.graphqlFieldType
+                                    explicitGraphqlType = true
                                 }
                             }
                             else {
@@ -603,7 +605,7 @@ class HasuraActionGenerator(
                         if (nullable == null) {
                             nullable = true
                         }
-                        put("type", graphqlType + if (!nullable!!) "!" else "")
+                        put("type", graphqlType + if (!explicitGraphqlType && explicitFieldTypeName == null && !nullable!!) "!" else "")
                     }
                 }
             }
@@ -797,6 +799,7 @@ class HasuraActionGenerator(
                         }
 
                         put("name", name)
+                        val explicitType = graphqlType != null
                         // If graphqlType has not been set as the result of @HasuraRelationship, then generate it now
                         if (graphqlType == null) {
                             graphqlType = generateTypeDefinition(fieldType, explicitFieldTypeName, kind, field, hasuraFieldAnnot, true)
@@ -810,7 +813,7 @@ class HasuraActionGenerator(
                         if (nullable == null) {
                             nullable = true
                         }
-                        put("type", graphqlType + if (!nullable!!) "!" else "")
+                        put("type", graphqlType + if (!explicitType && !nullable!!) "!" else "")
                     }
                 }
             }
