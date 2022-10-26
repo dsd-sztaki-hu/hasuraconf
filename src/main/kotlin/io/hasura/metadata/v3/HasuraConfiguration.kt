@@ -95,12 +95,16 @@ val HasuraConfiguration.cascadeDeleteJson: String
     }.toString()
 
 
-fun HasuraConfiguration.toReplaceMetadata(): String {
-    return buildJsonObject {
-        put("type", "replace_metadata")
-        put("args", Json.encodeToJsonElement(metadata))
-    }.toString()
-}
+val HasuraConfiguration.replaceMetadataJson: String
+    get() = buildJsonObject {
+                put("type", "replace_metadata")
+                put("args", Json.encodeToString(metadata))
+            }.toString()
 
+val HasuraMetadataV3.replaceMetadataJson: String
+    get() = buildJsonObject {
+        put("type", "replace_metadata")
+        put("args", Json.encodeToJsonElement(this@replaceMetadataJson))
+    }.toString()
 
 fun List<JsonObject>.toJsonArray() = buildJsonArray { forEach { add(it) } }

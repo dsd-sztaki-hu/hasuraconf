@@ -1,1732 +1,1522 @@
 {
-  "type" : "bulk",
-  "args" : [ {
-    "type" : "clear_metadata",
-    "args" : { }
-  }, {
-    "type" : "track_table",
-    "args" : {
-      "schema" : "public",
-      "name" : "book_series"
-    }
-  }, {
-    "type" : "track_table",
-    "args" : {
-      "schema" : "public",
-      "name" : "calendar"
-    }
-  }, {
-    "type" : "track_table",
-    "args" : {
-      "schema" : "public",
-      "name" : "calendar_availability"
-    }
-  }, {
-    "type" : "set_table_is_enum",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "calendar_availability"
-      },
-      "is_enum" : true
-    }
-  }, {
-    "type" : "track_table",
-    "args" : {
-      "schema" : "public",
-      "name" : "calendar_role"
-    }
-  }, {
-    "type" : "track_table",
-    "args" : {
-      "schema" : "public",
-      "name" : "calendar_role_type"
-    }
-  }, {
-    "type" : "set_table_is_enum",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "calendar_role_type"
-      },
-      "is_enum" : true
-    }
-  }, {
-    "type" : "track_table",
-    "args" : {
-      "schema" : "public",
-      "name" : "calendar_user"
-    }
-  }, {
-    "type" : "track_table",
-    "args" : {
-      "schema" : "public",
-      "name" : "day"
-    }
-  }, {
-    "type" : "track_table",
-    "args" : {
-      "schema" : "public",
-      "name" : "event"
-    }
-  }, {
-    "type" : "track_table",
-    "args" : {
-      "schema" : "public",
-      "name" : "layout"
-    }
-  }, {
-    "type" : "track_table",
-    "args" : {
-      "schema" : "public",
-      "name" : "operation"
-    }
-  }, {
-    "type" : "track_table",
-    "args" : {
-      "schema" : "public",
-      "name" : "series"
-    }
-  }, {
-    "type" : "track_table",
-    "args" : {
-      "schema" : "public",
-      "name" : "task"
-    }
-  }, {
-    "type" : "track_table",
-    "args" : {
-      "schema" : "public",
-      "name" : "theme"
-    }
-  }, {
-    "type" : "track_table",
-    "args" : {
-      "schema" : "public",
-      "name" : "calendar_parents"
-    }
-  }, {
-    "type" : "track_table",
-    "args" : {
-      "schema" : "public",
-      "name" : "user_calendar"
-    }
-  }, {
-    "type" : "track_table",
-    "args" : {
-      "schema" : "public",
-      "name" : "calendar_user_friends"
-    }
-  }, {
-    "type" : "track_table",
-    "args" : {
-      "schema" : "public",
-      "name" : "task_operation"
-    }
-  }, {
-    "type" : "track_table",
-    "args" : {
-      "schema" : "public",
-      "name" : "theme_names"
-    }
-  }, {
-    "type" : "set_table_custom_fields",
-    "version" : 2,
-    "args" : {
-      "table" : "book_series",
-      "schema" : "public",
-      "custom_root_fields" : {
-        "select" : "bookSeriesMulti",
-        "select_by_pk" : "test_selectByPk_book_series",
-        "select_aggregate" : "test_selectAggregate_book_series",
-        "insert" : "createBookSeriesMulti",
-        "insert_one" : "test_insertOne_book_series",
-        "update" : "updateBookSeriesMulti",
-        "update_by_pk" : "test_updateByPk_book_series",
-        "delete" : "deleteBookSeriesMulti",
-        "delete_by_pk" : "test_deleteByPk_book_series"
-      },
-      "custom_column_names" : {
-        "created_at" : "createdAt",
-        "updated_at" : "updatedAt"
-      }
-    }
-  }, {
-    "type" : "set_table_custom_fields",
-    "version" : 2,
-    "args" : {
-      "table" : "calendar",
-      "schema" : "public",
-      "custom_root_fields" : {
-        "select" : "test_select_calendar",
-        "select_by_pk" : "test_selectByPk_calendar",
-        "select_aggregate" : "test_selectAggregate_calendar",
-        "insert" : "test_insert_calendar",
-        "insert_one" : "test_insertOne_calendar",
-        "update" : "test_update_calendar",
-        "update_by_pk" : "test_updateByPk_calendar",
-        "delete" : "test_delete_calendar",
-        "delete_by_pk" : "test_deleteByPk_calendar"
-      },
-      "custom_column_names" : {
-        "created_at" : "createdAt",
-        "updated_at" : "updatedAt",
-        "availability_value" : "availabilityValue",
-        "locale_country" : "localeCountry",
-        "locale_lang" : "localeLang",
-        "next_version_id" : "nextVersionId",
-        "previous_version_id" : "previousVersionId",
-        "theme_id" : "themeId",
-        "theme_config" : "themeConfig"
-      }
-    }
-  }, {
-    "type" : "create_object_relationship",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "calendar"
-      },
-      "name" : "availability",
-      "using" : {
-        "foreign_key_constraint_on" : "availability_value"
-      }
-    }
-  }, {
-    "type" : "create_object_relationship",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "calendar"
-      },
-      "name" : "nextVersion",
-      "using" : {
-        "foreign_key_constraint_on" : "next_version_id"
-      }
-    }
-  }, {
-    "type" : "create_object_relationship",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "calendar"
-      },
-      "name" : "previousVersion",
-      "using" : {
-        "foreign_key_constraint_on" : "previous_version_id"
-      }
-    }
-  }, {
-    "type" : "create_object_relationship",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "calendar"
-      },
-      "name" : "theme",
-      "using" : {
-        "foreign_key_constraint_on" : "theme_id"
-      }
-    }
-  }, {
-    "type" : "add_computed_field",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "calendar"
-      },
-      "name" : "titleAndDescription",
-      "definition" : {
-        "function" : {
-          "name" : "title_and_description",
-          "schema" : "public"
-        }
-      }
-    }
-  }, {
-    "type" : "create_array_relationship",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "calendar"
-      },
-      "name" : "children",
-      "using" : {
-        "foreign_key_constraint_on" : {
-          "column" : "parents_id",
-          "table" : {
-            "schema" : "public",
-            "name" : "calendar_parents"
+  "sources": [
+    {
+      "configuration": {
+        "connection_info": {
+          "database_url": {
+            "from_env": "HASURA_GRAPHQL_DATABASE_URL"
           }
         }
-      }
-    }
-  }, {
-    "type" : "create_array_relationship",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "calendar"
       },
-      "name" : "days",
-      "using" : {
-        "foreign_key_constraint_on" : {
-          "column" : "calendar_id",
-          "table" : {
-            "schema" : "public",
-            "name" : "day"
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "create_array_relationship",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "calendar"
-      },
-      "name" : "parents",
-      "using" : {
-        "foreign_key_constraint_on" : {
-          "column" : "children_id",
-          "table" : {
-            "schema" : "public",
-            "name" : "calendar_parents"
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "create_array_relationship",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "calendar"
-      },
-      "name" : "roles",
-      "using" : {
-        "foreign_key_constraint_on" : {
-          "column" : "calendar_id",
-          "table" : {
-            "schema" : "public",
-            "name" : "calendar_role"
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "create_array_relationship",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "calendar"
-      },
-      "name" : "users",
-      "using" : {
-        "foreign_key_constraint_on" : {
-          "column" : "the_calendar_id",
-          "table" : {
-            "schema" : "public",
-            "name" : "user_calendar"
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "create_insert_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "calendar"
-      },
-      "role" : "USER",
-      "permission" : {
-        "columns" : "*",
-        "computed_fields" : [ "titleAndDescription" ],
-        "check" : { },
-        "set" : {
-          "locale_lang" : "en",
-          "locale_country" : "us"
-        }
-      }
-    }
-  }, {
-    "type" : "create_select_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "calendar"
-      },
-      "role" : "USER",
-      "permission" : {
-        "columns" : "*",
-        "computed_fields" : [ "titleAndDescription" ],
-        "allow_aggregations" : true,
-        "filter" : {
-          "roles" : {
-            "user_id" : {
-              "_eq" : "X-Hasura-User-Id"
+      "kind": "postgres",
+      "name": "default",
+      "tables": [
+        {
+          "table": {
+            "name": "book_series",
+            "schema": "public"
+          },
+          "configuration": {
+            "column_config": {
+              "created_at": {
+                "customName": "createdAt"
+              },
+              "updated_at": {
+                "customName": "updatedAt"
+              }
+            },
+            "custom_root_fields": {
+              "delete": "deleteBookSeriesMulti",
+              "delete_by_pk": "test_deleteByPk_book_series",
+              "insert": "createBookSeriesMulti",
+              "insert_one": "test_insertOne_book_series",
+              "select": "bookSeriesMulti",
+              "select_aggregate": "test_selectAggregate_book_series",
+              "select_by_pk": "test_selectByPk_book_series",
+              "update": "updateBookSeriesMulti",
+              "update_by_pk": "test_updateByPk_book_series"
             }
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "create_select_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "calendar"
-      },
-      "role" : "FRIEND",
-      "permission" : {
-        "columns" : [ "tag" ],
-        "computed_fields" : [ "titleAndDescription" ],
-        "allow_aggregations" : true,
-        "filter" : {
-          "roles" : {
-            "user_id" : {
-              "_eq" : "X-Hasura-User-Id"
-            }
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "create_update_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "calendar"
-      },
-      "role" : "USER",
-      "permission" : {
-        "columns" : [ "created_at", "updated_at", "availability_value", "description", "locale_country", "next_version_id", "published", "theme_id", "theme_config", "title", "version", "id" ],
-        "computed_fields" : [ "titleAndDescription" ],
-        "check" : null,
-        "set" : { },
-        "filter" : {
-          "_and" : [ {
-            "roles" : {
-              "user_id" : {
-                "_eq" : "X-Hasura-User-Id"
-              }
-            }
-          }, {
-            "roles" : {
-              "role_value" : {
-                "_in" : [ "OWNER", "EDITOR" ]
-              }
-            }
-          } ]
-        }
-      }
-    }
-  }, {
-    "type" : "create_delete_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "calendar"
-      },
-      "role" : "USER",
-      "permission" : {
-        "filter" : {
-          "_and" : [ {
-            "roles" : {
-              "user_id" : {
-                "_eq" : "X-Hasura-User-Id"
-              }
-            }
-          }, {
-            "roles" : {
-              "role_value" : {
-                "_in" : [ "OWNER", "EDITOR" ]
-              }
-            }
-          } ]
-        }
-      }
-    }
-  }, {
-    "type" : "set_table_custom_fields",
-    "version" : 2,
-    "args" : {
-      "table" : "calendar_availability",
-      "schema" : "public",
-      "custom_root_fields" : {
-        "select" : "test_select_calendar_availability",
-        "select_by_pk" : "test_selectByPk_calendar_availability",
-        "select_aggregate" : "test_selectAggregate_calendar_availability",
-        "insert" : "test_insert_calendar_availability",
-        "insert_one" : "test_insertOne_calendar_availability",
-        "update" : "test_update_calendar_availability",
-        "update_by_pk" : "test_updateByPk_calendar_availability",
-        "delete" : "test_delete_calendar_availability",
-        "delete_by_pk" : "test_deleteByPk_calendar_availability"
-      },
-      "custom_column_names" : { }
-    }
-  }, {
-    "type" : "set_table_custom_fields",
-    "version" : 2,
-    "args" : {
-      "table" : "calendar_role",
-      "schema" : "public",
-      "custom_root_fields" : {
-        "select" : "test_select_calendar_role",
-        "select_by_pk" : "test_selectByPk_calendar_role",
-        "select_aggregate" : "test_selectAggregate_calendar_role",
-        "insert" : "test_insert_calendar_role",
-        "insert_one" : "test_insertOne_calendar_role",
-        "update" : "test_update_calendar_role",
-        "update_by_pk" : "test_updateByPk_calendar_role",
-        "delete" : "test_delete_calendar_role",
-        "delete_by_pk" : "test_deleteByPk_calendar_role"
-      },
-      "custom_column_names" : {
-        "created_at" : "createdAt",
-        "updated_at" : "updatedAt",
-        "calendar_id" : "calendarId",
-        "role_value" : "roleValue",
-        "user_id" : "userId"
-      }
-    }
-  }, {
-    "type" : "create_object_relationship",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "calendar_role"
-      },
-      "name" : "calendar",
-      "using" : {
-        "foreign_key_constraint_on" : "calendar_id"
-      }
-    }
-  }, {
-    "type" : "create_object_relationship",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "calendar_role"
-      },
-      "name" : "role",
-      "using" : {
-        "foreign_key_constraint_on" : "role_value"
-      }
-    }
-  }, {
-    "type" : "create_object_relationship",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "calendar_role"
-      },
-      "name" : "user",
-      "using" : {
-        "foreign_key_constraint_on" : "user_id"
-      }
-    }
-  }, {
-    "type" : "set_table_custom_fields",
-    "version" : 2,
-    "args" : {
-      "table" : "calendar_role_type",
-      "schema" : "public",
-      "custom_root_fields" : {
-        "select" : "test_select_calendar_role_type",
-        "select_by_pk" : "test_selectByPk_calendar_role_type",
-        "select_aggregate" : "test_selectAggregate_calendar_role_type",
-        "insert" : "test_insert_calendar_role_type",
-        "insert_one" : "test_insertOne_calendar_role_type",
-        "update" : "test_update_calendar_role_type",
-        "update_by_pk" : "test_updateByPk_calendar_role_type",
-        "delete" : "test_delete_calendar_role_type",
-        "delete_by_pk" : "test_deleteByPk_calendar_role_type"
-      },
-      "custom_column_names" : { }
-    }
-  }, {
-    "type" : "set_table_custom_fields",
-    "version" : 2,
-    "args" : {
-      "table" : "calendar_user",
-      "schema" : "public",
-      "custom_root_fields" : {
-        "select" : "test_select_calendar_user",
-        "select_by_pk" : "test_selectByPk_calendar_user",
-        "select_aggregate" : "test_selectAggregate_calendar_user",
-        "insert" : "test_insert_calendar_user",
-        "insert_one" : "test_insertOne_calendar_user",
-        "update" : "test_update_calendar_user",
-        "update_by_pk" : "test_updateByPk_calendar_user",
-        "delete" : "test_delete_calendar_user",
-        "delete_by_pk" : "test_deleteByPk_calendar_user"
-      },
-      "custom_column_names" : {
-        "created_at" : "createdAt",
-        "updated_at" : "updatedAt",
-        "firebase_user_id" : "firebaseUserId",
-        "first_name" : "firstName",
-        "last_name" : "lastName",
-        "password" : "superSecretPassword"
-      }
-    }
-  }, {
-    "type" : "create_array_relationship",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "calendar_user"
-      },
-      "name" : "calendars",
-      "using" : {
-        "foreign_key_constraint_on" : {
-          "column" : "the_user_id",
-          "table" : {
-            "schema" : "public",
-            "name" : "user_calendar"
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "create_array_relationship",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "calendar_user"
-      },
-      "name" : "theFriends",
-      "using" : {
-        "foreign_key_constraint_on" : {
-          "column" : "calendar_user_id",
-          "table" : {
-            "schema" : "public",
-            "name" : "calendar_user_friends"
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "set_table_custom_fields",
-    "version" : 2,
-    "args" : {
-      "table" : "day",
-      "schema" : "public",
-      "custom_root_fields" : {
-        "select" : "test_select_day",
-        "select_by_pk" : "test_selectByPk_day",
-        "select_aggregate" : "test_selectAggregate_day",
-        "insert" : "test_insert_day",
-        "insert_one" : "test_insertOne_day",
-        "update" : "test_update_day",
-        "update_by_pk" : "test_updateByPk_day",
-        "delete" : "test_delete_day",
-        "delete_by_pk" : "test_deleteByPk_day"
-      },
-      "custom_column_names" : {
-        "created_at" : "createdAt",
-        "updated_at" : "updatedAt",
-        "calendar_id" : "calendarId",
-        "condition_class" : "conditionClass",
-        "condition_params" : "conditionParams",
-        "complex_field_name" : "complexFieldName",
-        "theme_config" : "themeConfig",
-        "is_special_day" : "isSpecialDay"
-      }
-    }
-  }, {
-    "type" : "create_object_relationship",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "day"
-      },
-      "name" : "calendar",
-      "using" : {
-        "foreign_key_constraint_on" : "calendar_id"
-      }
-    }
-  }, {
-    "type" : "create_array_relationship",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "day"
-      },
-      "name" : "events",
-      "using" : {
-        "foreign_key_constraint_on" : {
-          "column" : "day_id",
-          "table" : {
-            "schema" : "public",
-            "name" : "event"
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "create_insert_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "day"
-      },
-      "role" : "user",
-      "permission" : {
-        "columns" : "*",
-        "check" : { },
-        "set" : { }
-      }
-    }
-  }, {
-    "type" : "create_select_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "day"
-      },
-      "role" : "user",
-      "permission" : {
-        "columns" : "*",
-        "allow_aggregations" : false,
-        "filter" : {
-          "calendar" : {
-            "roles" : {
-              "user_id" : {
-                "_eq" : "X-Hasura-User-Id"
-              }
-            }
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "create_update_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "day"
-      },
-      "role" : "user",
-      "permission" : {
-        "columns" : "*",
-        "check" : null,
-        "set" : { },
-        "filter" : {
-          "calendar" : {
-            "_and" : [ {
-              "roles" : {
-                "user_id" : {
-                  "_eq" : "X-Hasura-User-Id"
-                }
-              }
-            }, {
-              "roles" : {
-                "role_value" : {
-                  "_in" : [ "OWNER", "EDITOR" ]
-                }
-              }
-            } ]
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "create_delete_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "day"
-      },
-      "role" : "user",
-      "permission" : {
-        "filter" : {
-          "calendar" : {
-            "_and" : [ {
-              "roles" : {
-                "user_id" : {
-                  "_eq" : "X-Hasura-User-Id"
-                }
-              }
-            }, {
-              "roles" : {
-                "role_value" : {
-                  "_in" : [ "OWNER", "EDITOR" ]
-                }
-              }
-            } ]
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "set_table_custom_fields",
-    "version" : 2,
-    "args" : {
-      "table" : "event",
-      "schema" : "public",
-      "custom_root_fields" : {
-        "select" : "test_select_event",
-        "select_by_pk" : "test_selectByPk_event",
-        "select_aggregate" : "test_selectAggregate_event",
-        "insert" : "test_insert_event",
-        "insert_one" : "test_insertOne_event",
-        "update" : "test_update_event",
-        "update_by_pk" : "test_updateByPk_event",
-        "delete" : "test_delete_event",
-        "delete_by_pk" : "test_deleteByPk_event"
-      },
-      "custom_column_names" : {
-        "created_at" : "createdAt",
-        "updated_at" : "updatedAt",
-        "calendar_id" : "calendarId",
-        "content_type" : "contentType",
-        "day_id" : "dayId"
-      }
-    }
-  }, {
-    "type" : "create_object_relationship",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "event"
-      },
-      "name" : "calendar",
-      "using" : {
-        "foreign_key_constraint_on" : "calendar_id"
-      }
-    }
-  }, {
-    "type" : "create_object_relationship",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "event"
-      },
-      "name" : "day",
-      "using" : {
-        "foreign_key_constraint_on" : "day_id"
-      }
-    }
-  }, {
-    "type" : "create_insert_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "event"
-      },
-      "role" : "user",
-      "permission" : {
-        "columns" : "*",
-        "check" : { },
-        "set" : { }
-      }
-    }
-  }, {
-    "type" : "create_select_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "event"
-      },
-      "role" : "user",
-      "permission" : {
-        "columns" : "*",
-        "allow_aggregations" : false,
-        "filter" : {
-          "calendar" : {
-            "roles" : {
-              "user_id" : {
-                "_eq" : "X-Hasura-User-Id"
-              }
-            }
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "create_update_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "event"
-      },
-      "role" : "user",
-      "permission" : {
-        "columns" : "*",
-        "check" : null,
-        "set" : { },
-        "filter" : {
-          "calendar" : {
-            "_and" : [ {
-              "roles" : {
-                "user_id" : {
-                  "_eq" : "X-Hasura-User-Id"
-                }
-              }
-            }, {
-              "roles" : {
-                "role_value" : {
-                  "_in" : [ "OWNER", "EDITOR" ]
-                }
-              }
-            } ]
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "create_delete_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "event"
-      },
-      "role" : "user",
-      "permission" : {
-        "filter" : {
-          "calendar" : {
-            "_and" : [ {
-              "roles" : {
-                "user_id" : {
-                  "_eq" : "X-Hasura-User-Id"
-                }
-              }
-            }, {
-              "roles" : {
-                "role_value" : {
-                  "_in" : [ "OWNER", "EDITOR" ]
-                }
-              }
-            } ]
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "set_table_custom_fields",
-    "version" : 2,
-    "args" : {
-      "table" : "layout",
-      "schema" : "public",
-      "custom_root_fields" : {
-        "select" : "test_select_layout",
-        "select_by_pk" : "test_selectByPk_layout",
-        "select_aggregate" : "test_selectAggregate_layout",
-        "insert" : "test_insert_layout",
-        "insert_one" : "test_insertOne_layout",
-        "update" : "test_update_layout",
-        "update_by_pk" : "test_updateByPk_layout",
-        "delete" : "test_delete_layout",
-        "delete_by_pk" : "test_deleteByPk_layout"
-      },
-      "custom_column_names" : {
-        "created_at" : "createdAt",
-        "updated_at" : "updatedAt",
-        "max_height" : "maxHeight",
-        "max_width" : "maxWidth",
-        "media_query" : "mediaQuery",
-        "min_height" : "minHeight",
-        "min_width" : "minWidth",
-        "theme_id" : "themeId",
-        "user_agent_regexp" : "userAgentRegexp"
-      }
-    }
-  }, {
-    "type" : "create_object_relationship",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "layout"
-      },
-      "name" : "theme",
-      "using" : {
-        "foreign_key_constraint_on" : "theme_id"
-      }
-    }
-  }, {
-    "type" : "create_insert_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "layout"
-      },
-      "role" : "ROLE1",
-      "permission" : {
-        "columns" : "*",
-        "check" : {
-          "mnemonic" : {
-            "_eq" : "foo"
           }
         },
-        "set" : { }
-      }
-    }
-  }, {
-    "type" : "create_insert_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "layout"
-      },
-      "role" : "ROLE2",
-      "permission" : {
-        "columns" : "*",
-        "check" : {
-          "mnemonic" : {
-            "_eq" : "foo"
-          }
-        },
-        "set" : { }
-      }
-    }
-  }, {
-    "type" : "create_select_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "layout"
-      },
-      "role" : "WORKER",
-      "permission" : {
-        "columns" : [ "media_query", "min_height" ],
-        "allow_aggregations" : true,
-        "filter" : { }
-      }
-    }
-  }, {
-    "type" : "create_select_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "layout"
-      },
-      "role" : "EDITOR",
-      "permission" : {
-        "columns" : "*",
-        "allow_aggregations" : true,
-        "filter" : { }
-      }
-    }
-  }, {
-    "type" : "create_select_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "layout"
-      },
-      "role" : "ALLDEFAULTS",
-      "permission" : {
-        "columns" : [ "mnemonic", "media_query" ],
-        "allow_aggregations" : true,
-        "filter" : {
-          "media_query" : {
-            "_eq" : "10"
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "create_select_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "layout"
-      },
-      "role" : "ROLE1",
-      "permission" : {
-        "columns" : "*",
-        "allow_aggregations" : true,
-        "filter" : { }
-      }
-    }
-  }, {
-    "type" : "create_update_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "layout"
-      },
-      "role" : "EDITOR",
-      "permission" : {
-        "columns" : [ "created_at", "tag", "updated_at", "data", "description", "max_height", "max_width", "media_query", "min_height", "min_width", "mnemonic", "theme_id", "user_agent_regexp", "id" ],
-        "check" : null,
-        "set" : { },
-        "filter" : { }
-      }
-    }
-  }, {
-    "type" : "create_update_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "layout"
-      },
-      "role" : "ALLDEFAULTS",
-      "permission" : {
-        "columns" : [ "mnemonic", "media_query" ],
-        "check" : null,
-        "set" : {
-          "description" : "Default description"
-        },
-        "filter" : {
-          "media_query" : {
-            "_eq" : "99"
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "create_update_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "layout"
-      },
-      "role" : "ROLE1",
-      "permission" : {
-        "columns" : [ "created_at", "tag", "updated_at", "data", "description", "max_height", "max_width", "media_query", "min_height", "min_width", "mnemonic", "theme_id", "user_agent_regexp", "id" ],
-        "check" : null,
-        "set" : { },
-        "filter" : {
-          "mnemonic" : {
-            "_eq" : "foo"
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "create_update_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "layout"
-      },
-      "role" : "ROLE2",
-      "permission" : {
-        "columns" : [ "created_at", "tag", "updated_at", "data", "description", "max_height", "max_width", "media_query", "min_height", "min_width", "mnemonic", "theme_id", "user_agent_regexp", "id" ],
-        "check" : null,
-        "set" : { },
-        "filter" : {
-          "mnemonic" : {
-            "_eq" : "foo"
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "create_delete_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "layout"
-      },
-      "role" : "EDITOR",
-      "permission" : {
-        "filter" : { }
-      }
-    }
-  }, {
-    "type" : "set_table_custom_fields",
-    "version" : 2,
-    "args" : {
-      "table" : "operation",
-      "schema" : "public",
-      "custom_root_fields" : {
-        "select" : "test_select_operation",
-        "select_by_pk" : "test_selectByPk_operation",
-        "select_aggregate" : "test_selectAggregate_operation",
-        "insert" : "test_insert_operation",
-        "insert_one" : "test_insertOne_operation",
-        "update" : "test_update_operation",
-        "update_by_pk" : "test_updateByPk_operation",
-        "delete" : "test_delete_operation",
-        "delete_by_pk" : "test_deleteByPk_operation"
-      },
-      "custom_column_names" : {
-        "created_at" : "createdAt",
-        "updated_at" : "updatedAt"
-      }
-    }
-  }, {
-    "type" : "create_array_relationship",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "operation"
-      },
-      "name" : "tasks",
-      "using" : {
-        "foreign_key_constraint_on" : {
-          "column" : "operation_id",
-          "table" : {
-            "schema" : "public",
-            "name" : "task_operation"
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "create_insert_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "operation"
-      },
-      "role" : "AUTHOR",
-      "permission" : {
-        "columns" : "*",
-        "check" : {
-          "id" : {
-            "_gt" : 10
-          }
-        },
-        "set" : { }
-      }
-    }
-  }, {
-    "type" : "create_insert_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "operation"
-      },
-      "role" : "EDITOR",
-      "permission" : {
-        "columns" : "*",
-        "check" : {
-          "id" : {
-            "_gt" : 10
-          }
-        },
-        "set" : { }
-      }
-    }
-  }, {
-    "type" : "create_select_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "operation"
-      },
-      "role" : "AUTHOR",
-      "permission" : {
-        "columns" : "*",
-        "allow_aggregations" : false,
-        "filter" : {
-          "id" : {
-            "_gt" : 10
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "create_select_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "operation"
-      },
-      "role" : "EDITOR",
-      "permission" : {
-        "columns" : "*",
-        "allow_aggregations" : false,
-        "filter" : {
-          "id" : {
-            "_gt" : 10
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "create_select_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "operation"
-      },
-      "role" : "WORKER",
-      "permission" : {
-        "columns" : "*",
-        "allow_aggregations" : true,
-        "filter" : {
-          "name" : {
-            "_like" : "%some_value%"
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "create_select_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "operation"
-      },
-      "role" : "BOSS",
-      "permission" : {
-        "columns" : "*",
-        "allow_aggregations" : true,
-        "filter" : {
-          "name" : {
-            "_like" : "%some_value%"
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "create_update_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "operation"
-      },
-      "role" : "AUTHOR",
-      "permission" : {
-        "columns" : "*",
-        "check" : null,
-        "set" : { },
-        "filter" : {
-          "id" : {
-            "_gt" : 10
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "create_update_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "operation"
-      },
-      "role" : "EDITOR",
-      "permission" : {
-        "columns" : "*",
-        "check" : null,
-        "set" : { },
-        "filter" : {
-          "id" : {
-            "_gt" : 10
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "create_update_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "operation"
-      },
-      "role" : "WORKER",
-      "permission" : {
-        "columns" : "*",
-        "check" : null,
-        "set" : { },
-        "filter" : {
-          "name" : {
-            "_like" : "%some_value%"
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "create_update_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "operation"
-      },
-      "role" : "BOSS",
-      "permission" : {
-        "columns" : "*",
-        "check" : null,
-        "set" : { },
-        "filter" : {
-          "name" : {
-            "_like" : "%some_value%"
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "create_delete_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "operation"
-      },
-      "role" : "AUTHOR",
-      "permission" : {
-        "filter" : {
-          "id" : {
-            "_gt" : 10
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "create_delete_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "operation"
-      },
-      "role" : "EDITOR",
-      "permission" : {
-        "filter" : {
-          "id" : {
-            "_gt" : 10
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "set_table_custom_fields",
-    "version" : 2,
-    "args" : {
-      "table" : "series",
-      "schema" : "public",
-      "custom_root_fields" : {
-        "select" : "test_select_series",
-        "select_by_pk" : "test_selectByPk_series",
-        "select_aggregate" : "test_selectAggregate_series",
-        "insert" : "test_insert_series",
-        "insert_one" : "test_insertOne_series",
-        "update" : "test_update_series",
-        "update_by_pk" : "test_updateByPk_series",
-        "delete" : "test_delete_series",
-        "delete_by_pk" : "test_deleteByPk_series"
-      },
-      "custom_column_names" : {
-        "created_at" : "createdAt",
-        "updated_at" : "updatedAt"
-      }
-    }
-  }, {
-    "type" : "set_table_custom_fields",
-    "version" : 2,
-    "args" : {
-      "table" : "task",
-      "schema" : "public",
-      "custom_root_fields" : {
-        "select" : "test_select_task",
-        "select_by_pk" : "test_selectByPk_task",
-        "select_aggregate" : "test_selectAggregate_task",
-        "insert" : "test_insert_task",
-        "insert_one" : "test_insertOne_task",
-        "update" : "test_update_task",
-        "update_by_pk" : "test_updateByPk_task",
-        "delete" : "test_delete_task",
-        "delete_by_pk" : "test_deleteByPk_task"
-      },
-      "custom_column_names" : {
-        "created_at" : "createdAt",
-        "updated_at" : "updatedAt",
-        "owner_id" : "ownerId"
-      }
-    }
-  }, {
-    "type" : "create_object_relationship",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "task"
-      },
-      "name" : "owner",
-      "using" : {
-        "foreign_key_constraint_on" : "owner_id"
-      }
-    }
-  }, {
-    "type" : "create_array_relationship",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "task"
-      },
-      "name" : "operations",
-      "using" : {
-        "foreign_key_constraint_on" : {
-          "column" : "task_id",
-          "table" : {
-            "schema" : "public",
-            "name" : "task_operation"
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "set_table_custom_fields",
-    "version" : 2,
-    "args" : {
-      "table" : "theme",
-      "schema" : "public",
-      "custom_root_fields" : {
-        "select" : "getThemes",
-        "select_by_pk" : "getATheme",
-        "select_aggregate" : "getThemeAgregate",
-        "insert" : "addSomeThemes",
-        "insert_one" : "addOneTheme",
-        "update" : "updateSomeThemes",
-        "update_by_pk" : "updateOneTheme",
-        "delete" : "deleteSomeThemes",
-        "delete_by_pk" : "deleteOneTheme"
-      },
-      "custom_column_names" : {
-        "created_at" : "createdAt",
-        "updated_at" : "updatedAt",
-        "css_class_name" : "cssClassName",
-        "max_day_count" : "maxDayCount",
-        "min_day_count" : "minDayCount"
-      }
-    }
-  }, {
-    "type" : "create_array_relationship",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "theme"
-      },
-      "name" : "names",
-      "using" : {
-        "foreign_key_constraint_on" : {
-          "column" : "theme_id",
-          "table" : {
-            "schema" : "public",
-            "name" : "theme_names"
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "create_array_relationship",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "theme"
-      },
-      "name" : "themeLayouts",
-      "using" : {
-        "foreign_key_constraint_on" : {
-          "column" : "theme_id",
-          "table" : {
-            "schema" : "public",
-            "name" : "layout"
-          }
-        }
-      }
-    }
-  }, {
-    "type" : "set_table_custom_fields",
-    "version" : 2,
-    "args" : {
-      "table" : "calendar_parents",
-      "schema" : "public",
-      "custom_root_fields" : {
-        "select" : "test_select_calendar_parents",
-        "select_by_pk" : "test_selectByPk_calendar_parents",
-        "select_aggregate" : "test_selectAggregate_calendar_parents",
-        "insert" : "test_insert_calendar_parents",
-        "insert_one" : "test_insertOne_calendar_parents",
-        "update" : "test_update_calendar_parents",
-        "update_by_pk" : "test_updateByPk_calendar_parents",
-        "delete" : "test_delete_calendar_parents",
-        "delete_by_pk" : "test_deleteByPk_calendar_parents"
-      },
-      "custom_column_names" : {
-        "parents_id" : "theParent",
-        "children_id" : "theChild"
-      }
-    }
-  }, {
-    "type" : "create_object_relationship",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "calendar_parents"
-      },
-      "name" : "child",
-      "using" : {
-        "foreign_key_constraint_on" : "children_id"
-      }
-    }
-  }, {
-    "type" : "create_object_relationship",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "calendar_parents"
-      },
-      "name" : "parent",
-      "using" : {
-        "foreign_key_constraint_on" : "parents_id"
-      }
-    }
-  }, {
-    "type" : "set_table_custom_fields",
-    "version" : 2,
-    "args" : {
-      "table" : "user_calendar",
-      "schema" : "public",
-      "custom_root_fields" : {
-        "select" : "test_select_user_calendar",
-        "select_by_pk" : "test_selectByPk_user_calendar",
-        "select_aggregate" : "test_selectAggregate_user_calendar",
-        "insert" : "test_insert_user_calendar",
-        "insert_one" : "test_insertOne_user_calendar",
-        "update" : "test_update_user_calendar",
-        "update_by_pk" : "test_updateByPk_user_calendar",
-        "delete" : "test_delete_user_calendar",
-        "delete_by_pk" : "test_deleteByPk_user_calendar"
-      },
-      "custom_column_names" : {
-        "the_calendar_id" : "theCalendarId",
-        "the_user_id" : "theUserId",
-        "calendar_order" : "calendarOrder"
-      }
-    }
-  }, {
-    "type" : "create_object_relationship",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "user_calendar"
-      },
-      "name" : "calendarUser",
-      "using" : {
-        "foreign_key_constraint_on" : "the_user_id"
-      }
-    }
-  }, {
-    "type" : "create_object_relationship",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "user_calendar"
-      },
-      "name" : "calendar",
-      "using" : {
-        "foreign_key_constraint_on" : "the_calendar_id"
-      }
-    }
-  }, {
-    "type" : "set_table_custom_fields",
-    "version" : 2,
-    "args" : {
-      "table" : "calendar_user_friends",
-      "schema" : "public",
-      "custom_root_fields" : {
-        "select" : "myDearFriends",
-        "select_by_pk" : "test_selectByPk_calendar_user_friends",
-        "select_aggregate" : "test_selectAggregate_calendar_user_friends",
-        "insert" : "addMyDearFriends",
-        "insert_one" : "addOneDearFriend",
-        "update" : "test_update_calendar_user_friends",
-        "update_by_pk" : "test_updateByPk_calendar_user_friends",
-        "delete" : "test_delete_calendar_user_friends",
-        "delete_by_pk" : "test_deleteByPk_calendar_user_friends"
-      },
-      "custom_column_names" : {
-        "calendar_user_id" : "myUserId",
-        "friends_id" : "myFriendUserId"
-      }
-    }
-  }, {
-    "type" : "create_object_relationship",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "calendar_user_friends"
-      },
-      "name" : "myFriend",
-      "using" : {
-        "foreign_key_constraint_on" : "friends_id"
-      }
-    }
-  }, {
-    "type" : "set_table_custom_fields",
-    "version" : 2,
-    "args" : {
-      "table" : "task_operation",
-      "schema" : "public",
-      "custom_root_fields" : {
-        "select" : "test_select_task_operation",
-        "select_by_pk" : "test_selectByPk_task_operation",
-        "select_aggregate" : "test_selectAggregate_task_operation",
-        "insert" : "test_insert_task_operation",
-        "insert_one" : "test_insertOne_task_operation",
-        "update" : "test_update_task_operation",
-        "update_by_pk" : "test_updateByPk_task_operation",
-        "delete" : "test_delete_task_operation",
-        "delete_by_pk" : "test_deleteByPk_task_operation"
-      },
-      "custom_column_names" : {
-        "operation_id" : "operationId",
-        "task_id" : "taskId",
-        "order_in_task" : "orderInTask"
-      }
-    }
-  }, {
-    "type" : "create_object_relationship",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "task_operation"
-      },
-      "name" : "task",
-      "using" : {
-        "foreign_key_constraint_on" : "task_id"
-      }
-    }
-  }, {
-    "type" : "create_object_relationship",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "task_operation"
-      },
-      "name" : "operation",
-      "using" : {
-        "foreign_key_constraint_on" : "operation_id"
-      }
-    }
-  }, {
-    "type" : "create_select_permission",
-    "args" : {
-      "table" : {
-        "schema" : "public",
-        "name" : "task_operation"
-      },
-      "role" : "USER",
-      "permission" : {
-        "columns" : [ "operation_id", "task_id" ],
-        "allow_aggregations" : false,
-        "filter" : {
-          "task" : {
-            "owner" : {
-              "id" : {
-                "_eq" : "x-hasura-user-id"
+        {
+          "table": {
+            "name": "calendar",
+            "schema": "public"
+          },
+          "array_relationships": [
+            {
+              "name": "children",
+              "using": {
+                "foreign_key_constraint_on": {
+                  "column": "parents_id",
+                  "table": {
+                    "name": "calendar_parents",
+                    "schema": "public"
+                  }
+                }
+              }
+            },
+            {
+              "name": "days",
+              "using": {
+                "foreign_key_constraint_on": {
+                  "column": "calendar_id",
+                  "table": {
+                    "name": "day",
+                    "schema": "public"
+                  }
+                }
+              }
+            },
+            {
+              "name": "parents",
+              "using": {
+                "foreign_key_constraint_on": {
+                  "column": "children_id",
+                  "table": {
+                    "name": "calendar_parents",
+                    "schema": "public"
+                  }
+                }
+              }
+            },
+            {
+              "name": "roles",
+              "using": {
+                "foreign_key_constraint_on": {
+                  "column": "calendar_id",
+                  "table": {
+                    "name": "calendar_role",
+                    "schema": "public"
+                  }
+                }
+              }
+            },
+            {
+              "name": "users",
+              "using": {
+                "foreign_key_constraint_on": {
+                  "column": "the_calendar_id",
+                  "table": {
+                    "name": "user_calendar",
+                    "schema": "public"
+                  }
+                }
               }
             }
+          ],
+          "computed_fields": [
+            {
+              "definition": {
+                "function": "title_and_description"
+              },
+              "name": "titleAndDescription"
+            }
+          ],
+          "configuration": {
+            "column_config": {
+              "created_at": {
+                "customName": "createdAt"
+              },
+              "updated_at": {
+                "customName": "updatedAt"
+              },
+              "availability_value": {
+                "customName": "availabilityValue"
+              },
+              "locale_country": {
+                "customName": "localeCountry"
+              },
+              "locale_lang": {
+                "customName": "localeLang"
+              },
+              "next_version_id": {
+                "customName": "nextVersionId"
+              },
+              "previous_version_id": {
+                "customName": "previousVersionId"
+              },
+              "theme_id": {
+                "customName": "themeId"
+              },
+              "theme_config": {
+                "customName": "themeConfig"
+              }
+            },
+            "custom_root_fields": {
+              "delete": "test_delete_calendar",
+              "delete_by_pk": "test_deleteByPk_calendar",
+              "insert": "test_insert_calendar",
+              "insert_one": "test_insertOne_calendar",
+              "select": "test_select_calendar",
+              "select_aggregate": "test_selectAggregate_calendar",
+              "select_by_pk": "test_selectByPk_calendar",
+              "update": "test_update_calendar",
+              "update_by_pk": "test_updateByPk_calendar"
+            }
+          },
+          "delete_permissions": [
+            {
+              "permission": {
+                "filter": {
+                  "_and": [
+                    {
+                      "roles": {
+                        "user_id": {
+                          "_eq": "X-Hasura-User-Id"
+                        }
+                      }
+                    },
+                    {
+                      "roles": {
+                        "role_value": {
+                          "_in": [
+                            "OWNER",
+                            "EDITOR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              "role": "USER"
+            }
+          ],
+          "insert_permissions": [
+            {
+              "permission": {
+                "check": {},
+                "columns": "*",
+                "set": {
+                  "locale_lang": "en",
+                  "locale_country": "us"
+                }
+              },
+              "role": "USER"
+            }
+          ],
+          "object_relationships": [
+            {
+              "name": "availability",
+              "using": {
+                "foreign_key_constraint_on": "availability_value"
+              }
+            },
+            {
+              "name": "nextVersion",
+              "using": {
+                "foreign_key_constraint_on": "next_version_id"
+              }
+            },
+            {
+              "name": "previousVersion",
+              "using": {
+                "foreign_key_constraint_on": "previous_version_id"
+              }
+            },
+            {
+              "name": "theme",
+              "using": {
+                "foreign_key_constraint_on": "theme_id"
+              }
+            }
+          ],
+          "select_permissions": [
+            {
+              "permission": {
+                "allow_aggregations": true,
+                "columns": "*",
+                "computed_fields": [
+                  "titleAndDescription"
+                ],
+                "filter": {
+                  "roles": {
+                    "user_id": {
+                      "_eq": "X-Hasura-User-Id"
+                    }
+                  }
+                }
+              },
+              "role": "USER"
+            },
+            {
+              "permission": {
+                "allow_aggregations": true,
+                "columns": [
+                  "tag"
+                ],
+                "computed_fields": [
+                  "titleAndDescription"
+                ],
+                "filter": {
+                  "roles": {
+                    "user_id": {
+                      "_eq": "X-Hasura-User-Id"
+                    }
+                  }
+                }
+              },
+              "role": "FRIEND"
+            }
+          ],
+          "update_permissions": [
+            {
+              "permission": {
+                "columns": [
+                  "created_at",
+                  "updated_at",
+                  "availability_value",
+                  "description",
+                  "locale_country",
+                  "next_version_id",
+                  "published",
+                  "theme_id",
+                  "theme_config",
+                  "title",
+                  "version",
+                  "id"
+                ],
+                "filter": {
+                  "_and": [
+                    {
+                      "roles": {
+                        "user_id": {
+                          "_eq": "X-Hasura-User-Id"
+                        }
+                      }
+                    },
+                    {
+                      "roles": {
+                        "role_value": {
+                          "_in": [
+                            "OWNER",
+                            "EDITOR"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                },
+                "set": {}
+              },
+              "role": "USER"
+            }
+          ]
+        },
+        {
+          "table": {
+            "name": "calendar_availability",
+            "schema": "public"
+          },
+          "configuration": {
+            "column_config": {},
+            "custom_root_fields": {
+              "delete": "test_delete_calendar_availability",
+              "delete_by_pk": "test_deleteByPk_calendar_availability",
+              "insert": "test_insert_calendar_availability",
+              "insert_one": "test_insertOne_calendar_availability",
+              "select": "test_select_calendar_availability",
+              "select_aggregate": "test_selectAggregate_calendar_availability",
+              "select_by_pk": "test_selectByPk_calendar_availability",
+              "update": "test_update_calendar_availability",
+              "update_by_pk": "test_updateByPk_calendar_availability"
+            }
+          },
+          "is_enum": true
+        },
+        {
+          "table": {
+            "name": "calendar_role",
+            "schema": "public"
+          },
+          "configuration": {
+            "column_config": {
+              "created_at": {
+                "customName": "createdAt"
+              },
+              "updated_at": {
+                "customName": "updatedAt"
+              },
+              "calendar_id": {
+                "customName": "calendarId"
+              },
+              "role_value": {
+                "customName": "roleValue"
+              },
+              "user_id": {
+                "customName": "userId"
+              }
+            },
+            "custom_root_fields": {
+              "delete": "test_delete_calendar_role",
+              "delete_by_pk": "test_deleteByPk_calendar_role",
+              "insert": "test_insert_calendar_role",
+              "insert_one": "test_insertOne_calendar_role",
+              "select": "test_select_calendar_role",
+              "select_aggregate": "test_selectAggregate_calendar_role",
+              "select_by_pk": "test_selectByPk_calendar_role",
+              "update": "test_update_calendar_role",
+              "update_by_pk": "test_updateByPk_calendar_role"
+            }
+          },
+          "object_relationships": [
+            {
+              "name": "calendar",
+              "using": {
+                "foreign_key_constraint_on": "calendar_id"
+              }
+            },
+            {
+              "name": "role",
+              "using": {
+                "foreign_key_constraint_on": "role_value"
+              }
+            },
+            {
+              "name": "user",
+              "using": {
+                "foreign_key_constraint_on": "user_id"
+              }
+            }
+          ]
+        },
+        {
+          "table": {
+            "name": "calendar_role_type",
+            "schema": "public"
+          },
+          "configuration": {
+            "column_config": {},
+            "custom_root_fields": {
+              "delete": "test_delete_calendar_role_type",
+              "delete_by_pk": "test_deleteByPk_calendar_role_type",
+              "insert": "test_insert_calendar_role_type",
+              "insert_one": "test_insertOne_calendar_role_type",
+              "select": "test_select_calendar_role_type",
+              "select_aggregate": "test_selectAggregate_calendar_role_type",
+              "select_by_pk": "test_selectByPk_calendar_role_type",
+              "update": "test_update_calendar_role_type",
+              "update_by_pk": "test_updateByPk_calendar_role_type"
+            }
+          },
+          "is_enum": true
+        },
+        {
+          "table": {
+            "name": "calendar_user",
+            "schema": "public"
+          },
+          "array_relationships": [
+            {
+              "name": "calendars",
+              "using": {
+                "foreign_key_constraint_on": {
+                  "column": "the_user_id",
+                  "table": {
+                    "name": "user_calendar",
+                    "schema": "public"
+                  }
+                }
+              }
+            },
+            {
+              "name": "theFriends",
+              "using": {
+                "foreign_key_constraint_on": {
+                  "column": "calendar_user_id",
+                  "table": {
+                    "name": "calendar_user_friends",
+                    "schema": "public"
+                  }
+                }
+              }
+            }
+          ],
+          "configuration": {
+            "column_config": {
+              "created_at": {
+                "customName": "createdAt"
+              },
+              "updated_at": {
+                "customName": "updatedAt"
+              },
+              "firebase_user_id": {
+                "customName": "firebaseUserId"
+              },
+              "first_name": {
+                "customName": "firstName"
+              },
+              "last_name": {
+                "customName": "lastName"
+              },
+              "password": {
+                "customName": "superSecretPassword"
+              }
+            },
+            "custom_root_fields": {
+              "delete": "test_delete_calendar_user",
+              "delete_by_pk": "test_deleteByPk_calendar_user",
+              "insert": "test_insert_calendar_user",
+              "insert_one": "test_insertOne_calendar_user",
+              "select": "test_select_calendar_user",
+              "select_aggregate": "test_selectAggregate_calendar_user",
+              "select_by_pk": "test_selectByPk_calendar_user",
+              "update": "test_update_calendar_user",
+              "update_by_pk": "test_updateByPk_calendar_user"
+            }
+          }
+        },
+        {
+          "table": {
+            "name": "day",
+            "schema": "public"
+          },
+          "array_relationships": [
+            {
+              "name": "events",
+              "using": {
+                "foreign_key_constraint_on": {
+                  "column": "day_id",
+                  "table": {
+                    "name": "event",
+                    "schema": "public"
+                  }
+                }
+              }
+            }
+          ],
+          "configuration": {
+            "column_config": {
+              "created_at": {
+                "customName": "createdAt"
+              },
+              "updated_at": {
+                "customName": "updatedAt"
+              },
+              "calendar_id": {
+                "customName": "calendarId"
+              },
+              "condition_class": {
+                "customName": "conditionClass"
+              },
+              "condition_params": {
+                "customName": "conditionParams"
+              },
+              "complex_field_name": {
+                "customName": "complexFieldName"
+              },
+              "theme_config": {
+                "customName": "themeConfig"
+              },
+              "is_special_day": {
+                "customName": "isSpecialDay"
+              }
+            },
+            "custom_root_fields": {
+              "delete": "test_delete_day",
+              "delete_by_pk": "test_deleteByPk_day",
+              "insert": "test_insert_day",
+              "insert_one": "test_insertOne_day",
+              "select": "test_select_day",
+              "select_aggregate": "test_selectAggregate_day",
+              "select_by_pk": "test_selectByPk_day",
+              "update": "test_update_day",
+              "update_by_pk": "test_updateByPk_day"
+            }
+          },
+          "delete_permissions": [
+            {
+              "permission": {
+                "filter": {
+                  "calendar": {
+                    "_and": [
+                      {
+                        "roles": {
+                          "user_id": {
+                            "_eq": "X-Hasura-User-Id"
+                          }
+                        }
+                      },
+                      {
+                        "roles": {
+                          "role_value": {
+                            "_in": [
+                              "OWNER",
+                              "EDITOR"
+                            ]
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              "role": "user"
+            }
+          ],
+          "insert_permissions": [
+            {
+              "permission": {
+                "check": {},
+                "columns": "*",
+                "set": {}
+              },
+              "role": "user"
+            }
+          ],
+          "object_relationships": [
+            {
+              "name": "calendar",
+              "using": {
+                "foreign_key_constraint_on": "calendar_id"
+              }
+            }
+          ],
+          "select_permissions": [
+            {
+              "permission": {
+                "allow_aggregations": false,
+                "columns": "*",
+                "filter": {
+                  "calendar": {
+                    "roles": {
+                      "user_id": {
+                        "_eq": "X-Hasura-User-Id"
+                      }
+                    }
+                  }
+                }
+              },
+              "role": "user"
+            }
+          ],
+          "update_permissions": [
+            {
+              "permission": {
+                "columns": "*",
+                "filter": {
+                  "calendar": {
+                    "_and": [
+                      {
+                        "roles": {
+                          "user_id": {
+                            "_eq": "X-Hasura-User-Id"
+                          }
+                        }
+                      },
+                      {
+                        "roles": {
+                          "role_value": {
+                            "_in": [
+                              "OWNER",
+                              "EDITOR"
+                            ]
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                "set": {}
+              },
+              "role": "user"
+            }
+          ]
+        },
+        {
+          "table": {
+            "name": "event",
+            "schema": "public"
+          },
+          "configuration": {
+            "column_config": {
+              "created_at": {
+                "customName": "createdAt"
+              },
+              "updated_at": {
+                "customName": "updatedAt"
+              },
+              "calendar_id": {
+                "customName": "calendarId"
+              },
+              "content_type": {
+                "customName": "contentType"
+              },
+              "day_id": {
+                "customName": "dayId"
+              }
+            },
+            "custom_root_fields": {
+              "delete": "test_delete_event",
+              "delete_by_pk": "test_deleteByPk_event",
+              "insert": "test_insert_event",
+              "insert_one": "test_insertOne_event",
+              "select": "test_select_event",
+              "select_aggregate": "test_selectAggregate_event",
+              "select_by_pk": "test_selectByPk_event",
+              "update": "test_update_event",
+              "update_by_pk": "test_updateByPk_event"
+            }
+          },
+          "delete_permissions": [
+            {
+              "permission": {
+                "filter": {
+                  "calendar": {
+                    "_and": [
+                      {
+                        "roles": {
+                          "user_id": {
+                            "_eq": "X-Hasura-User-Id"
+                          }
+                        }
+                      },
+                      {
+                        "roles": {
+                          "role_value": {
+                            "_in": [
+                              "OWNER",
+                              "EDITOR"
+                            ]
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              "role": "user"
+            }
+          ],
+          "insert_permissions": [
+            {
+              "permission": {
+                "check": {},
+                "columns": "*",
+                "set": {}
+              },
+              "role": "user"
+            }
+          ],
+          "object_relationships": [
+            {
+              "name": "calendar",
+              "using": {
+                "foreign_key_constraint_on": "calendar_id"
+              }
+            },
+            {
+              "name": "day",
+              "using": {
+                "foreign_key_constraint_on": "day_id"
+              }
+            }
+          ],
+          "select_permissions": [
+            {
+              "permission": {
+                "allow_aggregations": false,
+                "columns": "*",
+                "filter": {
+                  "calendar": {
+                    "roles": {
+                      "user_id": {
+                        "_eq": "X-Hasura-User-Id"
+                      }
+                    }
+                  }
+                }
+              },
+              "role": "user"
+            }
+          ],
+          "update_permissions": [
+            {
+              "permission": {
+                "columns": "*",
+                "filter": {
+                  "calendar": {
+                    "_and": [
+                      {
+                        "roles": {
+                          "user_id": {
+                            "_eq": "X-Hasura-User-Id"
+                          }
+                        }
+                      },
+                      {
+                        "roles": {
+                          "role_value": {
+                            "_in": [
+                              "OWNER",
+                              "EDITOR"
+                            ]
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                "set": {}
+              },
+              "role": "user"
+            }
+          ]
+        },
+        {
+          "table": {
+            "name": "layout",
+            "schema": "public"
+          },
+          "configuration": {
+            "column_config": {
+              "created_at": {
+                "customName": "createdAt"
+              },
+              "updated_at": {
+                "customName": "updatedAt"
+              },
+              "max_height": {
+                "customName": "maxHeight"
+              },
+              "max_width": {
+                "customName": "maxWidth"
+              },
+              "media_query": {
+                "customName": "mediaQuery"
+              },
+              "min_height": {
+                "customName": "minHeight"
+              },
+              "min_width": {
+                "customName": "minWidth"
+              },
+              "theme_id": {
+                "customName": "themeId"
+              },
+              "user_agent_regexp": {
+                "customName": "userAgentRegexp"
+              }
+            },
+            "custom_root_fields": {
+              "delete": "test_delete_layout",
+              "delete_by_pk": "test_deleteByPk_layout",
+              "insert": "test_insert_layout",
+              "insert_one": "test_insertOne_layout",
+              "select": "test_select_layout",
+              "select_aggregate": "test_selectAggregate_layout",
+              "select_by_pk": "test_selectByPk_layout",
+              "update": "test_update_layout",
+              "update_by_pk": "test_updateByPk_layout"
+            }
+          },
+          "delete_permissions": [
+            {
+              "permission": {
+                "filter": {}
+              },
+              "role": "EDITOR"
+            }
+          ],
+          "insert_permissions": [
+            {
+              "permission": {
+                "check": {
+                  "mnemonic": {
+                    "_eq": "foo"
+                  }
+                },
+                "columns": "*",
+                "set": {}
+              },
+              "role": "ROLE1"
+            },
+            {
+              "permission": {
+                "check": {
+                  "mnemonic": {
+                    "_eq": "foo"
+                  }
+                },
+                "columns": "*",
+                "set": {}
+              },
+              "role": "ROLE2"
+            }
+          ],
+          "object_relationships": [
+            {
+              "name": "theme",
+              "using": {
+                "foreign_key_constraint_on": "theme_id"
+              }
+            }
+          ],
+          "select_permissions": [
+            {
+              "permission": {
+                "allow_aggregations": true,
+                "columns": [
+                  "media_query",
+                  "min_height"
+                ],
+                "filter": {}
+              },
+              "role": "WORKER"
+            },
+            {
+              "permission": {
+                "allow_aggregations": true,
+                "columns": "*",
+                "filter": {}
+              },
+              "role": "EDITOR"
+            },
+            {
+              "permission": {
+                "allow_aggregations": true,
+                "columns": [
+                  "mnemonic",
+                  "media_query"
+                ],
+                "filter": {
+                  "media_query": {
+                    "_eq": "10"
+                  }
+                }
+              },
+              "role": "ALLDEFAULTS"
+            },
+            {
+              "permission": {
+                "allow_aggregations": true,
+                "columns": "*",
+                "filter": {}
+              },
+              "role": "ROLE1"
+            }
+          ],
+          "update_permissions": [
+            {
+              "permission": {
+                "columns": [
+                  "created_at",
+                  "tag",
+                  "updated_at",
+                  "data",
+                  "description",
+                  "max_height",
+                  "max_width",
+                  "media_query",
+                  "min_height",
+                  "min_width",
+                  "mnemonic",
+                  "theme_id",
+                  "user_agent_regexp",
+                  "id"
+                ],
+                "filter": {},
+                "set": {}
+              },
+              "role": "EDITOR"
+            },
+            {
+              "permission": {
+                "columns": [
+                  "mnemonic",
+                  "media_query"
+                ],
+                "filter": {
+                  "media_query": {
+                    "_eq": "99"
+                  }
+                },
+                "set": {
+                  "description": "Default description"
+                }
+              },
+              "role": "ALLDEFAULTS"
+            },
+            {
+              "permission": {
+                "columns": [
+                  "created_at",
+                  "tag",
+                  "updated_at",
+                  "data",
+                  "description",
+                  "max_height",
+                  "max_width",
+                  "media_query",
+                  "min_height",
+                  "min_width",
+                  "mnemonic",
+                  "theme_id",
+                  "user_agent_regexp",
+                  "id"
+                ],
+                "filter": {
+                  "mnemonic": {
+                    "_eq": "foo"
+                  }
+                },
+                "set": {}
+              },
+              "role": "ROLE1"
+            },
+            {
+              "permission": {
+                "columns": [
+                  "created_at",
+                  "tag",
+                  "updated_at",
+                  "data",
+                  "description",
+                  "max_height",
+                  "max_width",
+                  "media_query",
+                  "min_height",
+                  "min_width",
+                  "mnemonic",
+                  "theme_id",
+                  "user_agent_regexp",
+                  "id"
+                ],
+                "filter": {
+                  "mnemonic": {
+                    "_eq": "foo"
+                  }
+                },
+                "set": {}
+              },
+              "role": "ROLE2"
+            }
+          ]
+        },
+        {
+          "table": {
+            "name": "operation",
+            "schema": "public"
+          },
+          "array_relationships": [
+            {
+              "name": "tasks",
+              "using": {
+                "foreign_key_constraint_on": {
+                  "column": "operation_id",
+                  "table": {
+                    "name": "task_operation",
+                    "schema": "public"
+                  }
+                }
+              }
+            }
+          ],
+          "configuration": {
+            "column_config": {
+              "created_at": {
+                "customName": "createdAt"
+              },
+              "updated_at": {
+                "customName": "updatedAt"
+              }
+            },
+            "custom_root_fields": {
+              "delete": "test_delete_operation",
+              "delete_by_pk": "test_deleteByPk_operation",
+              "insert": "test_insert_operation",
+              "insert_one": "test_insertOne_operation",
+              "select": "test_select_operation",
+              "select_aggregate": "test_selectAggregate_operation",
+              "select_by_pk": "test_selectByPk_operation",
+              "update": "test_update_operation",
+              "update_by_pk": "test_updateByPk_operation"
+            }
+          },
+          "delete_permissions": [
+            {
+              "permission": {
+                "filter": {
+                  "id": {
+                    "_gt": 10
+                  }
+                }
+              },
+              "role": "AUTHOR"
+            },
+            {
+              "permission": {
+                "filter": {
+                  "id": {
+                    "_gt": 10
+                  }
+                }
+              },
+              "role": "EDITOR"
+            }
+          ],
+          "insert_permissions": [
+            {
+              "permission": {
+                "check": {
+                  "id": {
+                    "_gt": 10
+                  }
+                },
+                "columns": "*",
+                "set": {}
+              },
+              "role": "AUTHOR"
+            },
+            {
+              "permission": {
+                "check": {
+                  "id": {
+                    "_gt": 10
+                  }
+                },
+                "columns": "*",
+                "set": {}
+              },
+              "role": "EDITOR"
+            }
+          ],
+          "select_permissions": [
+            {
+              "permission": {
+                "allow_aggregations": false,
+                "columns": "*",
+                "filter": {
+                  "id": {
+                    "_gt": 10
+                  }
+                }
+              },
+              "role": "AUTHOR"
+            },
+            {
+              "permission": {
+                "allow_aggregations": false,
+                "columns": "*",
+                "filter": {
+                  "id": {
+                    "_gt": 10
+                  }
+                }
+              },
+              "role": "EDITOR"
+            },
+            {
+              "permission": {
+                "allow_aggregations": true,
+                "columns": "*",
+                "filter": {
+                  "name": {
+                    "_like": "%some_value%"
+                  }
+                }
+              },
+              "role": "WORKER"
+            },
+            {
+              "permission": {
+                "allow_aggregations": true,
+                "columns": "*",
+                "filter": {
+                  "name": {
+                    "_like": "%some_value%"
+                  }
+                }
+              },
+              "role": "BOSS"
+            }
+          ],
+          "update_permissions": [
+            {
+              "permission": {
+                "columns": "*",
+                "filter": {
+                  "id": {
+                    "_gt": 10
+                  }
+                },
+                "set": {}
+              },
+              "role": "AUTHOR"
+            },
+            {
+              "permission": {
+                "columns": "*",
+                "filter": {
+                  "id": {
+                    "_gt": 10
+                  }
+                },
+                "set": {}
+              },
+              "role": "EDITOR"
+            },
+            {
+              "permission": {
+                "columns": "*",
+                "filter": {
+                  "name": {
+                    "_like": "%some_value%"
+                  }
+                },
+                "set": {}
+              },
+              "role": "WORKER"
+            },
+            {
+              "permission": {
+                "columns": "*",
+                "filter": {
+                  "name": {
+                    "_like": "%some_value%"
+                  }
+                },
+                "set": {}
+              },
+              "role": "BOSS"
+            }
+          ]
+        },
+        {
+          "table": {
+            "name": "series",
+            "schema": "public"
+          },
+          "configuration": {
+            "column_config": {
+              "created_at": {
+                "customName": "createdAt"
+              },
+              "updated_at": {
+                "customName": "updatedAt"
+              }
+            },
+            "custom_root_fields": {
+              "delete": "test_delete_series",
+              "delete_by_pk": "test_deleteByPk_series",
+              "insert": "test_insert_series",
+              "insert_one": "test_insertOne_series",
+              "select": "test_select_series",
+              "select_aggregate": "test_selectAggregate_series",
+              "select_by_pk": "test_selectByPk_series",
+              "update": "test_update_series",
+              "update_by_pk": "test_updateByPk_series"
+            }
+          }
+        },
+        {
+          "table": {
+            "name": "task",
+            "schema": "public"
+          },
+          "array_relationships": [
+            {
+              "name": "operations",
+              "using": {
+                "foreign_key_constraint_on": {
+                  "column": "task_id",
+                  "table": {
+                    "name": "task_operation",
+                    "schema": "public"
+                  }
+                }
+              }
+            }
+          ],
+          "configuration": {
+            "column_config": {
+              "created_at": {
+                "customName": "createdAt"
+              },
+              "updated_at": {
+                "customName": "updatedAt"
+              },
+              "owner_id": {
+                "customName": "ownerId"
+              }
+            },
+            "custom_root_fields": {
+              "delete": "test_delete_task",
+              "delete_by_pk": "test_deleteByPk_task",
+              "insert": "test_insert_task",
+              "insert_one": "test_insertOne_task",
+              "select": "test_select_task",
+              "select_aggregate": "test_selectAggregate_task",
+              "select_by_pk": "test_selectByPk_task",
+              "update": "test_update_task",
+              "update_by_pk": "test_updateByPk_task"
+            }
+          },
+          "object_relationships": [
+            {
+              "name": "owner",
+              "using": {
+                "foreign_key_constraint_on": "owner_id"
+              }
+            }
+          ]
+        },
+        {
+          "table": {
+            "name": "theme",
+            "schema": "public"
+          },
+          "array_relationships": [
+            {
+              "name": "names",
+              "using": {
+                "foreign_key_constraint_on": {
+                  "column": "theme_id",
+                  "table": {
+                    "name": "theme_names",
+                    "schema": "public"
+                  }
+                }
+              }
+            },
+            {
+              "name": "themeLayouts",
+              "using": {
+                "foreign_key_constraint_on": {
+                  "column": "theme_id",
+                  "table": {
+                    "name": "layout",
+                    "schema": "public"
+                  }
+                }
+              }
+            }
+          ],
+          "configuration": {
+            "column_config": {
+              "created_at": {
+                "customName": "createdAt"
+              },
+              "updated_at": {
+                "customName": "updatedAt"
+              },
+              "css_class_name": {
+                "customName": "cssClassName"
+              },
+              "max_day_count": {
+                "customName": "maxDayCount"
+              },
+              "min_day_count": {
+                "customName": "minDayCount"
+              }
+            },
+            "custom_root_fields": {
+              "delete": "deleteSomeThemes",
+              "delete_by_pk": "deleteOneTheme",
+              "insert": "addSomeThemes",
+              "insert_one": "addOneTheme",
+              "select": "getThemes",
+              "select_aggregate": "getThemeAgregate",
+              "select_by_pk": "getATheme",
+              "update": "updateSomeThemes",
+              "update_by_pk": "updateOneTheme"
+            }
+          }
+        },
+        {
+          "table": {
+            "name": "calendar_parents",
+            "schema": "public"
+          },
+          "configuration": {
+            "column_config": {
+              "parents_id": {
+                "customName": "theParent"
+              },
+              "children_id": {
+                "customName": "theChild"
+              }
+            },
+            "custom_root_fields": {
+              "delete": "test_delete_calendar_parents",
+              "delete_by_pk": "test_deleteByPk_calendar_parents",
+              "insert": "test_insert_calendar_parents",
+              "insert_one": "test_insertOne_calendar_parents",
+              "select": "test_select_calendar_parents",
+              "select_aggregate": "test_selectAggregate_calendar_parents",
+              "select_by_pk": "test_selectByPk_calendar_parents",
+              "update": "test_update_calendar_parents",
+              "update_by_pk": "test_updateByPk_calendar_parents"
+            }
+          },
+          "object_relationships": [
+            {
+              "name": "child",
+              "using": {
+                "foreign_key_constraint_on": "children_id"
+              }
+            },
+            {
+              "name": "parent",
+              "using": {
+                "foreign_key_constraint_on": "parents_id"
+              }
+            }
+          ]
+        },
+        {
+          "table": {
+            "name": "user_calendar",
+            "schema": "public"
+          },
+          "configuration": {
+            "column_config": {
+              "the_calendar_id": {
+                "customName": "theCalendarId"
+              },
+              "the_user_id": {
+                "customName": "theUserId"
+              },
+              "calendar_order": {
+                "customName": "calendarOrder"
+              }
+            },
+            "custom_root_fields": {
+              "delete": "test_delete_user_calendar",
+              "delete_by_pk": "test_deleteByPk_user_calendar",
+              "insert": "test_insert_user_calendar",
+              "insert_one": "test_insertOne_user_calendar",
+              "select": "test_select_user_calendar",
+              "select_aggregate": "test_selectAggregate_user_calendar",
+              "select_by_pk": "test_selectByPk_user_calendar",
+              "update": "test_update_user_calendar",
+              "update_by_pk": "test_updateByPk_user_calendar"
+            }
+          },
+          "object_relationships": [
+            {
+              "name": "calendarUser",
+              "using": {
+                "foreign_key_constraint_on": "the_user_id"
+              }
+            },
+            {
+              "name": "calendar",
+              "using": {
+                "foreign_key_constraint_on": "the_calendar_id"
+              }
+            }
+          ]
+        },
+        {
+          "table": {
+            "name": "calendar_user_friends",
+            "schema": "public"
+          },
+          "configuration": {
+            "column_config": {
+              "calendar_user_id": {
+                "customName": "myUserId"
+              },
+              "friends_id": {
+                "customName": "myFriendUserId"
+              }
+            },
+            "custom_root_fields": {
+              "delete": "test_delete_calendar_user_friends",
+              "delete_by_pk": "test_deleteByPk_calendar_user_friends",
+              "insert": "addMyDearFriends",
+              "insert_one": "addOneDearFriend",
+              "select": "myDearFriends",
+              "select_aggregate": "test_selectAggregate_calendar_user_friends",
+              "select_by_pk": "test_selectByPk_calendar_user_friends",
+              "update": "test_update_calendar_user_friends",
+              "update_by_pk": "test_updateByPk_calendar_user_friends"
+            }
+          },
+          "object_relationships": [
+            {
+              "name": "myFriend",
+              "using": {
+                "foreign_key_constraint_on": "friends_id"
+              }
+            }
+          ]
+        },
+        {
+          "table": {
+            "name": "task_operation",
+            "schema": "public"
+          },
+          "configuration": {
+            "column_config": {
+              "operation_id": {
+                "customName": "operationId"
+              },
+              "task_id": {
+                "customName": "taskId"
+              },
+              "order_in_task": {
+                "customName": "orderInTask"
+              }
+            },
+            "custom_root_fields": {
+              "delete": "test_delete_task_operation",
+              "delete_by_pk": "test_deleteByPk_task_operation",
+              "insert": "test_insert_task_operation",
+              "insert_one": "test_insertOne_task_operation",
+              "select": "test_select_task_operation",
+              "select_aggregate": "test_selectAggregate_task_operation",
+              "select_by_pk": "test_selectByPk_task_operation",
+              "update": "test_update_task_operation",
+              "update_by_pk": "test_updateByPk_task_operation"
+            }
+          },
+          "object_relationships": [
+            {
+              "name": "task",
+              "using": {
+                "foreign_key_constraint_on": "task_id"
+              }
+            },
+            {
+              "name": "operation",
+              "using": {
+                "foreign_key_constraint_on": "operation_id"
+              }
+            }
+          ],
+          "select_permissions": [
+            {
+              "permission": {
+                "allow_aggregations": false,
+                "columns": [
+                  "operation_id",
+                  "task_id"
+                ],
+                "filter": {
+                  "task": {
+                    "owner": {
+                      "id": {
+                        "_eq": "x-hasura-user-id"
+                      }
+                    }
+                  }
+                }
+              },
+              "role": "USER"
+            }
+          ]
+        },
+        {
+          "table": {
+            "name": "theme_names",
+            "schema": "public"
           }
         }
-      }
+      ]
     }
-  }, {
-    "type" : "run_sql",
-    "args" : {
-      "sql" : "DROP TRIGGER IF EXISTS calendar_next_version_id_cascade_delete_trigger ON calendar;; DROP FUNCTION  IF EXISTS calendar_next_version_id_cascade_delete(); CREATE FUNCTION calendar_next_version_id_cascade_delete() RETURNS trigger AS $body$ BEGIN     IF TG_WHEN <> 'AFTER' OR TG_OP <> 'DELETE' THEN         RAISE EXCEPTION 'calendar_next_version_id_cascade_delete may only run as a AFTER DELETE trigger';     END IF;      DELETE FROM calendar where id=OLD.next_version_id;     RETURN OLD; END; $body$ LANGUAGE plpgsql;; CREATE TRIGGER calendar_next_version_id_cascade_delete_trigger AFTER DELETE ON calendar     FOR EACH ROW EXECUTE PROCEDURE calendar_next_version_id_cascade_delete();;                       "
-    }
-  }, {
-    "type" : "run_sql",
-    "args" : {
-      "sql" : "DROP TRIGGER IF EXISTS calendar_previous_version_id_cascade_delete_trigger ON calendar;; DROP FUNCTION  IF EXISTS calendar_previous_version_id_cascade_delete(); CREATE FUNCTION calendar_previous_version_id_cascade_delete() RETURNS trigger AS $body$ BEGIN     IF TG_WHEN <> 'AFTER' OR TG_OP <> 'DELETE' THEN         RAISE EXCEPTION 'calendar_previous_version_id_cascade_delete may only run as a AFTER DELETE trigger';     END IF;      DELETE FROM calendar where id=OLD.previous_version_id;     RETURN OLD; END; $body$ LANGUAGE plpgsql;; CREATE TRIGGER calendar_previous_version_id_cascade_delete_trigger AFTER DELETE ON calendar     FOR EACH ROW EXECUTE PROCEDURE calendar_previous_version_id_cascade_delete();;                       "
-    }
-  } ]
+  ],
+  "version": 3
 }

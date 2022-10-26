@@ -1432,27 +1432,55 @@ class HasuraConfigurator(
         return rootFieldNames;
     }
 
-    fun  loadMetadata(conf: HasuraConfiguration) {
-        loadIntoHasura(Json.encodeToString(conf.metadata), hasuraMetadataEndpoint)
+    fun  loadMetadata(conf: HasuraConfiguration) : String {
+        return executeMetadataApi(conf.replaceMetadataJson)
     }
 
-    fun  loadMetadata(metadata: HasuraMetadataV3) {
-        loadIntoHasura(Json.encodeToString(metadata), hasuraMetadataEndpoint)
+    fun  loadMetadata(metadata: HasuraMetadataV3)  : String {
+        return executeMetadataApi(metadata.replaceMetadataJson)
     }
 
-    fun  loadMetadata(json: String) {
-        loadIntoHasura(json, hasuraMetadataEndpoint)
+    fun  loadMetadata(metadataJson: String) : String {
+        return loadIntoHasura(buildJsonObject {
+            put("type", "replace_metadata")
+            put("args", Json.decodeFromString(metadataJson))
+        }.toString(), hasuraMetadataEndpoint)
     }
 
-    fun  loadBulkRunSqls(conf: HasuraConfiguration) {
-        loadIntoHasura(Json.encodeToString(conf.bulkRunSqlJson), hasuraSchemaEndpoint)
+    fun  loadBulkRunSqls(conf: HasuraConfiguration) : String {
+        return loadIntoHasura(Json.encodeToString(conf.bulkRunSqlJson), hasuraSchemaEndpoint)
     }
 
-    fun  loadBulkRunSqls(json: String) {
-        loadIntoHasura(json, hasuraSchemaEndpoint)
+    fun  loadBulkRunSqls(json: String) : String {
+        return executeSchemaApi(json)
     }
 
-    private fun loadIntoHasura(json: String, endpoint: String) {
+    fun exportMetadata() : HasuraMetadataV3 {
+        return Json.decodeFromString<HasuraMetadataV3>(exportMetadataJson())
+    }
+
+     fun exportMetadataJson() : String {
+        return executeMetadataApi("""{"type": "export_metadata", "args": {}}""")
+    }
+
+    fun loadConfiguration(conf: HasuraConfiguration) : List<String> {
+        return buildList {
+            conf.bulkRunSqlJson?.let {
+                add(loadBulkRunSqls(conf.bulkRunSqlJson))
+            }
+            add(loadMetadata(conf.metadata))
+        }
+    }
+
+    fun executeMetadataApi(operation: String) : String {
+        return loadIntoHasura(operation, hasuraMetadataEndpoint)
+    }
+
+    fun executeSchemaApi(operation: String) : String {
+        return loadIntoHasura(operation, hasuraSchemaEndpoint)
+    }
+
+    private fun loadIntoHasura(json: String, endpoint: String) : String {
         val client = WebClient
             .builder()
             .baseUrl(endpoint)
@@ -1467,7 +1495,8 @@ class HasuraConfigurator(
         // Make it synchronous for now
         try {
             val result = request.block()
-            LOG.info("Hasura initialization done {}", result)
+            LOG.debug("loadIntoHasura done {}", result)
+            return result!!
         } catch (ex: WebClientResponseException) {
             LOG.error("Hasura initialization failed", ex)
             LOG.error("Response text: {}", ex.responseBodyAsString)

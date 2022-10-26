@@ -68,7 +68,7 @@ class ActionTest {
 @HasuraType("UserAndCalendarOutput")
 data class UserAndCalendar(
     var userName: String,
-    @HasuraField(type="bigint!!!!!")
+    @HasuraField(type="bigint!")
     var userId: Long,
     @HasuraRelationship
     var automaticCalendar: Calendar,

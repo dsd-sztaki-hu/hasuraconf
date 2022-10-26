@@ -1,4 +1,377 @@
 {
+  "actions": [
+    {
+      "definition": {
+        "arguments": [
+          {
+            "name": "args",
+            "type": "UserAndCalendarInput!"
+          }
+        ],
+        "forward_client_headers": true,
+        "handler": "{{HANDLER_URL}}",
+        "kind": "synchronous",
+        "output_type": "[UserAndCalendarOutput5!]",
+        "type": "mutation"
+      },
+      "name": "createUserAndCalendar5"
+    },
+    {
+      "definition": {
+        "arguments": [
+          {
+            "name": "args",
+            "type": "UserAndCalendarInput!"
+          }
+        ],
+        "forward_client_headers": true,
+        "handler": "{{HANDLER_URL}}",
+        "kind": "synchronous",
+        "output_type": "UserAndCalendarOutput",
+        "type": "mutation"
+      },
+      "name": "createUserAndCalendar4"
+    },
+    {
+      "definition": {
+        "arguments": [
+          {
+            "name": "name",
+            "type": "String!"
+          },
+          {
+            "name": "description",
+            "type": "String!"
+          },
+          {
+            "name": "calendarType",
+            "type": "CalendarType!"
+          }
+        ],
+        "forward_client_headers": true,
+        "handler": "{{HANDLER_URL}}",
+        "kind": "synchronous",
+        "output_type": "UserAndCalendar",
+        "type": "mutation"
+      },
+      "name": "createUserAndCalendar2"
+    },
+    {
+      "definition": {
+        "arguments": [
+          {
+            "name": "args",
+            "type": "UserAndCalendarInput!"
+          }
+        ],
+        "forward_client_headers": true,
+        "handler": "{{HANDLER_URL}}",
+        "kind": "synchronous",
+        "output_type": "[String!]",
+        "type": "mutation"
+      },
+      "name": "createUserAndCalendar3"
+    },
+    {
+      "definition": {
+        "arguments": [
+          {
+            "name": "args",
+            "type": "UserAndCalendarInput!"
+          }
+        ],
+        "forward_client_headers": true,
+        "handler": "{{HANDLER_URL}}",
+        "kind": "synchronous",
+        "output_type": "String",
+        "type": "mutation"
+      },
+      "name": "createUserAndCalendar"
+    },
+    {
+      "definition": {
+        "arguments": [
+          {
+            "name": "args",
+            "type": "SignUpWithExternalRestApiInput!"
+          }
+        ],
+        "forward_client_headers": true,
+        "handler": "http://some.rest.endpoint",
+        "kind": "synchronous",
+        "output_type": "SignUpWithExternalRestApiOutput",
+        "request_transform": {
+          "body": "{\"email\":{{$body.input.args.email}},\"password\":{{$body.input.args.password}}}",
+          "content_type": "application/json",
+          "method": "POST",
+          "query_params": {},
+          "template_engine": "Kriti",
+          "url": "{{$base_url}}/signup/email-password"
+        },
+        "type": "mutation"
+      },
+      "name": "signUpWithExternalRestApi"
+    }
+  ],
+  "custom_types": {
+    "enums": [
+      {
+        "name": "CalendarType",
+        "values": [
+          {
+            "value": "PRIVATE"
+          },
+          {
+            "value": "PUBLIC"
+          },
+          {
+            "value": "SHARED"
+          }
+        ]
+      },
+      {
+        "name": "calendar_role_type_enum",
+        "values": [
+          {
+            "value": "OWNER"
+          },
+          {
+            "value": "EDITOR"
+          },
+          {
+            "value": "VIEWER"
+          }
+        ]
+      }
+    ],
+    "input_objects": [
+      {
+        "fields": [
+          {
+            "name": "name",
+            "type": "String!"
+          },
+          {
+            "name": "description",
+            "type": "String!"
+          },
+          {
+            "name": "isPublic",
+            "type": "Boolean!"
+          },
+          {
+            "name": "hasColors",
+            "type": "Boolean"
+          }
+        ],
+        "name": "UserAndCalendarInput"
+      },
+      {
+        "fields": [
+          {
+            "name": "email",
+            "type": "String!"
+          },
+          {
+            "name": "password",
+            "type": "String!"
+          }
+        ],
+        "name": "SignUpWithExternalRestApiInput"
+      }
+    ],
+    "objects": [
+      {
+        "description": "The description of UserAndCalendarOutput",
+        "fields": [
+          {
+            "description": "The user's name",
+            "name": "userFullName",
+            "type": "String!"
+          },
+          {
+            "description": "The user's age",
+            "name": "userAge",
+            "type": "Int"
+          },
+          {
+            "description": "Field is not defined in Kotlin as nullable, but explicitly set so",
+            "name": "explicitNullable",
+            "type": "String"
+          },
+          {
+            "description": "Field is defined in Kotlin as nullable, but explicitly set to not nullable",
+            "name": "explicitlyNotNullable",
+            "type": "String!"
+          },
+          {
+            "description": "User identifier",
+            "name": "userId",
+            "type": "bigint!"
+          },
+          {
+            "name": "calendarId",
+            "type": "bigint!"
+          },
+          {
+            "name": "differentCalendarId",
+            "type": "bigint!"
+          }
+        ],
+        "name": "UserAndCalendarOutput5",
+        "relationships": [
+          {
+            "field_mapping": {
+              "calendarId": "id"
+            },
+            "name": "calendar",
+            "remote_table": {
+              "name": "calendar",
+              "schema": "public"
+            },
+            "type": "object"
+          },
+          {
+            "field_mapping": {
+              "differentCalendarId": "id"
+            },
+            "name": "otherCalendar",
+            "remote_table": {
+              "name": "calendar",
+              "schema": "public"
+            },
+            "type": "object"
+          }
+        ]
+      },
+      {
+        "description": "The description of UserAndCalendarOutput",
+        "fields": [
+          {
+            "description": "The user's name",
+            "name": "userFullName",
+            "type": "String!"
+          },
+          {
+            "description": "The user's age",
+            "name": "userAge",
+            "type": "Int"
+          },
+          {
+            "description": "Field is not defined in Kotlin as nullable, but explicitly set so",
+            "name": "explicitNullable",
+            "type": "String"
+          },
+          {
+            "description": "Field is defined in Kotlin as nullable, but explicitly set to not nullable",
+            "name": "explicitlyNotNullable",
+            "type": "String!"
+          },
+          {
+            "description": "User identifier",
+            "name": "userId",
+            "type": "bigint!"
+          },
+          {
+            "name": "calendarId",
+            "type": "bigint!"
+          },
+          {
+            "name": "differentCalendarId",
+            "type": "bigint!"
+          }
+        ],
+        "name": "UserAndCalendarOutput",
+        "relationships": [
+          {
+            "field_mapping": {
+              "calendarId": "id"
+            },
+            "name": "calendar",
+            "remote_table": {
+              "name": "calendar",
+              "schema": "public"
+            },
+            "type": "object"
+          },
+          {
+            "field_mapping": {
+              "differentCalendarId": "id"
+            },
+            "name": "otherCalendar",
+            "remote_table": {
+              "name": "calendar",
+              "schema": "public"
+            },
+            "type": "object"
+          }
+        ]
+      },
+      {
+        "fields": [
+          {
+            "name": "mfa",
+            "type": "String!"
+          },
+          {
+            "name": "session",
+            "type": "String!"
+          }
+        ],
+        "name": "SignUpWithExternalRestApiOutput"
+      },
+      {
+        "fields": [
+          {
+            "name": "userName",
+            "type": "String"
+          },
+          {
+            "name": "userId",
+            "type": "bigint!"
+          },
+          {
+            "name": "calendarId",
+            "type": "bigint!"
+          },
+          {
+            "name": "differentCalendarId",
+            "type": "bigint!"
+          }
+        ],
+        "name": "UserAndCalendar",
+        "relationships": [
+          {
+            "field_mapping": {
+              "calendarId": "id"
+            },
+            "name": "calendar",
+            "remote_table": {
+              "name": "calendar",
+              "schema": "public"
+            },
+            "type": "object"
+          },
+          {
+            "field_mapping": {
+              "differentCalendarId": "id"
+            },
+            "name": "otherCalendar",
+            "remote_table": {
+              "name": "calendar",
+              "schema": "public"
+            },
+            "type": "object"
+          }
+        ]
+      }
+    ],
+    "scalars": [
+      {
+        "name": "bigint"
+      }
+    ]
+  },
   "sources": [
     {
       "configuration": {
