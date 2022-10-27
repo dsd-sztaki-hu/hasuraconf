@@ -76,34 +76,38 @@ val HasuraConfiguration.runSqls: List<JsonObject>?
         return if(list.isNotEmpty()) list else null
     }
 
-val HasuraConfiguration.bulkRunSqlJson: String
-    get() = buildJsonObject {
+fun HasuraConfiguration.toBulkRunSql(): JsonObject {
+    return buildJsonObject {
         put("type", "bulk")
         put("args", when {
             runSqls != null -> runSqls!!.toJsonArray()
-            else -> buildJsonArray{}
+            else -> buildJsonArray {}
         })
-    }.toString()
+    }
+}
 
-val HasuraConfiguration.cascadeDeleteJson: String
-    get() = buildJsonObject {
+fun HasuraConfiguration.toCascadeDeleteJson(): JsonObject {
+    return buildJsonObject {
         put("type", "bulk")
         put("args", when {
             cascadeDeleteFieldConfigs != null -> cascadeDeleteFieldConfigs.map { it.runSql }.toJsonArray()
-            else -> buildJsonArray{}
+            else -> buildJsonArray {}
         })
-    }.toString()
+    }
+}
 
 
 val HasuraConfiguration.replaceMetadataJson: String
     get() = buildJsonObject {
                 put("type", "replace_metadata")
+                // allow_inconsistent_metadata??
                 put("args", Json.encodeToString(metadata))
             }.toString()
 
 val HasuraMetadataV3.replaceMetadataJson: String
     get() = buildJsonObject {
         put("type", "replace_metadata")
+        // allow_inconsistent_metadata??
         put("args", Json.encodeToJsonElement(this@replaceMetadataJson))
     }.toString()
 

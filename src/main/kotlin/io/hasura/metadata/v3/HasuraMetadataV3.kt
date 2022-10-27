@@ -469,7 +469,13 @@ data class CronTrigger (
     /**
      * URL of the webhook
      */
-    var webhook: String
+    var webhook: String,
+
+    @SerialName("request_transform")
+    var requestTransform: RequestTransformation? = null,
+
+    @SerialName("response_transform")
+    var responseTransform: ResponseTransformation? = null,
 )
 
 /**
@@ -782,6 +788,8 @@ data class FunctionConfiguration (
      */
     @SerialName("session_argument")
     var sessionArgument: String? = null
+
+    // TODO: mmissing fields from https://hasura.io/docs/latest/api-reference/syntax-defs/#function-configuration
 )
 
 @Serializable(with = FunctionNameSerializer::class)
@@ -950,9 +958,16 @@ data class TableEntry (
     var selectPermissions: List<SelectPermissionEntry>? = null,
 
     @SerialName("update_permissions")
-    var updatePermissions: List<UpdatePermissionEntry>? = null
+    var updatePermissions: List<UpdatePermissionEntry>? = null,
+
+    @SerialName("apollo_federation_config")
+    var apolloFederationConfig: ApolloFederationConfig? = null
 )
 
+@Serializable
+data class ApolloFederationConfig(
+    var enable: String
+)
 /**
  *
  * https://hasura.io/docs/latest/graphql/core/api-reference/schema-metadata-api/relationship.html#create-array-relationship-syntax

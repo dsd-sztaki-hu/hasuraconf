@@ -1,34 +1,25 @@
 package com.beepsoft.hasuraconf
 
-import io.hasura.metadata.v3.cascadeDeleteJson
+import io.hasura.metadata.v3.toCascadeDeleteJson
 import io.hasura.metadata.v3.metadataJson
 import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import org.apache.commons.lang3.SystemUtils
-import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.junit.jupiter.api.fail
 import org.skyscreamer.jsonassert.JSONAssert
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.util.TestPropertyValues
 import org.springframework.context.ApplicationContextInitializer
 import org.springframework.context.ConfigurableApplicationContext
-import org.springframework.http.HttpHeaders
-import org.springframework.http.MediaType
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.context.junit.jupiter.SpringExtension
-import org.springframework.web.reactive.function.client.WebClient
-import org.springframework.web.reactive.function.client.WebClientResponseException
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.containers.output.Slf4jLogConsumer
 import org.testcontainers.junit.jupiter.Testcontainers
-import reactor.core.publisher.Mono
-import java.io.File
 
 /**
  * Tests HasuraConfigurator with Postgresql + Hasura
@@ -156,10 +147,11 @@ class HasuraConfiguratorIntegrationTests {
 		JSONAssert.assertEquals(metadataJson, snapshot, false)
 
 		snapshot = readFileUsingGetResource("/cascade_delete_snapshot1.json")
-		println("Cascade delete JSON generated:\n${confData.cascadeDeleteJson}")
+		val cascadeDelete = confData.toCascadeDeleteJson().toString()
+		println("Cascade delete JSON generated:\n${cascadeDelete}")
 		// Check in both directions
-		JSONAssert.assertEquals(snapshot, confData.cascadeDeleteJson, false)
-		JSONAssert.assertEquals(confData.cascadeDeleteJson, snapshot, false)
+		JSONAssert.assertEquals(snapshot, cascadeDelete, false)
+		JSONAssert.assertEquals(cascadeDelete, snapshot, false)
 
 		println("JSON schema generated:\n${confData.jsonSchema}")
 		snapshot = readFileUsingGetResource("/json_schema_snapshot1.json")

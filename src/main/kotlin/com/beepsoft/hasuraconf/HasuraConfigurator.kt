@@ -1433,22 +1433,26 @@ class HasuraConfigurator(
     }
 
     fun  loadMetadata(conf: HasuraConfiguration) : String {
-        return executeMetadataApi(conf.replaceMetadataJson)
+        return executeMetadataApi(conf.toReplaceMetadata().toString())
     }
 
     fun  loadMetadata(metadata: HasuraMetadataV3)  : String {
-        return executeMetadataApi(metadata.replaceMetadataJson)
+        return executeMetadataApi(metadata.toReplaceMetadata().toString())
     }
 
-    fun  loadMetadata(metadataJson: String) : String {
+    fun  loadMetadata(metadataJson: String, allowInconsistent: Boolean = false) : String {
         return loadIntoHasura(buildJsonObject {
             put("type", "replace_metadata")
-            put("args", Json.decodeFromString(metadataJson))
+            put("version", 2)
+            putJsonObject("args") {
+                put("allow_inconsistent_metadata", allowInconsistent)
+                put("metadata", Json.decodeFromString(metadataJson))
+            }
         }.toString(), hasuraMetadataEndpoint)
     }
 
     fun  loadBulkRunSqls(conf: HasuraConfiguration) : String {
-        return loadIntoHasura(Json.encodeToString(conf.bulkRunSqlJson), hasuraSchemaEndpoint)
+        return loadIntoHasura(conf.toBulkRunSql().toString(), hasuraSchemaEndpoint)
     }
 
     fun  loadBulkRunSqls(json: String) : String {
@@ -1465,19 +1469,31 @@ class HasuraConfigurator(
 
     fun loadConfiguration(conf: HasuraConfiguration) : List<String> {
         return buildList {
-            conf.bulkRunSqlJson?.let {
-                add(loadBulkRunSqls(conf.bulkRunSqlJson))
+            conf.toBulkRunSql()?.let {
+                add(loadBulkRunSqls(conf.toBulkRunSql().toString()))
             }
             add(loadMetadata(conf.metadata))
         }
+    }
+
+    fun executeMetadataApi(operation: JsonObject) : String {
+        return loadIntoHasura(operation, hasuraMetadataEndpoint)
     }
 
     fun executeMetadataApi(operation: String) : String {
         return loadIntoHasura(operation, hasuraMetadataEndpoint)
     }
 
+    fun executeSchemaApi(operation: JsonObject) : String {
+        return loadIntoHasura(operation, hasuraSchemaEndpoint)
+    }
+
     fun executeSchemaApi(operation: String) : String {
         return loadIntoHasura(operation, hasuraSchemaEndpoint)
+    }
+
+    private fun loadIntoHasura(json: JsonObject, endpoint: String) : String {
+        return loadIntoHasura(json.toString(), endpoint)
     }
 
     private fun loadIntoHasura(json: String, endpoint: String) : String {
