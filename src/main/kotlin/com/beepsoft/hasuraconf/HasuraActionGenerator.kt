@@ -123,10 +123,10 @@ class HasuraActionGenerator(
     //		registerColumnType( Types.NUMERIC, "numeric($p, $s)" );
     //		registerColumnType( Types.OTHER, "uuid" );
 
-    // Uses HasuraConfiguratorV2.postgresqlNames to map from Java type to JDBC type to SQL type to postgresql name
+    // Uses HasuraConfigurator.postgresqlNames to map from Java type to JDBC type to SQL type to postgresql name
     // for the type
     inline fun getHasuraTypeOf(clazz: Class<*>) =
-        HasuraConfiguratorV2.postgresqlNames[dialect.getTypeName(javaTypeToJDBCype[clazz] as Int)]
+        HasuraConfigurator.postgresqlNames[dialect.getTypeName(javaTypeToJDBCype[clazz] as Int)]
 
     inline fun isBuiltinGraphqlType(type: String) =
         when(type) {
@@ -781,7 +781,7 @@ class HasuraActionGenerator(
                                     if (metaModel != null) {
                                         val entity = metaModel.entity(fieldType)
                                         val targetEntityClassMetadata = metaModel.entityPersister(entity.javaType.typeName) as AbstractEntityPersister
-                                        graphqlType = HasuraConfiguratorV2.graphqlTypeFor(metaModel, targetEntityClassMetadata.identifierType, targetEntityClassMetadata)
+                                        graphqlType = HasuraConfigurator.graphqlTypeFor(metaModel, targetEntityClassMetadata.identifierType, targetEntityClassMetadata)
                                     }
                                     else {
                                         throw HasuraConfiguratorException("graphqlFieldType must be specified for a @HasuraRelationship referring to an object type type on field $field")

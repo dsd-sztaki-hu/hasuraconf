@@ -10,6 +10,7 @@ import org.apache.commons.lang3.SystemUtils
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.api.fail
 import org.skyscreamer.jsonassert.JSONAssert
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -126,7 +127,6 @@ class HasuraConfiguratorIntegrationTests {
 	}
 
 	@Autowired lateinit var conf: HasuraConfigurator
-	@Autowired lateinit var staticConf: HasuraStaticConfigurator
 
 	@DisplayName("Test generated hasura conf JSON validity with snapshot")
 	@Test
@@ -231,170 +231,171 @@ class HasuraConfiguratorIntegrationTests {
 		JSONAssert.assertEquals(snapshot, exportMeta, false)
 		JSONAssert.assertEquals(exportMeta, snapshot, false)
 	}
-//
-//	@DisplayName("Test HasuraStaticConfigurator")
-//	@Test
-//	fun testHasuraStaticConfigurator() {
-//		staticConf.hasuraEndpoint = "http://localhost:${hasuraContainer.getMappedPort(8080)}/v1/query"
-//		staticConf.hasuraAdminSecret = "hasuraconf"
-//
-//		val conf1 = """
-//			{
-//			  "type": "bulk",
-//			  "args": [
-//			    {
-//			      "type": "run_sql",
-//			      "args": {
-//			        "sql": "ALTER TABLE \"public\".\"calendar_user\" ADD COLUMN \"custom_user_data\" text NULL;",
-//			        "cascade": false,
-//			        "read_only": false
-//			      }
-//			    }
-//			  ]
-//			}
-//		""".trimIndent()
-//
-//		// First it should not fail
-//		staticConf.loadStaticConf(conf1)
-//		// Should fail
-//		try {
-//			staticConf.loadStaticConf(conf1)
-//			fail { "Should have got an error" }
-//		}
-//		catch (ex: Exception) {
-//			println("Received exception $ex")
-//		}
-//
-//		val conf2 = """
-//			{
-//			  "hasuraconfLoadSeparately": true,
-//			  "type": "bulk",
-//			  "args": [
-//			    {
-//			      "hasuraconfIgnoreError": {
-//			        "message":"column \"custom_user_data\" of relation \"calendar_user\" already exists",
-//			        "status_code":"42701"
-//			      },
-//			      "type": "run_sql",
-//			      "args": {
-//			        "sql": "ALTER TABLE \"public\".\"calendar_user\" ADD COLUMN \"custom_user_data\" text NULL;",
-//			        "cascade": false,
-//			        "read_only": false
-//			      }
-//			    }
-//			  ]
-//			}
-//		""".trimIndent()
-//		// Should not fail
-//		staticConf.loadStaticConf(conf2)
-//
-//		val conf3 = """
-//			{
-//			  "hasuraconfLoadSeparately": true,
-//			  "type": "bulk",
-//			  "args": [
-//			    {
-//			      "hasuraconfIgnoreError": {
-//			        "message":"column \"custom_user_data2\" of relation \"calendar_user\" already exists",
-//			        "status_code":"42701"
-//			      },
-//			      "type": "run_sql",
-//			      "args": {
-//			        "sql": "ALTER TABLE \"public\".\"calendar_user\" ADD COLUMN \"custom_user_data2\" text NULL;",
-//			        "cascade": false,
-//			        "read_only": false
-//			      }
-//			    }
-//			  ]
-//			}
-//		""".trimIndent()
-//		// Should not fail no mattter how many times we execute it
-//		staticConf.loadStaticConf(conf3)
-//		staticConf.loadStaticConf(conf3)
-//		staticConf.loadStaticConf(conf3)
-//
-//		val conf4 = """
-//			{
-//			  "hasuraconfLoadSeparately": true,
-//			  "type": "bulk",
-//			  "args": [
-//			    {
-//			      "hasuraconfIgnoreError": {
-//			        "message":"column \"any_field\" of relation \"bad_table\" already exists",
-//			        "status_code":"42701"
-//			      },
-//			      "type": "run_sql",
-//			      "args": {
-//			        "sql": "ALTER TABLE \"public\".\"bad_table\" ADD COLUMN \"any_field\" text NULL;",
-//			        "cascade": false,
-//			        "read_only": false
-//			      }
-//			    }
-//			  ]
-//			}
-//		""".trimIndent()
-//		// Should fail even for the first execution, because bad_table doesn't exist and so we won't get the
-//		// expected "column \"any_field\" of relation \"bad_table\" already exists" message, but
-//		// "relation \"public.bad_table\" does not exist","status_code":"42P01"
-//		try {
-//			staticConf.loadStaticConf(conf4)
-//			fail { "Should have got an error" }
-//		}
-//		catch (ex: Exception) {
-//			println("Received exception $ex")
-//		}
-//
-//
-//		val conf5 = """
-//			{
-//			  "hasuraconfLoadSeparately": true,
-//			  "type": "bulk",
-//			  "args": [
-//			    {
-//			      "hasuraconfIgnoreError": {
-//			        "message":"column \"custom_user_data3\" of relation \"calendar_user\" already exists",
-//			        "status_code":"42701"
-//			      },
-//			      "type": "run_sql",
-//			      "args": {
-//			        "sql": "ALTER TABLE \"public\".\"calendar_user\" ADD COLUMN \"custom_user_data3\" text NULL;",
-//			        "cascade": false,
-//			        "read_only": false
-//			      }
-//			    },
-//			    {
-//			      "hasuraconfIgnoreError": {
-//			        "message":"column \"custom_user_data4\" of relation \"calendar_user\" already exists",
-//			        "status_code":"42701"
-//			      },
-//			      "type": "run_sql",
-//			      "args": {
-//			        "sql": "ALTER TABLE \"public\".\"calendar_user\" ADD COLUMN \"custom_user_data4\" text NULL;",
-//			        "cascade": false,
-//			        "read_only": false
-//			      }
-//			    },
-//			    {
-//			      "hasuraconfIgnoreError": {
-//			        "message":"column \"custom_user_data5\" of relation \"calendar_user\" already exists",
-//			        "status_code":"42701"
-//			      },
-//			      "type": "run_sql",
-//			      "args": {
-//			        "sql": "ALTER TABLE \"public\".\"calendar_user\" ADD COLUMN \"custom_user_data5\" text NULL;",
-//			        "cascade": false,
-//			        "read_only": false
-//			      }
-//			    }
-//			  ]
-//			}
-//		""".trimIndent()
-//		// Multiple operatioons, should not fail no matter how many times we execute it
-//		staticConf.loadStaticConf(conf5)
-//		staticConf.loadStaticConf(conf5)
-//		staticConf.loadStaticConf(conf5)
-//	}
-//
+
+	@DisplayName("Test executing schema API with safety configs")
+	@Test
+	fun testExecuteShcemaApiSafely() {
+		conf.hasuraSchemaEndpoint = "http://localhost:${hasuraContainer.getMappedPort(8080)}/v2/query"
+		conf.hasuraMetadataEndpoint = "http://localhost:${hasuraContainer.getMappedPort(8080)}/v1/metadata"
+		conf.hasuraAdminSecret = "hasuraconf"
+
+		val conf1 = """
+			{
+			  "type": "bulk",
+			  "args": [
+			    {
+			      "type": "run_sql",
+			      "args": {
+			        "sql": "ALTER TABLE \"public\".\"calendar_user\" ADD COLUMN \"custom_user_data\" text NULL;",
+			        "cascade": false,
+			        "read_only": false
+			      }
+			    }
+			  ]
+			}
+		""".trimIndent()
+
+		// First it should not fail
+		conf.executeSchemaApi(conf1, true)
+		// Should fail
+		try {
+			conf.executeSchemaApi(conf1, true)
+			fail { "Should have got an error" }
+		}
+		catch (ex: Exception) {
+			println("Received exception $ex")
+		}
+
+		val conf2 = """
+			{
+			  "hasuraconfLoadSeparately": true,
+			  "type": "bulk",
+			  "args": [
+			    {
+			      "hasuraconfIgnoreError": {
+			        "message":"column \"custom_user_data\" of relation \"calendar_user\" already exists",
+			        "status_code":"42701"
+			      },
+			      "type": "run_sql",
+			      "args": {
+			        "sql": "ALTER TABLE \"public\".\"calendar_user\" ADD COLUMN \"custom_user_data\" text NULL;",
+			        "cascade": false,
+			        "read_only": false
+			      }
+			    }
+			  ]
+			}
+		""".trimIndent()
+		// Should not fail
+		conf.executeSchemaApi(conf2, true)
+
+		val conf3 = """
+			{
+			  "hasuraconfLoadSeparately": true,
+			  "type": "bulk",
+			  "args": [
+			    {
+			      "hasuraconfIgnoreError": {
+			        "message":"column \"custom_user_data2\" of relation \"calendar_user\" already exists",
+			        "status_code":"42701"
+			      },
+			      "type": "run_sql",
+			      "args": {
+			        "sql": "ALTER TABLE \"public\".\"calendar_user\" ADD COLUMN \"custom_user_data2\" text NULL;",
+			        "cascade": false,
+			        "read_only": false
+			      }
+			    }
+			  ]
+			}
+		""".trimIndent()
+		// Should not fail no mattter how many times we execute it
+		conf.executeSchemaApi(conf3, true)
+		conf.executeSchemaApi(conf3, true)
+		conf.executeSchemaApi(conf3, true)
+
+		val conf4 = """
+			{
+			  "hasuraconfLoadSeparately": true,
+			  "type": "bulk",
+			  "args": [
+			    {
+			      "hasuraconfIgnoreError": {
+			        "message":"column \"any_field\" of relation \"bad_table\" already exists",
+			        "status_code":"42701"
+			      },
+			      "type": "run_sql",
+			      "args": {
+			        "sql": "ALTER TABLE \"public\".\"bad_table\" ADD COLUMN \"any_field\" text NULL;",
+			        "cascade": false,
+			        "read_only": false
+			      }
+			    }
+			  ]
+			}
+		""".trimIndent()
+		// Should fail even for the first execution, because bad_table doesn't exist and so we won't get the
+		// expected "column \"any_field\" of relation \"bad_table\" already exists" message, but
+		// "relation \"public.bad_table\" does not exist","status_code":"42P01"
+		try {
+			conf.executeSchemaApi(conf4, true)
+			fail { "Should have got an error" }
+		}
+		catch (ex: Exception) {
+			println("Received exception $ex")
+		}
+
+
+		val conf5 = """
+			{
+			  "hasuraconfLoadSeparately": true,
+			  "type": "bulk",
+			  "args": [
+			    {
+			      "hasuraconfIgnoreError": {
+			        "message":"column \"custom_user_data3\" of relation \"calendar_user\" already exists",
+			        "status_code":"42701"
+			      },
+			      "type": "run_sql",
+			      "args": {
+			        "sql": "ALTER TABLE \"public\".\"calendar_user\" ADD COLUMN \"custom_user_data3\" text NULL;",
+			        "cascade": false,
+			        "read_only": false
+			      }
+			    },
+			    {
+			      "hasuraconfIgnoreError": {
+			        "message":"column \"custom_user_data4\" of relation \"calendar_user\" already exists",
+			        "status_code":"42701"
+			      },
+			      "type": "run_sql",
+			      "args": {
+			        "sql": "ALTER TABLE \"public\".\"calendar_user\" ADD COLUMN \"custom_user_data4\" text NULL;",
+			        "cascade": false,
+			        "read_only": false
+			      }
+			    },
+			    {
+			      "hasuraconfIgnoreError": {
+			        "message":"column \"custom_user_data5\" of relation \"calendar_user\" already exists",
+			        "status_code":"42701"
+			      },
+			      "type": "run_sql",
+			      "args": {
+			        "sql": "ALTER TABLE \"public\".\"calendar_user\" ADD COLUMN \"custom_user_data5\" text NULL;",
+			        "cascade": false,
+			        "read_only": false
+			      }
+			    }
+			  ]
+			}
+		""".trimIndent()
+		// Multiple operatioons, should not fail no matter how many times we execute it
+		conf.executeSchemaApi(conf5, true)
+		conf.executeSchemaApi(conf5, true)
+		conf.executeSchemaApi(conf5, true)
+	}
+
 
 	@DisplayName("Test action generation via HasuraConfigurator - 1")
 	@Test

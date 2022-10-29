@@ -1484,11 +1484,17 @@ class HasuraConfigurator(
         return loadIntoHasura(operation, hasuraMetadataEndpoint)
     }
 
-    fun executeSchemaApi(operation: JsonObject) : String {
+    fun executeSchemaApi(operation: JsonObject, safely: Boolean = false) : String {
+        if (safely) {
+            return executeSchemaApiSafely(operation.toString(), hasuraSchemaEndpoint)
+        }
         return loadIntoHasura(operation, hasuraSchemaEndpoint)
     }
 
-    fun executeSchemaApi(operation: String) : String {
+    fun executeSchemaApi(operation: String, safely: Boolean = false) : String {
+        if (safely) {
+            return executeSchemaApiSafely(operation, hasuraSchemaEndpoint)
+        }
         return loadIntoHasura(operation, hasuraSchemaEndpoint)
     }
 
@@ -1519,6 +1525,138 @@ class HasuraConfigurator(
             throw ex
         }
     }
+
+    //
+    // Safe SQL / schema api execution with possible error handling
+    //
+
+    private fun executeSchemaApiSafely(staticConf: String, endpoint: String): String {
+        val confJson = Json.parseToJsonElement(staticConf) as JsonObject
+        var loadSeparately = false
+        if ((confJson["type"] as JsonPrimitive).content == "bulk" &&
+            confJson.containsKey("hasuraconfLoadSeparately") && (confJson["hasuraconfLoadSeparately"] as JsonPrimitive).boolean == true) {
+            loadSeparately = true
+        }
+
+        // If loading separately then args must be an array of operations that we execute separately
+        if (loadSeparately) {
+            val args = confJson.get("args") as JsonArray
+            for (o in args) {
+                return doExecuteSchemaApiSafely(o as JsonObject, endpoint)
+            }
+        } else {
+            return doExecuteSchemaApiSafely(confJson, endpoint)
+        }
+        return loadIntoHasura(confJson, endpoint)
+    }
+
+    private fun doExecuteSchemaApiSafely(confJson: JsonObject, endpoint: String): String {
+        LOG.info("Executing static Hasura initialization JSON:")
+        LOG.info(confJson.toString())
+        val client = WebClient
+            .builder()
+            .baseUrl(endpoint)
+            .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+            .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+            .defaultHeader("X-Hasura-Admin-Secret", hasuraAdminSecret)
+            .build()
+        // Make it synchronous for now
+        var result: String = ""
+        try {
+            result = client.post().body(Mono.just<String>(Json.encodeToString(confJson)), String::class.java)
+                .retrieve().bodyToMono(String::class.java).block()!!
+            LOG.info("Static Hasura initialization done {}", result)
+            return result
+        } catch (ex: WebClientResponseException) {
+
+            // Check if we received an "expected" error, ie. one that matched the error defined in the
+            // confJson's diwasIgnoreError field. If we have a match, we ignore this error. It must be an error
+            // which is eg. about some value already set. In this case we can ignore this error safely.
+            if (canIgnoreError(confJson, Json.parseToJsonElement(ex.responseBodyAsString) as JsonObject)) {
+                LOG.info("Static Hasura configuration had error, but can be ignored: {}", ex.responseBodyAsString)
+                return result
+            }
+            LOG.error("Hasura configuration failed", ex)
+            LOG.error("Response text: {}", ex.responseBodyAsString)
+            throw ex
+        } finally {
+        }
+    }
+
+    private fun canIgnoreError(confJson: JsonObject, errorJson: JsonObject): Boolean {
+        // Set to true by default. If a value is set for any of these we will evaluate those only
+        var statusCodeMatches = true
+        var messageMatches = true
+        var descriptionMatches = true
+        var attemptToIgnoreError = false
+        if (confJson.containsKey("hasuraconfIgnoreError")) {
+            attemptToIgnoreError = true
+            val obj = confJson.get("hasuraconfIgnoreError")
+            if (obj is JsonObject) {
+                return canIgnoreErrorWithHasuraconfIgnoreError(obj as JsonObject, errorJson)
+            } else {
+                for (o in obj as JsonArray) {
+                    if (canIgnoreErrorWithHasuraconfIgnoreError(o as JsonObject, errorJson)) {
+                        return true
+                    }
+                }
+            }
+            return false
+        }
+        if (confJson.containsKey("hasuraconfIgnoreErrorStatusCode")) {
+            attemptToIgnoreError = true
+            statusCodeMatches = isErrorFieldMatching("statusCode", (confJson.get("hasuraconfIgnoreErrorStatusCode") as JsonPrimitive).content, errorJson)
+        }
+        if (confJson.containsKey("hasuraconfIgnoreErrorMessage")) {
+            attemptToIgnoreError = true
+            messageMatches = isErrorFieldMatching("message", (confJson.get("hasuraconfIgnoreErrorMessage") as JsonPrimitive).content, errorJson)
+        }
+        if (confJson.containsKey("hasuraconfIgnoreErrorDescription")) {
+            attemptToIgnoreError = true
+            descriptionMatches = isErrorFieldMatching("description", (confJson.get("hasuraconfIgnoreErrorDescription") as JsonPrimitive).content, errorJson)
+        }
+        return statusCodeMatches && messageMatches && descriptionMatches && attemptToIgnoreError
+    }
+
+    private fun canIgnoreErrorWithHasuraconfIgnoreError(ignoreErrorJson: JsonObject, errorJson: JsonObject): Boolean {
+        var statusCodeMatches = true
+        val messageMatches = true
+        val descriptionMatches = true
+        var attemptToIgnoreError = false
+        if (ignoreErrorJson.containsKey("statusCode")) {
+            attemptToIgnoreError = true
+            statusCodeMatches = isErrorFieldMatching("statusCode", (ignoreErrorJson.get("statusCode") as JsonPrimitive).content, errorJson)
+        }
+        if (ignoreErrorJson.containsKey("message")) {
+            attemptToIgnoreError = true
+            statusCodeMatches = isErrorFieldMatching("message", (ignoreErrorJson.get("message") as JsonPrimitive).content, errorJson)
+        }
+        if (ignoreErrorJson.containsKey("description")) {
+            attemptToIgnoreError = true
+            statusCodeMatches = isErrorFieldMatching("description", (ignoreErrorJson.get("description")  as JsonPrimitive).content, errorJson)
+        }
+        return statusCodeMatches && messageMatches && descriptionMatches && attemptToIgnoreError
+    }
+
+    private fun isErrorFieldMatching(field: String, value: String, errorJson: JsonObject): Boolean {
+        if (errorJson.containsKey("internal") && (errorJson.get("internal") as JsonObject).containsKey("error")) {
+            val errorObj = (errorJson.get("internal") as JsonObject).get("error") as JsonObject
+            if (field == "description" && (errorObj.get("description") as JsonPrimitive).content == value) {
+                return true
+            }
+            if (field == "statusCode" && (errorObj.get("status_code") as JsonPrimitive).content == value) {
+                return true
+            }
+            if (field == "message" && (errorObj.get("message") as JsonPrimitive).content == value) {
+                return true
+            }
+        } else if (errorJson.containsKey("error")) {
+            if (field == "description") {
+                return (errorJson.get("error") as JsonPrimitive).content == value
+            }
+        }
+        return false
+    }    
 }
 
 

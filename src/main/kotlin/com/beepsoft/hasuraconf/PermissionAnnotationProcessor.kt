@@ -215,7 +215,7 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
                 val inc = it.groupValues[0]
                 val file = it.groupValues[1]
                 try {
-                    var includedJson = HasuraConfiguratorV2::class.java.getResource(file).readText()
+                    var includedJson = HasuraConfigurator::class.java.getResource(file).readText()
                     // Recursively process includes in the included json
                     includedJson = doResolveIncludes(includedJson, file, null, null)
                     resolvedJson = resolvedJson.replace(inc, includedJson)
@@ -255,7 +255,7 @@ class PermissionAnnotationProcessor(entityManagerFactory: EntityManagerFactory)
 
         if (json.length == 0 && jsonFile.length != 0) {
             try {
-                json = HasuraConfiguratorV2::class.java.getResource(jsonFile).readText()
+                json = HasuraConfigurator::class.java.getResource(jsonFile).readText()
             }
             catch(ex: Throwable) {
                 if (entity != null) {
