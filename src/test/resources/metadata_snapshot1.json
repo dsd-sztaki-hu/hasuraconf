@@ -15,10 +15,10 @@
           "configuration": {
             "column_config": {
               "created_at": {
-                "customName": "createdAt"
+                "custom_name": "createdAt"
               },
               "updated_at": {
-                "customName": "updatedAt"
+                "custom_name": "updatedAt"
               }
             },
             "custom_root_fields": {
@@ -104,7 +104,10 @@
           "computed_fields": [
             {
               "definition": {
-                "function": "title_and_description"
+                "function": {
+                  "name": "title_and_description",
+                  "schema": "public"
+                }
               },
               "name": "titleAndDescription"
             }
@@ -112,31 +115,31 @@
           "configuration": {
             "column_config": {
               "availability_value": {
-                "customName": "availabilityValue"
+                "custom_name": "availabilityValue"
               },
               "created_at": {
-                "customName": "createdAt"
+                "custom_name": "createdAt"
               },
               "locale_country": {
-                "customName": "localeCountry"
+                "custom_name": "localeCountry"
               },
               "locale_lang": {
-                "customName": "localeLang"
+                "custom_name": "localeLang"
               },
               "next_version_id": {
-                "customName": "nextVersionId"
+                "custom_name": "nextVersionId"
               },
               "previous_version_id": {
-                "customName": "previousVersionId"
+                "custom_name": "previousVersionId"
               },
               "theme_config": {
-                "customName": "themeConfig"
+                "custom_name": "themeConfig"
               },
               "theme_id": {
-                "customName": "themeId"
+                "custom_name": "themeId"
               },
               "updated_at": {
-                "customName": "updatedAt"
+                "custom_name": "updatedAt"
               }
             },
             "custom_root_fields": {
@@ -329,19 +332,19 @@
           "configuration": {
             "column_config": {
               "calendar_id": {
-                "customName": "calendarId"
+                "custom_name": "calendarId"
               },
               "created_at": {
-                "customName": "createdAt"
+                "custom_name": "createdAt"
               },
               "role_value": {
-                "customName": "roleValue"
+                "custom_name": "roleValue"
               },
               "updated_at": {
-                "customName": "updatedAt"
+                "custom_name": "updatedAt"
               },
               "user_id": {
-                "customName": "userId"
+                "custom_name": "userId"
               }
             },
             "custom_root_fields": {
@@ -432,22 +435,22 @@
           "configuration": {
             "column_config": {
               "created_at": {
-                "customName": "createdAt"
+                "custom_name": "createdAt"
               },
               "firebase_user_id": {
-                "customName": "firebaseUserId"
+                "custom_name": "firebaseUserId"
               },
               "first_name": {
-                "customName": "firstName"
+                "custom_name": "firstName"
               },
               "last_name": {
-                "customName": "lastName"
+                "custom_name": "lastName"
               },
               "password": {
-                "customName": "superSecretPassword"
+                "custom_name": "superSecretPassword"
               },
               "updated_at": {
-                "customName": "updatedAt"
+                "custom_name": "updatedAt"
               }
             },
             "custom_root_fields": {
@@ -485,28 +488,28 @@
           "configuration": {
             "column_config": {
               "calendar_id": {
-                "customName": "calendarId"
+                "custom_name": "calendarId"
               },
               "complex_field_name": {
-                "customName": "complexFieldName"
+                "custom_name": "complexFieldName"
               },
               "condition_class": {
-                "customName": "conditionClass"
+                "custom_name": "conditionClass"
               },
               "condition_params": {
-                "customName": "conditionParams"
+                "custom_name": "conditionParams"
               },
               "created_at": {
-                "customName": "createdAt"
+                "custom_name": "createdAt"
               },
               "is_special_day": {
-                "customName": "isSpecialDay"
+                "custom_name": "isSpecialDay"
               },
               "theme_config": {
-                "customName": "themeConfig"
+                "custom_name": "themeConfig"
               },
               "updated_at": {
-                "customName": "updatedAt"
+                "custom_name": "updatedAt"
               }
             },
             "custom_root_fields": {
@@ -628,19 +631,19 @@
           "configuration": {
             "column_config": {
               "calendar_id": {
-                "customName": "calendarId"
+                "custom_name": "calendarId"
               },
               "content_type": {
-                "customName": "contentType"
+                "custom_name": "contentType"
               },
               "created_at": {
-                "customName": "createdAt"
+                "custom_name": "createdAt"
               },
               "day_id": {
-                "customName": "dayId"
+                "custom_name": "dayId"
               },
               "updated_at": {
-                "customName": "updatedAt"
+                "custom_name": "updatedAt"
               }
             },
             "custom_root_fields": {
@@ -768,31 +771,31 @@
           "configuration": {
             "column_config": {
               "created_at": {
-                "customName": "createdAt"
+                "custom_name": "createdAt"
               },
               "max_height": {
-                "customName": "maxHeight"
+                "custom_name": "maxHeight"
               },
               "max_width": {
-                "customName": "maxWidth"
+                "custom_name": "maxWidth"
               },
               "media_query": {
-                "customName": "mediaQuery"
+                "custom_name": "mediaQuery"
               },
               "min_height": {
-                "customName": "minHeight"
+                "custom_name": "minHeight"
               },
               "min_width": {
-                "customName": "minWidth"
+                "custom_name": "minWidth"
               },
               "theme_id": {
-                "customName": "themeId"
+                "custom_name": "themeId"
               },
               "updated_at": {
-                "customName": "updatedAt"
+                "custom_name": "updatedAt"
               },
               "user_agent_regexp": {
-                "customName": "userAgentRegexp"
+                "custom_name": "userAgentRegexp"
               }
             },
             "custom_root_fields": {
@@ -1012,10 +1015,10 @@
           "configuration": {
             "column_config": {
               "created_at": {
-                "customName": "createdAt"
+                "custom_name": "createdAt"
               },
               "updated_at": {
-                "customName": "updatedAt"
+                "custom_name": "updatedAt"
               }
             },
             "custom_root_fields": {
@@ -1187,10 +1190,10 @@
           "configuration": {
             "column_config": {
               "created_at": {
-                "customName": "createdAt"
+                "custom_name": "createdAt"
               },
               "updated_at": {
-                "customName": "updatedAt"
+                "custom_name": "updatedAt"
               }
             },
             "custom_root_fields": {
@@ -1228,13 +1231,13 @@
           "configuration": {
             "column_config": {
               "created_at": {
-                "customName": "createdAt"
+                "custom_name": "createdAt"
               },
               "owner_id": {
-                "customName": "ownerId"
+                "custom_name": "ownerId"
               },
               "updated_at": {
-                "customName": "updatedAt"
+                "custom_name": "updatedAt"
               }
             },
             "custom_root_fields": {
@@ -1292,19 +1295,19 @@
           "configuration": {
             "column_config": {
               "created_at": {
-                "customName": "createdAt"
+                "custom_name": "createdAt"
               },
               "css_class_name": {
-                "customName": "cssClassName"
+                "custom_name": "cssClassName"
               },
               "max_day_count": {
-                "customName": "maxDayCount"
+                "custom_name": "maxDayCount"
               },
               "min_day_count": {
-                "customName": "minDayCount"
+                "custom_name": "minDayCount"
               },
               "updated_at": {
-                "customName": "updatedAt"
+                "custom_name": "updatedAt"
               }
             },
             "custom_root_fields": {
@@ -1328,10 +1331,10 @@
           "configuration": {
             "column_config": {
               "children_id": {
-                "customName": "theChild"
+                "custom_name": "theChild"
               },
               "parents_id": {
-                "customName": "theParent"
+                "custom_name": "theParent"
               }
             },
             "custom_root_fields": {
@@ -1369,13 +1372,13 @@
           "configuration": {
             "column_config": {
               "calendar_order": {
-                "customName": "calendarOrder"
+                "custom_name": "calendarOrder"
               },
               "the_calendar_id": {
-                "customName": "theCalendarId"
+                "custom_name": "theCalendarId"
               },
               "the_user_id": {
-                "customName": "theUserId"
+                "custom_name": "theUserId"
               }
             },
             "custom_root_fields": {
@@ -1413,10 +1416,10 @@
           "configuration": {
             "column_config": {
               "calendar_user_id": {
-                "customName": "myUserId"
+                "custom_name": "myUserId"
               },
               "friends_id": {
-                "customName": "myFriendUserId"
+                "custom_name": "myFriendUserId"
               }
             },
             "custom_root_fields": {
@@ -1448,13 +1451,13 @@
           "configuration": {
             "column_config": {
               "operation_id": {
-                "customName": "operationId"
+                "custom_name": "operationId"
               },
               "order_in_task": {
-                "customName": "orderInTask"
+                "custom_name": "orderInTask"
               },
               "task_id": {
-                "customName": "taskId"
+                "custom_name": "taskId"
               }
             },
             "custom_root_fields": {

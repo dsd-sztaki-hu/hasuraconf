@@ -294,7 +294,8 @@ class HasuraConfigurator(
                             // It is really an extra table name, add it without any further config
                             add(TableEntry(actualQualifiedTable(schemaName, tableName)))
                         }
-                    }
+                    },
+                    customization = null // TODO: add way to define source customization
                 ))
             },
             actions = if(actionsAndTypes != null) actionsAndTypes!!.actions else null,
@@ -765,8 +766,7 @@ class HasuraConfigurator(
                             function = if (annot.functionSchema.isNotEmpty())
                                 FunctionName.QualifiedFunctionValue(QualifiedFunction(annot.functionName, annot.functionSchema))
                             else
-                                FunctionName.StringValue(annot.functionName)
-
+                                FunctionName.QualifiedFunctionValue(QualifiedFunction(annot.functionName, schemaName))
                         )
                     ),
                     runSql = if (annot.functionDefinition.isNotEmpty())

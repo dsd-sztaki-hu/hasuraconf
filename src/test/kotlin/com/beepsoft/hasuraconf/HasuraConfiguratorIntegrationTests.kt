@@ -2,6 +2,8 @@ package com.beepsoft.hasuraconf
 
 import io.hasura.metadata.v3.toCascadeDeleteJson
 import io.hasura.metadata.v3.metadataJson
+import io.hasura.metadata.v3.toBulkMetadataAPIOperationJson
+import io.hasura.metadata.v3.toBulkRunSql
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.*
 import org.apache.commons.lang3.SystemUtils
@@ -187,19 +189,48 @@ class HasuraConfiguratorIntegrationTests {
 		)
 		val confData = conf.configure()
 
-		var newMeta = normalize(confData.metadataJson)
-		println("**** conf.metadataJson: ${newMeta}")
+		var importMeta = normalize(confData.metadataJson)
+		println("**** importMeta: ${importMeta}")
 
 		conf.loadConfiguration(confData)
 
 		// Load metadata again and compare with what we had with the previous algorithm
-		val origMeta = normalize(conf.exportMetadataJson())
-		println("**** export_meta result: $origMeta")
+		val exportMeta = normalize(conf.exportMetadataJson())
+		println("**** export_meta result: $exportMeta")
 		var snapshot = normalize(readFileUsingGetResource("/metadata_snapshot-with-actions1.json"))
-		JSONAssert.assertEquals(snapshot, newMeta, false)
-		JSONAssert.assertEquals(newMeta, snapshot, false)
+		JSONAssert.assertEquals(snapshot, exportMeta, false)
+		JSONAssert.assertEquals(exportMeta, snapshot, false)
 	}
 
+
+	@DisplayName("Test wether metadata built using bulk API calls results in same metadata as exported")
+	@Test
+	fun testCompareMetadataAPIvsMetadata() {
+		conf.hasuraSchemaEndpoint = "http://localhost:${hasuraContainer.getMappedPort(8080)}/v2/query"
+		conf.hasuraMetadataEndpoint = "http://localhost:${hasuraContainer.getMappedPort(8080)}/v1/metadata"
+		conf.hasuraAdminSecret = "hasuraconf"
+
+		conf.actionRoots = listOf(
+			"com.beepsoft.hasuraconf.model.actions1",
+			"com.beepsoft.hasuraconf.model.actions2",
+			"com.beepsoft.hasuraconf.model.actions3",
+		)
+		val confData = conf.configure()
+
+		var bulkApiOperations = confData.metadata.toBulkMetadataAPIOperationJson()
+		println("**** confData.metadata.toBulkMetadataAPIOperationJson(): ${bulkApiOperations}")
+
+		// Configure metadata by call to the metadata API with one bulk operation for all the configuration ops.
+		conf.executeSchemaApi(confData.toBulkRunSql())
+		conf.executeMetadataApi(bulkApiOperations)
+
+		// Load metadata again and compare with what we had with the previous algorithm
+		val exportMeta = normalize(conf.exportMetadataJson())
+		println("**** export_meta result: $exportMeta")
+		var snapshot = normalize(readFileUsingGetResource("/metadata_snapshot-with-actions1.json"))
+		JSONAssert.assertEquals(snapshot, exportMeta, false)
+		JSONAssert.assertEquals(exportMeta, snapshot, false)
+	}
 //
 //	@DisplayName("Test HasuraStaticConfigurator")
 //	@Test
@@ -376,7 +407,7 @@ class HasuraConfiguratorIntegrationTests {
 		}.toString()
 		print(actionsJson)
 		JSONAssert.assertEquals(
-			"""{"actions":[{"name":"createUserAndCalendar5","definition":{"handler":"{{HANDLER_URL}}","type":"mutation","kind":"synchronous","forward_client_headers":true,"output_type":"[UserAndCalendarOutput5!]","arguments":[{"name":"args","type":"UserAndCalendarInput!"}]}},{"name":"createUserAndCalendar4","definition":{"handler":"{{HANDLER_URL}}","type":"mutation","kind":"synchronous","forward_client_headers":true,"output_type":"UserAndCalendarOutput","arguments":[{"name":"args","type":"UserAndCalendarInput!"}]}},{"name":"createUserAndCalendar2","definition":{"handler":"{{HANDLER_URL}}","type":"mutation","kind":"synchronous","forward_client_headers":true,"output_type":"String","arguments":[{"name":"name","type":"String!"},{"name":"descriptions","type":"[String!]!"},{"name":"calendarTypes","type":"[CalendarType!]!"}]}},{"name":"createUserAndCalendar3","definition":{"handler":"{{HANDLER_URL}}","type":"mutation","kind":"synchronous","forward_client_headers":true,"output_type":"[String!]","arguments":[{"name":"args","type":"UserAndCalendarInput!"}]}},{"name":"createUserAndCalendar","definition":{"handler":"{{HANDLER_URL}}","type":"mutation","kind":"synchronous","forward_client_headers":true,"output_type":"String","arguments":[{"name":"userName","type":"String!"},{"name":"name","type":"String!"},{"name":"description","type":"String!"},{"name":"calendarType","type":"CalendarType!"}]}},{"name":"signUpWithExternalRestApi","definition":{"handler":"http://some.rest.endpoint","type":"mutation","kind":"synchronous","forward_client_headers":true,"request_transform":{"body":"{\"email\":{{${'$'}body.input.args.email}},\"password\":{{${'$'}body.input.args.password}}}","url":"{{${'$'}base_url}}/signup/email-password","content_type":"application/json","method":"POST","query_params":{},"template_engine":"Kriti"},"output_type":"SignUpWithExternalRestApiOutput","arguments":[{"name":"args","type":"SignUpWithExternalRestApiInput!"}]}}],"custom_types":{"input_objects":[{"name":"UserAndCalendarInput","fields":[{"name":"name","type":"String!"},{"name":"description","type":"String!"},{"name":"isPublic","type":"Boolean!"},{"name":"hasColors","type":"Boolean"}]},{"name":"SignUpWithExternalRestApiInput","fields":[{"name":"email","type":"String!"},{"name":"password","type":"String!"}]}],"objects":[{"name":"UserAndCalendarOutput5","description":"The description of UserAndCalendarOutput","fields":[{"description":"The user's name","name":"userFullName","type":"String!"},{"description":"The user's age","name":"userAge","type":"Int"},{"description":"Field is not defined in Kotlin as nullable, but explicitly set so","name":"explicitNullable","type":"String"},{"description":"Field is defined in Kotlin as nullable, but explicitly set to not nullable","name":"explicitlyNotNullable","type":"String!"},{"description":"User identifier","name":"userId","type":"bigint!"},{"name":"calendarId","type":"bigint!"},{"name":"differentCalendarId","type":"bigint!"}],"relationships":[{"name":"calendar","type":"object","remote_table":{"schema":"public","name":"calendar"},"field_mapping":{"calendarId":"id"}},{"name":"otherCalendar","type":"object","remote_table":{"schema":"public","name":"calendar"},"field_mapping":{"differentCalendarId":"id"}}]},{"name":"UserAndCalendarOutput","description":"The description of UserAndCalendarOutput","fields":[{"description":"The user's name","name":"userFullName","type":"String!"},{"description":"The user's age","name":"userAge","type":"Int"},{"description":"Field is not defined in Kotlin as nullable, but explicitly set so","name":"explicitNullable","type":"String"},{"description":"Field is defined in Kotlin as nullable, but explicitly set to not nullable","name":"explicitlyNotNullable","type":"String!"},{"description":"User identifier","name":"userId","type":"bigint!"},{"name":"calendarId","type":"bigint!"},{"name":"differentCalendarId","type":"bigint!"}],"relationships":[{"name":"calendar","type":"object","remote_table":{"schema":"public","name":"calendar"},"field_mapping":{"calendarId":"id"}},{"name":"otherCalendar","type":"object","remote_table":{"schema":"public","name":"calendar"},"field_mapping":{"differentCalendarId":"id"}}]},{"name":"SignUpWithExternalRestApiOutput","fields":[{"name":"mfa","type":"String!"},{"name":"session","type":"String!"}]}],"scalars":[{"name":"bigint","description":"bigint type"}],"enums":[{"name":"CalendarType","values":[{"value":"PRIVATE"},{"value":"PUBLIC"},{"value":"SHARED"}]}]}}""",
+			"""{"actions":[{"definition":{"arguments":[{"name":"args","type":"UserAndCalendarInput!"}],"forward_client_headers":true,"handler":"{{HANDLER_URL}}","kind":"synchronous","output_type":"[UserAndCalendarOutput5!]","type":"mutation"},"name":"createUserAndCalendar5"},{"definition":{"arguments":[{"name":"args","type":"UserAndCalendarInput!"}],"forward_client_headers":true,"handler":"{{HANDLER_URL}}","kind":"synchronous","output_type":"UserAndCalendarOutput","type":"mutation"},"name":"createUserAndCalendar4"},{"definition":{"arguments":[{"name":"name","type":"String!"},{"name":"descriptions","type":"[String!]!"},{"name":"calendarTypes","type":"[CalendarType!]!"}],"forward_client_headers":true,"handler":"{{HANDLER_URL}}","kind":"synchronous","output_type":"String","type":"mutation"},"name":"createUserAndCalendar2"},{"definition":{"arguments":[{"name":"args","type":"UserAndCalendarInput!"}],"forward_client_headers":true,"handler":"{{HANDLER_URL}}","kind":"synchronous","output_type":"[String!]","type":"mutation"},"name":"createUserAndCalendar3"},{"definition":{"arguments":[{"name":"userName","type":"String!"},{"name":"name","type":"String!"},{"name":"description","type":"String!"},{"name":"calendarType","type":"CalendarType!"}],"forward_client_headers":true,"handler":"{{HANDLER_URL}}","kind":"synchronous","output_type":"String","type":"mutation"},"name":"createUserAndCalendar"},{"definition":{"arguments":[{"name":"args","type":"SignUpWithExternalRestApiInput!"}],"forward_client_headers":true,"handler":"http://some.rest.endpoint","kind":"synchronous","output_type":"SignUpWithExternalRestApiOutput","type":"mutation","request_transform":{"version":1,"method":"POST","url":"{{${'$'}base_url}}/signup/email-password","body":"{\"email\":{{${'$'}body.input.args.email}},\"password\":{{${'$'}body.input.args.password}}}","query_params":{},"template_engine":"Kriti"}},"name":"signUpWithExternalRestApi"}],"custom_types":{"enums":[{"name":"CalendarType","values":[{"value":"PRIVATE"},{"value":"PUBLIC"},{"value":"SHARED"}]}],"input_objects":[{"fields":[{"name":"name","type":"String!"},{"name":"description","type":"String!"},{"name":"isPublic","type":"Boolean!"},{"name":"hasColors","type":"Boolean"}],"name":"UserAndCalendarInput"},{"fields":[{"name":"email","type":"String!"},{"name":"password","type":"String!"}],"name":"SignUpWithExternalRestApiInput"}],"objects":[{"description":"The description of UserAndCalendarOutput","fields":[{"description":"The user's name","name":"userFullName","type":"String!"},{"description":"The user's age","name":"userAge","type":"Int"},{"description":"Field is not defined in Kotlin as nullable, but explicitly set so","name":"explicitNullable","type":"String"},{"description":"Field is defined in Kotlin as nullable, but explicitly set to not nullable","name":"explicitlyNotNullable","type":"String!"},{"description":"User identifier","name":"userId","type":"bigint!"},{"name":"calendarId","type":"bigint!"},{"name":"differentCalendarId","type":"bigint!"}],"name":"UserAndCalendarOutput5","relationships":[{"field_mapping":{"calendarId":"id"},"name":"calendar","remote_table":{"name":"calendar","schema":"public"},"type":"object"},{"field_mapping":{"differentCalendarId":"id"},"name":"otherCalendar","remote_table":{"name":"calendar","schema":"public"},"type":"object"}]},{"description":"The description of UserAndCalendarOutput","fields":[{"description":"The user's name","name":"userFullName","type":"String!"},{"description":"The user's age","name":"userAge","type":"Int"},{"description":"Field is not defined in Kotlin as nullable, but explicitly set so","name":"explicitNullable","type":"String"},{"description":"Field is defined in Kotlin as nullable, but explicitly set to not nullable","name":"explicitlyNotNullable","type":"String!"},{"description":"User identifier","name":"userId","type":"bigint!"},{"name":"calendarId","type":"bigint!"},{"name":"differentCalendarId","type":"bigint!"}],"name":"UserAndCalendarOutput","relationships":[{"field_mapping":{"calendarId":"id"},"name":"calendar","remote_table":{"name":"calendar","schema":"public"},"type":"object"},{"field_mapping":{"differentCalendarId":"id"},"name":"otherCalendar","remote_table":{"name":"calendar","schema":"public"},"type":"object"}]},{"fields":[{"name":"mfa","type":"String!"},{"name":"session","type":"String!"}],"name":"SignUpWithExternalRestApiOutput"}],"scalars":[{"description":"bigint type","name":"bigint"}]}}""",
 			actionsJson,
 			true
 		)

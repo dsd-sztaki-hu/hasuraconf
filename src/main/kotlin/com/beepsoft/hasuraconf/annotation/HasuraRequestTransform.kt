@@ -18,7 +18,6 @@ import java.lang.annotation.RetentionPolicy
 annotation class HasuraRequestTransform (
     val body: String,
     val url: String,
-    val contentType: String = "application/json",
     val method: HasuraHttpMethod,
     val queryParams:Array<HasuraQueryParam> = [],
     val templateEngine: String = "Kriti",

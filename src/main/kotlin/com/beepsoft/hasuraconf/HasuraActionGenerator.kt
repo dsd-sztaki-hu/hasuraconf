@@ -317,9 +317,9 @@ class HasuraActionGenerator(
         }
 
         return RequestTransformation(
+            version = 1,
             body = BodyTransform.StringValue(annot.body.replace("\\s".toRegex(), "")),
             url = annot.url,
-            contentType = annot.contentType,
             method = annot.method.name,
             queryParams = buildMap {
                 annot.queryParams.forEach {

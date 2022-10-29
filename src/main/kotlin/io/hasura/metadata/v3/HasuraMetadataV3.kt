@@ -272,12 +272,15 @@ data class ActionDefinition (
 // https://hasura.io/docs/latest/api-reference/syntax-defs/#requesttransformation
 @Serializable
 data class RequestTransformation(
-    var version: String? = null,
+    @Serializable
+    @SerialName("version")
+    var version: Int,
     var method: String? = null,
     var url: String? = null,
     var body: BodyTransform? = null,
-    @SerialName("content_type")
-    var contentType: String? = null,
+    // In version=2 this cannot be set, always json
+    // @SerialName("content_type")
+    // var contentType: String? = null,
     @SerialName("query_params")
     var queryParams: Map<String, String>? = null,
     @SerialName("request_headers")
@@ -1099,6 +1102,7 @@ data class ComputedFieldDefinition (
 
 @Serializable
 data class ColumnConfigValue (
+    @SerialName("custom_name")
     var customName: String? = null,
     var comment: String? = null
 )
@@ -1464,7 +1468,7 @@ data class InsertPermission (
      * configured
      */
     @SerialName("backend_only")
-    var backendOnly: Boolean? = null,
+    var backendOnly: Boolean = false,
 
     /**
      * This expression has to hold true for every new row that is inserted
@@ -1758,7 +1762,8 @@ data class PGSource (
     var functions: List<CustomFunction>? = null,
     var kind: PGSourceKind,
     var name: String,
-    var tables: List<TableEntry>
+    var tables: List<TableEntry>,
+    var customization: SourceCustomization
 )
 
 /**
@@ -2385,8 +2390,36 @@ data class Source (
     var functions: List<CustomFunction>? = null,
     var kind: BackendKind,
     var name: String,
-    var tables: List<TableEntry>
+    var tables: List<TableEntry>,
+    var customization: SourceCustomization? = null
 )
+
+@Serializable
+data class SourceCustomization (
+
+    @SerialName("root_fields")
+    var rootFields: CustomRootFields,
+
+    @SerialName("type_names")
+    var typeName: SourceTypeCustomization,
+
+    @SerialName("naming_convention")
+    var namingConvention: String
+)
+
+@Serializable
+data class RootFieldsCustomization (
+    var namespace: String,
+    var prefix: String,
+    var suffix: String,
+)
+
+@Serializable
+data class SourceTypeCustomization (
+    var prefix: String,
+    var suffix: String,
+)
+
 
 /**
  *
