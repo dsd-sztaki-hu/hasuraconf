@@ -1,9 +1,11 @@
 package com.beepsoft.hasuraconf
 
-import io.hasura.metadata.v3.toCascadeDeleteJson
+import com.beepsoft.hasura.actions.HasuraActionFilter
+import com.google.common.net.HttpHeaders
 import io.hasura.metadata.v3.metadataJson
 import io.hasura.metadata.v3.toBulkMetadataAPIOperationJson
 import io.hasura.metadata.v3.toBulkRunSql
+import io.hasura.metadata.v3.toCascadeDeleteJson
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.*
 import org.apache.commons.lang3.SystemUtils
@@ -15,19 +17,34 @@ import org.skyscreamer.jsonassert.JSONAssert
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.util.TestPropertyValues
+import org.springframework.boot.web.servlet.context.ServletWebServerInitializedEvent
+import org.springframework.context.ApplicationContext
 import org.springframework.context.ApplicationContextInitializer
+import org.springframework.context.ApplicationEvent
 import org.springframework.context.ConfigurableApplicationContext
+import org.springframework.context.event.ContextRefreshedEvent
+import org.springframework.context.event.EventListener
+import org.springframework.http.MediaType
+import org.springframework.stereotype.Service
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.context.junit.jupiter.SpringExtension
+import org.springframework.web.method.HandlerMethod
+import org.springframework.web.reactive.function.client.WebClient
+import org.springframework.web.reactive.function.client.WebClientResponseException
+import org.springframework.web.servlet.mvc.method.RequestMappingInfo
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.containers.output.Slf4jLogConsumer
-import org.testcontainers.junit.jupiter.Testcontainers
+import reactor.core.publisher.Mono
+import java.util.function.BiConsumer
+
 
 /**
  * Tests HasuraConfigurator with Postgresql + Hasura
  */
 @SpringBootTest(
+	webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
 	// More config in the Initializer
 	properties = [
 		"spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQL94Dialect",
@@ -36,10 +53,15 @@ import org.testcontainers.junit.jupiter.Testcontainers
 		"spring.jpa.hibernate.ddl-auto=update"
 		//	"logging.level.org.hibernate=DEBUG"
 	],
-	classes = [TestApp::class]
+	classes = [
+		TestApp::class,
+		HasuraConfiguratorIntegrationTests.Companion.BackendUrlSetter::class,
+		HasuraActionFilter::class,
+		com.beepsoft.hasura.actions.HasuraActionController::class,
+	]
 )
 @ContextConfiguration(initializers = [HasuraConfiguratorIntegrationTests.Companion.Initializer::class])
-@Testcontainers
+//@Testcontainers
 @ExtendWith(SpringExtension::class)
 class HasuraConfiguratorIntegrationTests {
 
@@ -52,13 +74,19 @@ class HasuraConfiguratorIntegrationTests {
 		private val LOG = getLogger(this::class.java.enclosingClass)
 
 		var postgresqlContainer: PostgreSQLContainer<*>
-		var hasuraContainer: GenericContainer<*>
+		lateinit var hasuraContainer: GenericContainer<*>
+		var host : String
+		val logConsumer = Slf4jLogConsumer(LOG)
+		val postgresUrl: String
+		val jdbc: String
+		lateinit var serverBaseUrlInHasura: String
+		lateinit var serverBaseUrlInHost: String
 
+		// Create postgresqlContainer before starting up the application
 		init {
-			val host = if (SystemUtils.IS_OS_MAC_OSX || SystemUtils.IS_OS_WINDOWS) "host.docker.internal" else "172.17.0.1"
+			host = if (SystemUtils.IS_OS_MAC_OSX || SystemUtils.IS_OS_WINDOWS) "host.docker.internal" else "172.17.0.1"
 
 			println("Hasura connecting to host $host")
-			val logConsumer = Slf4jLogConsumer(LOG)
 			postgresqlContainer = PostgreSQLContainer<Nothing>("postgres:11.5-alpine").
 			apply {
 				withUsername("hasuraconf")
@@ -67,51 +95,11 @@ class HasuraConfiguratorIntegrationTests {
 			}
 			postgresqlContainer.start()
 			postgresqlContainer.followOutput(logConsumer)
+			postgresUrl = "postgres://hasuraconf:hasuraconf@${host}:${postgresqlContainer.getMappedPort(PostgreSQLContainer.POSTGRESQL_PORT)}/hasuraconf"
+			jdbc = postgresqlContainer.getJdbcUrl()
 
-			hasuraContainer = GenericContainer<Nothing>("hasura/graphql-engine:v2.13.0")
-				.apply {
-					//dependsOn(postgresqlContainer)
-					val postgresUrl = "postgres://hasuraconf:hasuraconf@${host}:${postgresqlContainer.getMappedPort(PostgreSQLContainer.POSTGRESQL_PORT)}/hasuraconf"
-					val jdbc = postgresqlContainer.getJdbcUrl()
-					println("jdbc $jdbc")
-					println("postgresUrl $postgresUrl")
-					withExposedPorts(8080)
-					withEnv(mapOf(
-						"HASURA_GRAPHQL_DATABASE_URL" to postgresUrl,
-						"HASURA_GRAPHQL_ACCESS_KEY" to "hasuraconf",
-						"HASURA_GRAPHQL_STRINGIFY_NUMERIC_TYPES" to "true",
-						"HANDLER_URL" to "http://some.domain/actions"
-					))
-				}
-			hasuraContainer.start()
-			hasuraContainer.followOutput(logConsumer)
+			// Hasura started when servlet started. See  BackendUrlSetter
 		}
-
-		// This would be the default use of the container, however it doesn't account for dependencies among them
-//		@Container
-//		@JvmField
-//		val postgresqlContainer: PostgreSQLContainer<*> = PostgreSQLContainer<Nothing>("postgres:11.5-alpine").
-//				apply {
-//					withUsername("hasuraconf")
-//					withPassword("hasuraconf")
-//					withDatabaseName("hasuraconf")
-//					withExposedPorts(5432)
-//				}
-//
-//		// https://github.com/testcontainers/testcontainers-java/issues/318
-//		@Container
-//		@JvmField
-//		val hasuraContainer: GenericContainer<*> = GenericContainer<Nothing>("hasura/graphql-engine:v1.0.0")
-//				.apply{
-//					dependsOn(postgresqlContainer)
-//					withExposedPorts(8080)
-//					withEnv(mapOf(
-//							"HASURA_GRAPHQL_DATABASE_URL" to postgresqlContainer.getJdbcUrl().replace("jdbc:", ""),
-//							"HASURA_GRAPHQL_ACCESS_KEY" to "hasuraconf",
-//							"HASURA_GRAPHQL_STRINGIFY_NUMERIC_TYPES" to "true"
-//					))
-//				}
-
 
 		// Dynamic initialization of properties. This is necessary because we only know the
 		// spring.datasource.url once the postgresqlContainer is up and running.
@@ -120,10 +108,69 @@ class HasuraConfiguratorIntegrationTests {
 				TestPropertyValues.of(
 					"spring.datasource.url=" + postgresqlContainer.getJdbcUrl(),
 					"spring.datasource.username=" + postgresqlContainer.getUsername(),
-					"spring.datasource.password=" + postgresqlContainer.getPassword()
+					"spring.datasource.password=" + postgresqlContainer.getPassword(),
+					// Enable ActionsFilter
+					"hasuraconf.action-controller.enabled="+true
 				).applyTo(configurableApplicationContext.environment)
 			}
 		}
+
+		/**
+		 * Gets the runtime port of the backend webserver and calculates value of [backendUrl]
+		 */
+		@Service
+		class BackendUrlSetter  { // ServletWebServerInitializedEvent
+
+			// debug
+			@EventListener
+			fun onApplicationEvent(event: ApplicationEvent) {
+				//println("${event.javaClass.simpleName}")
+			}
+
+			// debug
+			@EventListener
+			fun handleContextRefresh(event: ContextRefreshedEvent) {
+				val applicationContext: ApplicationContext = event.applicationContext
+				val requestMappingHandlerMapping: RequestMappingHandlerMapping = applicationContext
+					.getBean("requestMappingHandlerMapping", RequestMappingHandlerMapping::class.java)
+				val map: Map<RequestMappingInfo, HandlerMethod> = requestMappingHandlerMapping
+					.getHandlerMethods()
+				map.forEach { key: RequestMappingInfo?, value: HandlerMethod? ->
+					println("mapping: $key -- $value")
+				}
+			}
+
+			@EventListener
+			fun onApplicationEvent(event: ServletWebServerInitializedEvent) {
+				// This how the service can be accessed on the host
+				serverBaseUrlInHost = "http://localhost:${event.webServer.port}"
+
+				// as Hasura runs in a container to access the Spring service running on host we must use
+				// http://host.docker.internal
+				serverBaseUrlInHasura = "http://host.docker.internal:${event.webServer.port}"
+
+				hasuraContainer = GenericContainer<Nothing>("hasura/graphql-engine:v2.13.0")
+					.apply {
+						//dependsOn(postgresqlContainer)
+						println("jdbc $jdbc")
+						println("postgresUrl $postgresUrl")
+						withExposedPorts(8080)
+						withEnv(mapOf(
+							"HASURA_GRAPHQL_DATABASE_URL" to postgresUrl,
+							"HASURA_GRAPHQL_ACCESS_KEY" to "hasuraconf",
+							"HASURA_GRAPHQL_STRINGIFY_NUMERIC_TYPES" to "true",
+							"HASURA_GRAPHQL_ENABLE_CONSOLE" to "true",
+							"HANDLER_URL" to "http://some.domain/actions",
+							"SERVER_BASE_URL" to serverBaseUrlInHasura,
+							"ACTION_HANDLER_ENDPOINT" to "$serverBaseUrlInHasura/actions"
+						))
+					}
+				hasuraContainer.start()
+				hasuraContainer.followOutput(logConsumer)
+			}
+
+		}
+
 	}
 
 	@Autowired lateinit var conf: HasuraConfigurator
@@ -192,7 +239,7 @@ class HasuraConfiguratorIntegrationTests {
 		var importMeta = normalize(confData.metadataJson)
 		println("**** importMeta: ${importMeta}")
 
-		conf.loadConfiguration(confData)
+		conf.replaceConfiguration(confData)
 
 		// Load metadata again and compare with what we had with the previous algorithm
 		val exportMeta = normalize(conf.exportMetadataJson())
@@ -221,6 +268,7 @@ class HasuraConfiguratorIntegrationTests {
 		println("**** confData.metadata.toBulkMetadataAPIOperationJson(): ${bulkApiOperations}")
 
 		// Configure metadata by call to the metadata API with one bulk operation for all the configuration ops.
+		conf.clearMetadata()
 		conf.executeSchemaApi(confData.toBulkRunSql())
 		conf.executeMetadataApi(bulkApiOperations)
 
@@ -434,7 +482,6 @@ class HasuraConfiguratorIntegrationTests {
 	@Test
 	fun testActionGenerationWithHibernateActions3() {
 		conf.actionRoots = listOf("com.beepsoft.hasuraconf.model.actions3")
-		conf.configure()
 		val confData = conf.configure()
 		val actionsJson = buildJsonObject {
 			put("actions", Json.encodeToJsonElement(confData.metadata.actions))
@@ -446,6 +493,92 @@ class HasuraConfiguratorIntegrationTests {
 			actionsJson,
 			true
 		)
+	}
+
+	@DisplayName("Test action generation via HasuraConfigurator - 3")
+	@Test
+	fun testHasuraActionHander() {
+		conf.hasuraSchemaEndpoint = "http://localhost:${hasuraContainer.getMappedPort(8080)}/v2/query"
+		conf.hasuraMetadataEndpoint = "http://localhost:${hasuraContainer.getMappedPort(8080)}/v1/metadata"
+		conf.hasuraAdminSecret = "hasuraconf"
+		conf.actionRoots = listOf("com.beepsoft.hasuraconf.actions")
+		val confData = conf.configure()
+		conf.replaceConfiguration(confData)
+
+		val hasuraGraphqlEndpoint = "http://localhost:${hasuraContainer.getMappedPort(8080)}/v1/graphql"
+		println("serverBaseUrlInHasura: $serverBaseUrlInHasura")
+		println("serverBaseUrlInHost: $serverBaseUrlInHost")
+		println("hasuraGraphqlEndpoint: $hasuraGraphqlEndpoint")
+
+		// First call an action with a request transform
+		var res = executeHasuraGraphql(
+			buildJsonObject {
+				put("query", """
+					mutation {
+						signIn(args: {
+							usernameOrEmail: "foo",
+							password: "bar"
+						}) {
+							accessToken
+						}
+					}					
+				""".trimMargin())
+			}.toString(),
+			hasuraGraphqlEndpoint
+		)
+		println(res)
+		JSONAssert.assertEquals(
+			res,
+			"""{"data":{"signIn":{"accessToken":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"}}}""",
+			false)
+
+		// First call an actual action implemented as a Spring @RestController operation
+		res = executeHasuraGraphql(
+			buildJsonObject {
+				put("query", """
+					mutation {
+  						startTask(args:{taskId:123}) {
+    						executedTaskId
+  						}
+					}				
+				""".trimMargin())
+			}.toString(),
+			hasuraGraphqlEndpoint
+		)
+		println(res)
+		JSONAssert.assertEquals(
+			res,
+			"""{"data":{"startTask":{"executedTaskId":"123"}}}""",
+			false)
+	}
+
+	private fun executeHasuraGraphql(json: String, endpoint: String, hasuraAdminSecret: String? = null) : String {
+		val client = WebClient
+			.builder()
+			.baseUrl(endpoint)
+			.defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+			.defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+			.let {
+				if (hasuraAdminSecret != null) {
+					it.defaultHeader("X-Hasura-Admin-Secret", hasuraAdminSecret)
+				}
+				it
+			}
+			.build()
+		val request = client.post()
+			.body<String, Mono<String>>(Mono.just(json), String::class.java)
+			.retrieve()
+			.bodyToMono(String::class.java)
+		// Make it synchronous for now
+		try {
+			val result = request.block()
+			HasuraConfigurator.LOG.debug("loadIntoHasura done {}", result)
+			return result!!
+		} catch (ex: WebClientResponseException) {
+			HasuraConfigurator.LOG.error("executeHasuraGraphql failed", ex)
+			HasuraConfigurator.LOG.error("executeHasuraGraphql response text: {}", ex.responseBodyAsString)
+			throw ex
+		}
 	}
 
 }

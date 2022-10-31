@@ -1,14 +1,23 @@
 [![CircleCI](https://circleci.com/gh/dsd-sztaki-hu/hasuraconf.svg?style=svg)](https://circleci.com/gh/dsd-sztaki-hu/hasuraconf)
 
-# Hasura Configuration Based on JPA Annotations
+# Hasura Metadata Configurator and Client for Kotlin and Java
 
-`HasuraConfigurator` can be used to generate a [JSON file](https://docs.hasura.io/1.0/graphql/manual/api-reference/index.html) that can be loaded into [Hasura](https://hasura.io/) to configure it. 
+`HasuraConfigurator` can be used to configure the [Hasura metadata](https://hasura.io/docs/latest/migrations-metadata-seeds/manage-metadata/) in 3 ways:
+- Automatically, based on JPA and @Hasura... annotations 
+- Build the Hasura metadata object and generate the metadata JSON to configure Hasura
+- Execute Hasura Metadata API calls to configure Hasura gradually 
 
-Configuration of Hasura is usually done via the Hasura console, however during development the database schema may change a lot and it is tedious to always set table and relationship tracking, permissions etc. on a newly generated database. 
+All three approaches are based on the [Hasura Metadata classes](https://github.com/dsd-sztaki-hu/hasuraconf/blob/v1.0.0/src/main/kotlin/io/hasura/metadata/v3/HasuraMetadataV3.kt).
+You can build an instance of `HasuraMetadataV3` by hand or have it automatically generated using the JPA/@Hasura... annotations, or combine these approaches. Once you have an `HasuraMetadataV3` you can either generate a Hasura metadata JSON and [replace](https://hasura.io/docs/latest/api-reference/metadata-api/manage-metadata/#metadata-replace-metadata) all of a Hasura servers metadata with it, or use the `HasuraMetadataV3` to generate [Hasura metadata API](https://hasura.io/docs/latest/api-reference/metadata-api/index/) and [schema API](https://hasura.io/docs/latest/api-reference/schema-api/index/) calls to configure various parts of Hasura.
 
-With `HasuraConfigurator` when the data model changes in Java/Kotlin the Hasura configurations can be regenerated and automatically loaded into Hasura thus the data model and the Hasura configuration will always be in sync. 
+`HasuraConfigurator` was built primarily to support development of JPA/Hibernate based Spring Framework applications, where the data is also to be accessed via Hasura. When the data model changes in Java/Kotlin the Hasura configurations can be regenerated and automatically loaded into Hasura thus the data model and the Hasura configurations will always be in sync.
+
+I also use `HasuraConfigurator` in projects, which don't use Java/Kotlin at all, for example those running on [Nhost](https://nhost.io/). I find it easier to describe my datamodel in Kotlin with JPA/@Hasura... annotations rather than editing the model, permissions, actions, events, etc. in the Hasura console or by editing the yaml files of the Hasura cli.
+
 
 # Notable changes
+
+## 1.0.0
 
 ## 0.9.x
 

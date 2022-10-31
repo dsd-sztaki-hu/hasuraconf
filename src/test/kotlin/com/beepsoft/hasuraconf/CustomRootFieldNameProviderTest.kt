@@ -8,7 +8,6 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.skyscreamer.jsonassert.JSONAssert
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.test.util.TestPropertyValues
 import org.springframework.context.ApplicationContextInitializer
 import org.springframework.context.ConfigurableApplicationContext
@@ -170,7 +169,7 @@ class CustomRootFieldNameProviderTest {
         conf.hasuraSchemaEndpoint = "http://localhost:${CustomRootFieldNameProviderTest.hasuraContainer.getMappedPort(8080)}/v2/query"
         conf.hasuraMetadataEndpoint = "http://localhost:${CustomRootFieldNameProviderTest.hasuraContainer.getMappedPort(8080)}/v1/metadata"
         conf.hasuraAdminSecret = "hasuraconf"
-        conf.loadConfiguration(conf.configure())
+        conf.replaceConfiguration(conf.configure())
 
 	}
 }
