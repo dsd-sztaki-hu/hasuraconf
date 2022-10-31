@@ -9,14 +9,13 @@ import java.io.*;
 
 // For now ActionsFilter must be in Java. When in Kotlin the filter was not picked up.
 @Component
-public class ActionsFilter implements Filter {
+public class HasuraActionFilter implements Filter {
 
     @Value("${hasuraconf.action-controller.path:/actions}")
     String path;
 
     @Value("${hasuraconf.action-controller.enabled:false}")
     boolean enabled;
-
 
     @Override
     public void init(FilterConfig filterConfig) throws ServletException
