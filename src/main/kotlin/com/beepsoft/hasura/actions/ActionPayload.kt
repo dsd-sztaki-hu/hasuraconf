@@ -40,5 +40,21 @@ data class ActionPayload (
 )
 
 data class ActionData (
+    @JsonProperty("name")
     val name: String
 )
+
+//   "actionPayload": {
+//    "action": {
+//      "name": "startTask"
+//    },
+//    "input": {
+//      "args": {
+//        "taskId": 123
+//      }
+//    },
+//    "request_query": "mutation {\n  startTask(args:{taskId:123}) {\n    executedTaskId\n  }\n}",
+//    "session_variables": {
+//      "x-hasura-role": "admin"
+//    }
+//  }
