@@ -526,7 +526,7 @@ class HasuraConfiguratorIntegrationTests {
 			}.toString(),
 			hasuraGraphqlEndpoint
 		)
-		println(res)
+		println("signIn result: \n$res")
 		JSONAssert.assertEquals(
 			res,
 			"""{"data":{"signIn":{"accessToken":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"}}}""",
@@ -545,7 +545,7 @@ class HasuraConfiguratorIntegrationTests {
 			}.toString(),
 			hasuraGraphqlEndpoint
 		)
-		println(res)
+		println("startTask result: \n$res")
 		JSONAssert.assertEquals(
 			res,
 			"""{"data":{"startTask":{"executedTaskId":"123"}}}""",
