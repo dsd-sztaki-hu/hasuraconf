@@ -1432,16 +1432,23 @@ class HasuraConfigurator(
         return rootFieldNames;
     }
 
-    fun  loadMetadata(conf: HasuraConfiguration) : String {
+    fun  replaceMetadata(conf: HasuraConfiguration) : String {
         return executeMetadataApi(conf.toReplaceMetadata().toString())
     }
 
-    fun  loadMetadata(metadata: HasuraMetadataV3)  : String {
+    fun  replaceMetadata(metadata: HasuraMetadataV3)  : String {
         return executeMetadataApi(metadata.toReplaceMetadata().toString())
     }
 
-    fun  loadMetadata(metadataJson: String, allowInconsistent: Boolean = false) : String {
-        return loadIntoHasura(buildJsonObject {
+    fun  clearMetadata()  : String {
+        return executeMetadataApi(buildJsonObject {
+            put("type", "clear_metadata")
+            putJsonObject("args") {}
+        })
+    }
+
+    fun  replaceMetadata(metadataJson: String, allowInconsistent: Boolean = false) : String {
+        return executeHasuraApi(buildJsonObject {
             put("type", "replace_metadata")
             put("version", 2)
             putJsonObject("args") {
@@ -1452,7 +1459,7 @@ class HasuraConfigurator(
     }
 
     fun  loadBulkRunSqls(conf: HasuraConfiguration) : String {
-        return loadIntoHasura(conf.toBulkRunSql().toString(), hasuraSchemaEndpoint)
+        return executeHasuraApi(conf.toBulkRunSql().toString(), hasuraSchemaEndpoint)
     }
 
     fun  loadBulkRunSqls(json: String) : String {
@@ -1467,42 +1474,42 @@ class HasuraConfigurator(
         return executeMetadataApi("""{"type": "export_metadata", "args": {}}""")
     }
 
-    fun loadConfiguration(conf: HasuraConfiguration) : List<String> {
+    fun replaceConfiguration(conf: HasuraConfiguration) : List<String> {
         return buildList {
             conf.toBulkRunSql()?.let {
                 add(loadBulkRunSqls(conf.toBulkRunSql().toString()))
             }
-            add(loadMetadata(conf.metadata))
+            add(replaceMetadata(conf.metadata))
         }
     }
 
     fun executeMetadataApi(operation: JsonObject) : String {
-        return loadIntoHasura(operation, hasuraMetadataEndpoint)
+        return executeHasuraApi(operation, hasuraMetadataEndpoint)
     }
 
     fun executeMetadataApi(operation: String) : String {
-        return loadIntoHasura(operation, hasuraMetadataEndpoint)
+        return executeHasuraApi(operation, hasuraMetadataEndpoint)
     }
 
     fun executeSchemaApi(operation: JsonObject, safely: Boolean = false) : String {
         if (safely) {
             return executeSchemaApiSafely(operation.toString(), hasuraSchemaEndpoint)
         }
-        return loadIntoHasura(operation, hasuraSchemaEndpoint)
+        return executeHasuraApi(operation, hasuraSchemaEndpoint)
     }
 
     fun executeSchemaApi(operation: String, safely: Boolean = false) : String {
         if (safely) {
             return executeSchemaApiSafely(operation, hasuraSchemaEndpoint)
         }
-        return loadIntoHasura(operation, hasuraSchemaEndpoint)
+        return executeHasuraApi(operation, hasuraSchemaEndpoint)
     }
 
-    private fun loadIntoHasura(json: JsonObject, endpoint: String) : String {
-        return loadIntoHasura(json.toString(), endpoint)
+    private fun executeHasuraApi(json: JsonObject, endpoint: String) : String {
+        return executeHasuraApi(json.toString(), endpoint)
     }
 
-    private fun loadIntoHasura(json: String, endpoint: String) : String {
+    private fun executeHasuraApi(json: String, endpoint: String) : String {
         val client = WebClient
             .builder()
             .baseUrl(endpoint)
@@ -1517,11 +1524,11 @@ class HasuraConfigurator(
         // Make it synchronous for now
         try {
             val result = request.block()
-            LOG.debug("loadIntoHasura done {}", result)
+            LOG.debug("executeHasuraApi done {}", result)
             return result!!
         } catch (ex: WebClientResponseException) {
-            LOG.error("Hasura initialization failed", ex)
-            LOG.error("Response text: {}", ex.responseBodyAsString)
+            LOG.error("executeHasuraApi failed", ex)
+            LOG.error("executeHasuraApi response text: {}", ex.responseBodyAsString)
             throw ex
         }
     }
@@ -1547,7 +1554,7 @@ class HasuraConfigurator(
         } else {
             return doExecuteSchemaApiSafely(confJson, endpoint)
         }
-        return loadIntoHasura(confJson, endpoint)
+        return executeHasuraApi(confJson, endpoint)
     }
 
     private fun doExecuteSchemaApiSafely(confJson: JsonObject, endpoint: String): String {
