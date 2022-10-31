@@ -46,8 +46,8 @@ fun HasuraMetadataV3.toBulkMetadataAPIOperation() : JsonObject {
                 }
                 // No configure tables
                 source.tables.forEach {table ->
-                    // Here the order of configuring things is important. Eg. computed fields
-                    // must  be added first so that permissions can be conffigured for them
+                    // Here the order of configuring things is important. E.g. computed fields
+                    // must  be added first so that permissions can be configured for them
                     table.isEnum?.let {
                         add(table.toPgSetTableIsEnum(source))
                     }
@@ -248,8 +248,8 @@ fun ObjectRelationship.toPgCreateObjectRelationship(table: TableEntry, sourceNam
         put("type", "pg_create_object_relationship")
         val rel = Json.encodeToJsonElement(this@toPgCreateObjectRelationship).jsonObject
         val args = JsonObject(rel.toMutableMap().apply {
-            this.put("source", Json.encodeToJsonElement(sourceName))
-            this.put("table", Json.encodeToJsonElement(table.table))
+            this["source"] = Json.encodeToJsonElement(sourceName)
+            this["table"] = Json.encodeToJsonElement(table.table)
         })
         put("args", args)
     }
@@ -320,8 +320,8 @@ fun ArrayRelationship.toPgCreateArrayRelationship(table: TableEntry, sourceName:
         put("type", "pg_create_array_relationship")
         val rel = Json.encodeToJsonElement(this@toPgCreateArrayRelationship).jsonObject
         val args = JsonObject(rel.toMutableMap().apply {
-            this.put("source", Json.encodeToJsonElement(sourceName))
-            this.put("table", Json.encodeToJsonElement(table.table))
+            this["source"] = Json.encodeToJsonElement(sourceName)
+            this["table"] = Json.encodeToJsonElement(table.table)
         })
         put("args", args)
     }
@@ -391,8 +391,8 @@ fun InsertPermissionEntry.toPgCreateInsertPermission(table: TableEntry, sourceNa
         put("type", "pg_create_insert_permission")
         val perm = Json.encodeToJsonElement(this@toPgCreateInsertPermission).jsonObject
         val args = JsonObject(perm.toMutableMap().apply {
-            this.put("source", Json.encodeToJsonElement(sourceName))
-            this.put("table", Json.encodeToJsonElement(table.table))
+            this["source"] = Json.encodeToJsonElement(sourceName)
+            this["table"] = Json.encodeToJsonElement(table.table)
         })
         put("args", args)
     }
@@ -437,8 +437,8 @@ fun SelectPermissionEntry.toPgCreateSelectPermission(table: TableEntry, sourceNa
         put("type", "pg_create_select_permission")
         val perm = Json.encodeToJsonElement(this@toPgCreateSelectPermission).jsonObject
         val args = JsonObject(perm.toMutableMap().apply {
-            this.put("source", Json.encodeToJsonElement(sourceName))
-            this.put("table", Json.encodeToJsonElement(table.table))
+            this["source"] = Json.encodeToJsonElement(sourceName)
+            this["table"] = Json.encodeToJsonElement(table.table)
         })
         put("args", args)
     }
@@ -481,8 +481,8 @@ fun UpdatePermissionEntry.toPgCreateUpdatePermission(table: TableEntry, sourceNa
         put("type", "pg_create_update_permission")
         val perm = Json.encodeToJsonElement(this@toPgCreateUpdatePermission).jsonObject
         val args = JsonObject(perm.toMutableMap().apply {
-            this.put("source", Json.encodeToJsonElement(sourceName))
-            this.put("table", Json.encodeToJsonElement(table.table))
+            this["source"] = Json.encodeToJsonElement(sourceName)
+            this["table"] = Json.encodeToJsonElement(table.table)
         })
         put("args", args)
     }
@@ -524,8 +524,8 @@ fun DeletePermissionEntry.toPgCreateDeletePermission(table: TableEntry, sourceNa
         put("type", "pg_create_delete_permission")
         val perm = Json.encodeToJsonElement(this@toPgCreateDeletePermission).jsonObject
         val args = JsonObject(perm.toMutableMap().apply {
-            this.put("source", Json.encodeToJsonElement(sourceName))
-            this.put("table", Json.encodeToJsonElement(table.table))
+            this["source"] = Json.encodeToJsonElement(sourceName)
+            this["table"] = Json.encodeToJsonElement(table.table)
         })
         put("args", args)
     }
@@ -569,11 +569,11 @@ fun EventTrigger.toPgCreateEventTrigger(table: TableEntry, sourceName: String = 
         put("type", "pg_create_event_trigger")
 
         val t = Json.encodeToJsonElement(this@toPgCreateEventTrigger).jsonObject
-        val defMap = t.toMutableMap().get("definition")!!.jsonObject.toMutableMap()
+        val defMap = t.toMutableMap()["definition"]!!.jsonObject.toMutableMap()
         // Move all fields from "definition" up to the event trigger data + source and table
         val args = JsonObject(t.toMutableMap().apply {
-            this.put("source", Json.encodeToJsonElement(sourceName))
-            this.put("table", Json.encodeToJsonElement(table.table))
+            this["source"] = Json.encodeToJsonElement(sourceName)
+            this["table"] = Json.encodeToJsonElement(table.table)
             remove("definition")
             putAll(defMap)
         })
@@ -586,19 +586,15 @@ fun EventTrigger.toPgCreateEventTrigger(table: TableEntry, source: Source) =
 
 
 // https://hasura.io/docs/latest/api-reference/metadata-api/event-triggers/#metadata-pg-delete-event-trigger
-fun EventTrigger.toPgDeleteEventTrigger(name: String, sourceName: String = DEFAULT_SOURCE_NAME): JsonObject {
+fun EventTrigger.toPgDeleteEventTrigger(sourceName: String = DEFAULT_SOURCE_NAME): JsonObject {
     return buildJsonObject {
         put("type", "pg_delete_event_trigger")
         putJsonObject("args") {
             put("source", sourceName)
-            put("name", name)
+            put("name", this@toPgDeleteEventTrigger.name)
         }
     }
 }
-
-fun EventTrigger.toPgDeleteEventTrigger(name: String, source: Source) =
-    toPgDeleteEventTrigger(name, source.name)
-
 
 // https://hasura.io/docs/latest/api-reference/metadata-api/computed-field/#metadata-pg-add-computed-field
 fun ComputedField.toPgAddComputedField(table: TableEntry, sourceName: String = DEFAULT_SOURCE_NAME): JsonObject {
@@ -607,8 +603,8 @@ fun ComputedField.toPgAddComputedField(table: TableEntry, sourceName: String = D
 
         val computedField = Json.encodeToJsonElement(this@toPgAddComputedField).jsonObject
         val args = JsonObject(computedField.toMutableMap().apply {
-            this.put("source", Json.encodeToJsonElement(sourceName))
-            this.put("table", Json.encodeToJsonElement(table.table))
+            this["source"] = Json.encodeToJsonElement(sourceName)
+            this["table"] = Json.encodeToJsonElement(table.table)
         })
         put("args", args)
     }
@@ -625,6 +621,7 @@ fun ComputedField.toPgDropComputedField(table: TableEntry, sourceName: String = 
             put("source", sourceName)
             put("table", Json.encodeToJsonElement(table.table))
             put("name", this@toPgDropComputedField.name)
+            put("cascade", cascade)
         }
     }
 }
@@ -639,8 +636,8 @@ private fun RemoteRelationship.toPgCreateOrUpdateRemoteRelationship(type: String
         put("type", type)
         val rel = Json.encodeToJsonElement(this@toPgCreateOrUpdateRemoteRelationship).jsonObject
         val args = JsonObject(rel.toMutableMap().apply {
-            this.put("source", Json.encodeToJsonElement(sourceName))
-            this.put("table", Json.encodeToJsonElement(table.table))
+            this["source"] = Json.encodeToJsonElement(sourceName)
+            this["table"] = Json.encodeToJsonElement(table.table)
         })
         put("args", args)
     }
@@ -748,27 +745,24 @@ fun Action.toDropActionPermission(role: String): JsonObject {
 }
 
 // https://hasura.io/docs/latest/api-reference/metadata-api/query-collections/#metadata-add-collection-to-allowlist
-fun AllowList.toAddCollectionToAllowList(sourceName: String = DEFAULT_SOURCE_NAME): JsonObject {
+fun AllowList.toAddCollectionToAllowList(): JsonObject {
     TODO()
 }
 
 //https://hasura.io/docs/latest/api-reference/metadata-api/scheduled-triggers/#metadata-create-cron-trigger
-fun CronTrigger.toCreateCronTrigger(sourceName: String = DEFAULT_SOURCE_NAME, replace: Boolean = false): JsonObject {
+fun CronTrigger.toCreateCronTrigger(replace: Boolean = false): JsonObject {
     return buildJsonObject {
         put("type", "create_cron_trigger")
         val cron = Json.encodeToJsonElement(this@toCreateCronTrigger).jsonObject
         val args = JsonObject(cron.toMutableMap().apply {
-            this.put("replace", Json.encodeToJsonElement(replace))
+            this["replace"] = Json.encodeToJsonElement(replace)
         })
         put("args", args)
     }
 }
 
-fun CronTrigger.toCreateCronTrigger(source: Source, replace: Boolean = false) =
-    toCreateCronTrigger(source.name, replace)
-
 // https://hasura.io/docs/latest/api-reference/metadata-api/scheduled-triggers/#metadata-delete-cron-trigger
-fun CronTrigger.toDeleteCronTrigger(sourceName: String = DEFAULT_SOURCE_NAME): JsonObject {
+fun CronTrigger.toDeleteCronTrigger(): JsonObject {
     return buildJsonObject {
         put("type", "delete_cron_trigger")
         putJsonObject("args") {
@@ -776,11 +770,6 @@ fun CronTrigger.toDeleteCronTrigger(sourceName: String = DEFAULT_SOURCE_NAME): J
         }
     }
 }
-
-fun CronTrigger.toDeleteCronTrigger(source: Source) =
-    toCreateCronTrigger(source.name)
-
-
 
 // https://hasura.io/docs/latest/api-reference/metadata-api/custom-types/#metadata-set-custom-types
 fun CustomTypes.toSetCustomTypes(): JsonObject {
@@ -804,30 +793,18 @@ fun QueryCollectionEntry.toCreateQueryCollection(sourceName: String = DEFAULT_SO
 }
 
 // https://hasura.io/docs/latest/api-reference/metadata-api/remote-schemas/#metadata-add-remote-schema
-private fun RemoteSchema.toAddOrUpdateRemoteSchema(type: String, sourceName: String = DEFAULT_SOURCE_NAME): JsonObject {
+private fun RemoteSchema.toAddOrUpdateRemoteSchema(type: String): JsonObject {
     return buildJsonObject {
         put("type", type)
         put("args", Json.encodeToJsonElement(this@toAddOrUpdateRemoteSchema))
     }
 }
 
-
-
-fun RemoteSchema.toAddRemoteSchema(sourceName: String = DEFAULT_SOURCE_NAME) =
-    toAddOrUpdateRemoteSchema("add_remote_schema", sourceName)
-
-fun RemoteSchema.toAddRemoteSchema(source: Source) =
-    toAddRemoteSchema(source.name)
-
-fun RemoteSchema.toUpdateRemoteSchema(sourceName: String = DEFAULT_SOURCE_NAME) =
-    toAddOrUpdateRemoteSchema("update_remote_schema", sourceName)
-
-
-fun RemoteSchema.toUpdateRemoteSchema(source: Source) =
-    toAddRemoteSchema(source.name)
+fun RemoteSchema.toUpdateRemoteSchema() =
+    toAddOrUpdateRemoteSchema("update_remote_schema")
 
 // https://hasura.io/docs/latest/api-reference/metadata-api/remote-schemas/#metadata-remove-remote-schema
-fun RemoteSchema.toRemoveRemoteSchema(sourceName: String = DEFAULT_SOURCE_NAME): JsonObject {
+fun RemoteSchema.toRemoveRemoteSchema(): JsonObject {
     return buildJsonObject {
         put("type", "remove_remote_schema")
         putJsonObject("args") {
@@ -836,11 +813,8 @@ fun RemoteSchema.toRemoveRemoteSchema(sourceName: String = DEFAULT_SOURCE_NAME):
     }
 }
 
-fun RemoteSchema.toRemoveRemoteSchema(source: Source) =
-    toRemoveRemoteSchema(source.name)
-
 // https://hasura.io/docs/latest/api-reference/metadata-api/remote-schemas/#metadata-reload-remote-schema
-fun RemoteSchema.toReloadRemoteSchema(sourceName: String = DEFAULT_SOURCE_NAME): JsonObject {
+fun RemoteSchema.toReloadRemoteSchema(): JsonObject {
     return buildJsonObject {
         put("type", "reload_remote_schema")
         putJsonObject("args") {
@@ -848,9 +822,6 @@ fun RemoteSchema.toReloadRemoteSchema(sourceName: String = DEFAULT_SOURCE_NAME):
         }
     }
 }
-
-fun RemoteSchema.toReloadRemoteSchema(source: Source) =
-    toReloadRemoteSchema(source.name)
 
 // TODO: https://hasura.io/docs/latest/api-reference/metadata-api/remote-schema-permissions/
 // TODO: https://hasura.io/docs/latest/api-reference/metadata-api/custom-functions/
