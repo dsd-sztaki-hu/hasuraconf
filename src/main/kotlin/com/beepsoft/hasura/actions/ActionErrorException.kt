@@ -11,4 +11,3 @@ class ActionErrorException(
     var errorData: Map<String, @Contextual Any>? = null
 ) : RuntimeException(errorMessage)
 
-class ActionException(message: String) : RuntimeException(message)
