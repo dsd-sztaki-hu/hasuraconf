@@ -147,7 +147,8 @@ class HasuraConfiguratorIntegrationTests {
 
 				// as Hasura runs in a container to access the Spring service running on host we must use
 				// http://host.docker.internal
-				serverBaseUrlInHasura = "http://host.docker.internal:${event.webServer.port}"
+				// Note:we actually use $host, becuase on mac we need host.docker.internal, on linux 172.17.0.1
+				serverBaseUrlInHasura = "http://$host:${event.webServer.port}"
 
 				hasuraContainer = GenericContainer<Nothing>("hasura/graphql-engine:v2.13.0")
 					.apply {
