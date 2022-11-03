@@ -12,27 +12,27 @@ data class HasuraConfiguration(
     /**
      * The metadata, which ca be directly imported into Hasura
      */
-    val metadata: HasuraMetadataV3,
+    var metadata: HasuraMetadataV3,
 
     /**
      * SQL config for enum tables
      */
-    val enumTableConfigs: List<EnumTableConfig>? = null,
+    var enumTableConfigs: List<EnumTableConfig>? = null,
 
     /**
      * SQL definitions for computed fields
      */
-    val computedFieldConfigs: List<ComputedFieldConfig>? = null,
+    var computedFieldConfigs: List<ComputedFieldConfig>? = null,
 
     /**
      * SQL definitions for cascaded delete field definitions
      */
-    val cascadeDeleteFieldConfigs: List<CascadeDeleteFieldConfig>? = null,
+    var cascadeDeleteFieldConfigs: List<CascadeDeleteFieldConfig>? = null,
 
     /**
      * Optional JsonSchema of the tables we generate metadata for with hasura specific extensions
      */
-    val jsonSchema: String?
+    var jsonSchema: String?
 )
 
 data class ComputedFieldConfig (
@@ -42,13 +42,16 @@ data class ComputedFieldConfig (
 
 data class EnumTableConfig (
     val tableName: String,
+    val schema: String,
     val runSqls: List<JsonObject>
 )
 
 data class CascadeDeleteFieldConfig (
     var table: String,
+    val tableSchema: String,
     var field: String,
     var joinedTable: String,
+    var joinedTableSchema: String,
     var runSql: JsonObject
 )
 
@@ -65,13 +68,13 @@ val HasuraConfiguration.runSqls: List<JsonObject>?
     get() {
         val list = mutableListOf<JsonObject>()
         if (enumTableConfigs != null) {
-            list.addAll(enumTableConfigs.flatMap { it.runSqls })
+            list.addAll(enumTableConfigs!!.flatMap { it.runSqls })
         }
         if (computedFieldConfigs != null) {
-            list.addAll(computedFieldConfigs.filter { it.runSql != null }.map { it.runSql!! })
+            list.addAll(computedFieldConfigs!!.filter { it.runSql != null }.map { it.runSql!! })
         }
         if (cascadeDeleteFieldConfigs != null) {
-            list.addAll(cascadeDeleteFieldConfigs.map { it.runSql })
+            list.addAll(cascadeDeleteFieldConfigs!!.map { it.runSql })
         }
         return if(list.isNotEmpty()) list else null
     }
@@ -90,7 +93,7 @@ fun HasuraConfiguration.toCascadeDeleteJson(): JsonObject {
     return buildJsonObject {
         put("type", "bulk")
         put("args", when {
-            cascadeDeleteFieldConfigs != null -> cascadeDeleteFieldConfigs.map { it.runSql }.toJsonArray()
+            cascadeDeleteFieldConfigs != null -> cascadeDeleteFieldConfigs!!.map { it.runSql }.toJsonArray()
             else -> buildJsonArray {}
         })
     }
