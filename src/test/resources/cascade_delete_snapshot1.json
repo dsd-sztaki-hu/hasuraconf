@@ -1,14 +1,17 @@
 {
-  "type" : "bulk",
-  "args" : [ {
-    "type" : "run_sql",
-    "args" : {
-      "sql" : "DROP TRIGGER IF EXISTS calendar_next_version_id_cascade_delete_trigger ON calendar;; DROP FUNCTION  IF EXISTS calendar_next_version_id_cascade_delete(); CREATE FUNCTION calendar_next_version_id_cascade_delete() RETURNS trigger AS $body$ BEGIN     IF TG_WHEN <> 'AFTER' OR TG_OP <> 'DELETE' THEN         RAISE EXCEPTION 'calendar_next_version_id_cascade_delete may only run as a AFTER DELETE trigger';     END IF;      DELETE FROM calendar where id=OLD.next_version_id;     RETURN OLD; END; $body$ LANGUAGE plpgsql;; CREATE TRIGGER calendar_next_version_id_cascade_delete_trigger AFTER DELETE ON calendar     FOR EACH ROW EXECUTE PROCEDURE calendar_next_version_id_cascade_delete();;                       "
+  "type": "bulk",
+  "args": [
+    {
+      "type": "run_sql",
+      "args": {
+        "sql": "DROP TRIGGER IF EXISTS public_calendar_next_version_id_cascade_delete_trigger ON public.calendar;; DROP FUNCTION  IF EXISTS public_calendar_next_version_id_cascade_delete(); CREATE FUNCTION public_calendar_next_version_id_cascade_delete() RETURNS trigger AS $body$ BEGIN     IF TG_WHEN <> 'AFTER' OR TG_OP <> 'DELETE' THEN         RAISE EXCEPTION 'public_calendar_next_version_id_cascade_delete may only run as a AFTER DELETE trigger';     END IF;      DELETE FROM calendar.calendar where id=OLD.next_version_id;     RETURN OLD; END; $body$ LANGUAGE plpgsql;; CREATE TRIGGER public_calendar_next_version_id_cascade_delete_trigger AFTER DELETE ON public.calendar     FOR EACH ROW EXECUTE PROCEDURE public_calendar_next_version_id_cascade_delete();;                       "
+      }
+    },
+    {
+      "type": "run_sql",
+      "args": {
+        "sql": "DROP TRIGGER IF EXISTS public_calendar_previous_version_id_cascade_delete_trigger ON public.calendar;; DROP FUNCTION  IF EXISTS public_calendar_previous_version_id_cascade_delete(); CREATE FUNCTION public_calendar_previous_version_id_cascade_delete() RETURNS trigger AS $body$ BEGIN     IF TG_WHEN <> 'AFTER' OR TG_OP <> 'DELETE' THEN         RAISE EXCEPTION 'public_calendar_previous_version_id_cascade_delete may only run as a AFTER DELETE trigger';     END IF;      DELETE FROM calendar.calendar where id=OLD.previous_version_id;     RETURN OLD; END; $body$ LANGUAGE plpgsql;; CREATE TRIGGER public_calendar_previous_version_id_cascade_delete_trigger AFTER DELETE ON public.calendar     FOR EACH ROW EXECUTE PROCEDURE public_calendar_previous_version_id_cascade_delete();;                       "
+      }
     }
-  }, {
-    "type" : "run_sql",
-    "args" : {
-      "sql" : "DROP TRIGGER IF EXISTS calendar_previous_version_id_cascade_delete_trigger ON calendar;; DROP FUNCTION  IF EXISTS calendar_previous_version_id_cascade_delete(); CREATE FUNCTION calendar_previous_version_id_cascade_delete() RETURNS trigger AS $body$ BEGIN     IF TG_WHEN <> 'AFTER' OR TG_OP <> 'DELETE' THEN         RAISE EXCEPTION 'calendar_previous_version_id_cascade_delete may only run as a AFTER DELETE trigger';     END IF;      DELETE FROM calendar where id=OLD.previous_version_id;     RETURN OLD; END; $body$ LANGUAGE plpgsql;; CREATE TRIGGER calendar_previous_version_id_cascade_delete_trigger AFTER DELETE ON calendar     FOR EACH ROW EXECUTE PROCEDURE calendar_previous_version_id_cascade_delete();;                       "
-    }
-  } ]
+  ]
 }

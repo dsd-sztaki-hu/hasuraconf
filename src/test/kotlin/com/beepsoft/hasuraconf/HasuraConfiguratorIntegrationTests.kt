@@ -240,6 +240,7 @@ class HasuraConfiguratorIntegrationTests {
 		var importMeta = normalize(confData.metadataJson)
 		println("**** importMeta: ${importMeta}")
 
+		conf.loadBulkRunSqls(confData)
 		conf.replaceConfiguration(confData)
 
 		// Load metadata again and compare with what we had with the previous algorithm

@@ -712,6 +712,7 @@ class HasuraConfigurator(
         if (entityClass.isAnnotationPresent(HasuraEnum::class.java)) {
             return EnumTableConfig(
                 tableName = tableName,
+                schema = schemaName,
                 // Generate SQL for enum values like ths:
                 // INSERT INTO public.todo_item_status (value, description) VALUES ('STARTED', 'Started - todo item started') ON CONFLICT DO NOTHING;
                 // enum insertions always come first, any other sql, like computed field function come after
@@ -839,22 +840,22 @@ class HasuraConfigurator(
         for (cdf in cascadeDeleteFields) {
             val template =
                 """
-                    DROP TRIGGER IF EXISTS ${cdf.table}_${cdf.field}_cascade_delete_trigger ON ${cdf.table};;
-                    DROP FUNCTION  IF EXISTS ${cdf.table}_${cdf.field}_cascade_delete();
-                    CREATE FUNCTION ${cdf.table}_${cdf.field}_cascade_delete() RETURNS trigger AS
+                    DROP TRIGGER IF EXISTS ${cdf.tableSchema}_${cdf.table}_${cdf.field}_cascade_delete_trigger ON ${cdf.tableSchema}.${cdf.table};;
+                    DROP FUNCTION  IF EXISTS ${cdf.tableSchema}_${cdf.table}_${cdf.field}_cascade_delete();
+                    CREATE FUNCTION ${cdf.tableSchema}_${cdf.table}_${cdf.field}_cascade_delete() RETURNS trigger AS
                     ${'$'}body${'$'}
                     BEGIN
                         IF TG_WHEN <> 'AFTER' OR TG_OP <> 'DELETE' THEN
-                            RAISE EXCEPTION '${cdf.table}_${cdf.field}_cascade_delete may only run as a AFTER DELETE trigger';
+                            RAISE EXCEPTION '${cdf.tableSchema}_${cdf.table}_${cdf.field}_cascade_delete may only run as a AFTER DELETE trigger';
                         END IF;
                     
-                        DELETE FROM ${cdf.joinedTable} where id=OLD.${cdf.field};
+                        DELETE FROM ${cdf.joinedTable}.${cdf.joinedTable} where id=OLD.${cdf.field};
                         RETURN OLD;
                     END;
                     ${'$'}body${'$'}
                     LANGUAGE plpgsql;;
-                    CREATE TRIGGER ${cdf.table}_${cdf.field}_cascade_delete_trigger AFTER DELETE ON ${cdf.table}
-                        FOR EACH ROW EXECUTE PROCEDURE ${cdf.table}_${cdf.field}_cascade_delete();;                       
+                    CREATE TRIGGER ${cdf.tableSchema}_${cdf.table}_${cdf.field}_cascade_delete_trigger AFTER DELETE ON ${cdf.tableSchema}.${cdf.table}
+                        FOR EACH ROW EXECUTE PROCEDURE ${cdf.tableSchema}_${cdf.table}_${cdf.field}_cascade_delete();;                       
                 """.trimIndent()
             val trigger = template.replace("\n", " ")
 
@@ -1352,7 +1353,13 @@ class HasuraConfigurator(
             val f = Utils.findDeclaredFieldUsingReflection(entityClass, propertyName)
             if (f!!.isAnnotationPresent(HasuraGenerateCascadeDeleteTrigger::class.java)) {
                 val fieldMetadata = metaModel.entityPersister(f.type.typeName) as AbstractEntityPersister
-                val cdf = CascadeDeleteFieldConfig(classMetadata.tableName, classMetadata.getPropertyColumnNames(propertyName)[0], fieldMetadata.tableName, buildJsonObject { /* dummy */})
+                val cdf = CascadeDeleteFieldConfig(
+                    classMetadata.tableName,
+                    schemaName,
+                    classMetadata.getPropertyColumnNames(propertyName)[0],
+                    fieldMetadata.tableName,
+                    schemaName,
+                    buildJsonObject { /* dummy */})
                 cascadeDeleteFieldConfigs.add(cdf)
             }
         }
