@@ -1555,9 +1555,11 @@ class HasuraConfigurator(
         // If loading separately then args must be an array of operations that we execute separately
         if (loadSeparately) {
             val args = confJson.get("args") as JsonArray
+            var res = ""
             for (o in args) {
-                return doExecuteSchemaApiSafely(o as JsonObject, endpoint)
+                res += "\n"+doExecuteSchemaApiSafely(o as JsonObject, endpoint)
             }
+            return res
         } else {
             return doExecuteSchemaApiSafely(confJson, endpoint)
         }
