@@ -438,7 +438,7 @@ data class CronTrigger (
     /**
      * List of headers to be sent with the webhook
      */
-    var headers: List<Header>,
+    var headers: List<Header>? = null,
 
     /**
      * Flag to indicate whether a trigger should be included in the metadata. When a cron
@@ -1230,6 +1230,10 @@ data class DeletePermissionEntry (
  */
 @Serializable
 data class DeletePermission (
+
+    @SerialName("backend_only")
+    var backendOnly: Boolean = false,
+
     /**
      * Only the rows where this precondition holds true are updatable
      */
@@ -1239,6 +1243,7 @@ data class DeletePermission (
 @Serializable(with = FilterSerializer::class)
 sealed class Filter {
     class AnythingMapValue(val value: JsonObject) : Filter()
+    class AnythingArrayValue(val value: JsonArray) : Filter()
     class StringValue(val value: String)          : Filter()
 }
 
@@ -1253,6 +1258,9 @@ class FilterSerializer : KSerializer<Filter> {
         if (jsonElem is JsonPrimitive) {
             return Filter.StringValue(jsonElem.jsonPrimitive.content)
         }
+        if (jsonElem is JsonArray) {
+            return Filter.AnythingArrayValue(jsonElem.jsonArray)
+        }
         return Filter.AnythingMapValue(jsonElem.jsonObject)
     }
 
@@ -1261,6 +1269,7 @@ class FilterSerializer : KSerializer<Filter> {
             ?: throw SerializationException("Expected JsonEncoder for ${encoder::class}")
         when (value) {
             is Filter.AnythingMapValue -> encoder.encodeJsonElement(value.value)
+            is Filter.AnythingArrayValue -> encoder.encodeJsonElement(value.value)
             is Filter.StringValue -> encoder.encodeString(value.value)
         }
     }
@@ -1552,8 +1561,35 @@ data class ObjRelUsingManualMapping (
      * The table to which the relationship has to be established
      */
     @SerialName("remote_table")
-    var remoteTable: TableName
+    var remoteTable: TableName,
+
+    // insertion_order
+
+    @SerialName("insertion_order")
+    var insertionOrder: InsertionOrder? = null
+
 )
+
+@Serializable
+enum class InsertionOrder(val value: String) {
+    BeforeParent("before_parent"),
+    AfterParent("after_parent");
+
+    @Serializer(forClass = InsertionOrder::class)
+    companion object : KSerializer<InsertionOrder> {
+        override val descriptor: SerialDescriptor get() {
+            return PrimitiveSerialDescriptor("io.hasura.metadata.v3.InsertionOrder", PrimitiveKind.STRING)
+        }
+        override fun deserialize(decoder: Decoder): InsertionOrder = when (val value = decoder.decodeString()) {
+            "before_parent" -> BeforeParent
+            "after_parent"  -> AfterParent
+            else    -> throw IllegalArgumentException("InsertionOrder could not parse: $value")
+        }
+        override fun serialize(encoder: Encoder, value: InsertionOrder) {
+            return encoder.encodeString(value.value)
+        }
+    }
+}
 
 /**
  *
@@ -1641,6 +1677,10 @@ data class SelectPermissionEntry (
  */
 @Serializable
 data class SelectPermission (
+
+    @SerialName("backend_only")
+    var backendOnly: Boolean = false,
+
     /**
      * Toggle allowing aggregate queries
      */
@@ -1699,6 +1739,10 @@ data class UpdatePermissionEntry (
  */
 @Serializable
 data class UpdatePermission (
+
+    @SerialName("backend_only")
+    var backendOnly: Boolean = false,
+
     /**
      * Postcondition which must be satisfied by rows which have been updated
      */
