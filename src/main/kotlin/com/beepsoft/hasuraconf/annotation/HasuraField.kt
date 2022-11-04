@@ -63,6 +63,11 @@ annotation class HasuraRelationship (
     val name: String = "",
 
     /**
+     * Source name
+     */
+    val source: String = "default",
+
+    /**
      * Remote table to join
      */
     val remoteTable: String = "",

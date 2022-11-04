@@ -657,6 +657,7 @@ class HasuraActionGenerator(
 
                         addJsonObject {
                             put("name", if (annot.name.isNotEmpty()) annot.name else field.name)
+                            put("source", annot.source)
                             // If we have a calculated value for a hasuraManagedEntityRelationship then use that
                             if (relationshipType != null) {
                                 put("type", relationshipType.name.toLowerCase())

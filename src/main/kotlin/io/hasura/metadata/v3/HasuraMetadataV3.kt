@@ -663,6 +663,9 @@ data class CustomTypeObjectRelationship (
      */
     var name: String,
 
+
+    var source: String,
+
     /**
      * The table to which relationship is defined
      */
