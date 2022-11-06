@@ -597,6 +597,7 @@ fun EventTrigger.toPgDeleteEventTrigger(sourceName: String = DEFAULT_SOURCE_NAME
 }
 
 // https://hasura.io/docs/latest/api-reference/metadata-api/computed-field/#metadata-pg-add-computed-field
+@JvmOverloads
 fun ComputedField.toPgAddComputedField(table: TableEntry, sourceName: String = DEFAULT_SOURCE_NAME): JsonObject {
     return buildJsonObject {
         put("type", "pg_add_computed_field")
@@ -614,6 +615,7 @@ fun ComputedField.toPgAddComputedField(table: TableEntry, source: Source) =
     toPgAddComputedField(table, source.name)
 
 // https://hasura.io/docs/latest/api-reference/metadata-api/computed-field/#metadata-pg-drop-computed-field
+@JvmOverloads
 fun ComputedField.toPgDropComputedField(table: TableEntry, sourceName: String = DEFAULT_SOURCE_NAME, cascade: Boolean = false): JsonObject {
     return buildJsonObject {
         put("type", "pg_drop_computed_field")
@@ -626,11 +628,13 @@ fun ComputedField.toPgDropComputedField(table: TableEntry, sourceName: String = 
     }
 }
 
+@JvmOverloads
 fun ComputedField.toPgDropComputedField(table: TableEntry, source: Source, cascade: Boolean = false) =
     toPgDropComputedField(table, source.name, cascade)
 
 
 // https://hasura.io/docs/latest/api-reference/metadata-api/remote-relationships/#metadata-pg-create-remote-relationship
+@JvmOverloads
 private fun RemoteRelationship.toPgCreateOrUpdateRemoteRelationship(type: String, table: TableEntry, sourceName: String = DEFAULT_SOURCE_NAME): JsonObject {
     return buildJsonObject {
         put("type", type)
@@ -643,6 +647,7 @@ private fun RemoteRelationship.toPgCreateOrUpdateRemoteRelationship(type: String
     }
 }
 
+@JvmOverloads
 fun RemoteRelationship.toPgCreateRemoteRelationship(table: TableEntry, sourceName: String = DEFAULT_SOURCE_NAME): JsonObject {
     return toPgCreateOrUpdateRemoteRelationship("pg_create_remote_relationship", table, sourceName)
 }
@@ -650,6 +655,7 @@ fun RemoteRelationship.toPgCreateRemoteRelationship(table: TableEntry, sourceNam
 fun RemoteRelationship.toPgCreateRemoteRelationship(table: TableEntry, source: Source) =
     toPgCreateRemoteRelationship(table, source.name)
 
+@JvmOverloads
 fun RemoteRelationship.toPgUpdateRemoteRelationship(table: TableEntry, sourceName: String = DEFAULT_SOURCE_NAME): JsonObject {
     return toPgCreateOrUpdateRemoteRelationship("pg_update_remote_relationship", table, sourceName)
 }
@@ -657,6 +663,7 @@ fun RemoteRelationship.toPgUpdateRemoteRelationship(table: TableEntry, sourceNam
 fun RemoteRelationship.toPgUpdateRemoteRelationship(table: TableEntry, source: Source) =
     toPgCreateRemoteRelationship(table, source.name)
 
+@JvmOverloads
 private fun RemoteRelationship.toPgDeleteRemoteRelationship(table: TableEntry, sourceName: String = DEFAULT_SOURCE_NAME): JsonObject {
     return buildJsonObject {
         put("type", "pg_delete_remote_relationship")
@@ -686,6 +693,7 @@ fun Action.toCreateAction(): JsonObject {
 }
 
 // https://hasura.io/docs/latest/api-reference/metadata-api/actions/#metadata-drop-action
+@JvmOverloads
 fun Action.toDropAction(clearData: Boolean = true): JsonObject {
     return buildJsonObject {
         put("type", "drop_action")
@@ -750,6 +758,7 @@ fun AllowList.toAddCollectionToAllowList(): JsonObject {
 }
 
 //https://hasura.io/docs/latest/api-reference/metadata-api/scheduled-triggers/#metadata-create-cron-trigger
+@JvmOverloads
 fun CronTrigger.toCreateCronTrigger(replace: Boolean = false): JsonObject {
     return buildJsonObject {
         put("type", "create_cron_trigger")
@@ -780,6 +789,7 @@ fun CustomTypes.toSetCustomTypes(): JsonObject {
 }
 
 // https://hasura.io/docs/latest/api-reference/metadata-api/custom-functions/#metadata-pg-track-function
+@JvmOverloads
 fun CustomFunction.toPgTrackFunction(sourceName: String = DEFAULT_SOURCE_NAME): JsonObject {
     TODO("CustomFunction type need fields to be added from https://hasura.io/docs/latest/api-reference/syntax-defs/#function-configuration")
 }
@@ -788,6 +798,7 @@ fun CustomFunction.toPgTrackFunction(source: Source) =
     toPgTrackFunction(source.name)
 
 // https://hasura.io/docs/latest/api-reference/metadata-api/query-collections/#metadata-create-query-collection
+@JvmOverloads
 fun QueryCollectionEntry.toCreateQueryCollection(sourceName: String = DEFAULT_SOURCE_NAME): JsonObject {
     TODO()
 }

@@ -226,6 +226,7 @@ class HasuraConfigurator(
      */
     @OptIn(ExperimentalStdlibApi::class)
     @Throws(HasuraConfiguratorException::class)
+    @JvmOverloads
     fun configure(
         sourceName: String = DEFAULT_SOURCE_NAME,
         sourceConfig: Configuration = Configuration(
@@ -1498,6 +1499,7 @@ class HasuraConfigurator(
         return executeHasuraApi(operation, hasuraMetadataEndpoint)
     }
 
+    @JvmOverloads
     fun executeSchemaApi(operation: JsonObject, safely: Boolean = false) : String {
         if (safely) {
             return executeSchemaApiSafely(operation.toString(), hasuraSchemaEndpoint)
@@ -1505,6 +1507,7 @@ class HasuraConfigurator(
         return executeHasuraApi(operation, hasuraSchemaEndpoint)
     }
 
+    @JvmOverloads
     fun executeSchemaApi(operation: String, safely: Boolean = false) : String {
         if (safely) {
             return executeSchemaApiSafely(operation, hasuraSchemaEndpoint)
