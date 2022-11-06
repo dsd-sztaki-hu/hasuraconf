@@ -14,7 +14,7 @@ public class HasuraActionFilter implements Filter {
     @Value("${hasuraconf.action-controller.path:/actions}")
     String path;
 
-    @Value("${hasuraconf.action-controller.enabled:false}")
+    @Value("${hasuraconf.action-controller.enabled:true}")
     boolean enabled;
 
     @Override
