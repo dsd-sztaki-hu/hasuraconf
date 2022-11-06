@@ -19,7 +19,7 @@ import javax.servlet.http.HttpServletResponse
  */
 @RestController
 //@RequestMapping("/actions")
-@RequestMapping("/\${hasuraconf.action-controller.path:/actions}")
+@RequestMapping("\${hasuraconf.action-controller.path:/actions}")
 class HasuraActionController {
 
     @Value("\${hasuraconf.action-controller.path:/actions}")
