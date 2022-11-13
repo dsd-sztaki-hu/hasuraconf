@@ -717,8 +717,8 @@ class HasuraConfigurator(
                 // Generate SQL for enum values like ths:
                 // INSERT INTO public.todo_item_status (value, description) VALUES ('STARTED', 'Started - todo item started') ON CONFLICT DO NOTHING;
                 // enum insertions always come first, any other sql, like computed field function come after
-                runSqls = buildList<JsonObject> {
-                    buildJsonObject {
+                runSqls = buildList {
+                    add(buildJsonObject {
                         put("hasuraconfComment", """Enum values for ${entityClass.simpleName}""")
                         put("type", "run_sql")
                         putJsonObject("args") {
@@ -744,7 +744,7 @@ class HasuraConfigurator(
                             put("cascade", false)
                             put("read_only", false)
                         }
-                    }
+                    })
                 }
             )
         }
