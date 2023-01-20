@@ -93,7 +93,7 @@ class CustomRootFieldNameProviderTest {
 			postgresqlContainer.start()
 			postgresqlContainer.followOutput(logConsumer)
 
-			hasuraContainer = GenericContainer<Nothing>("hasura/graphql-engine:v2.13.0")
+			hasuraContainer = GenericContainer<Nothing>("hasura/graphql-engine:v2.17.0")
 				.apply {
 					//dependsOn(postgresqlContainer)
 					val postgresUrl = "postgres://hasuraconf:hasuraconf@${host}:${postgresqlContainer.getMappedPort(PostgreSQLContainer.POSTGRESQL_PORT)}/hasuraconf"

@@ -150,7 +150,7 @@ class HasuraConfiguratorIntegrationTests {
 				// Note:we actually use $host, becuase on mac we need host.docker.internal, on linux 172.17.0.1
 				serverBaseUrlInHasura = "http://$host:${event.webServer.port}"
 
-				hasuraContainer = GenericContainer<Nothing>("hasura/graphql-engine:v2.13.0")
+				hasuraContainer = GenericContainer<Nothing>("hasura/graphql-engine:v2.17.0")
 					.apply {
 						//dependsOn(postgresqlContainer)
 						println("jdbc $jdbc")
