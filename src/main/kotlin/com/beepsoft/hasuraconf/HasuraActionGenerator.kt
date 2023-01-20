@@ -97,7 +97,9 @@ class HasuraActionGenerator(
         Date::class.java                    to Types.DATE,
         java.sql.Date::class.java           to Types.DATE,
         java.sql.Time::class.java           to Types.TIME,
-        java.sql.Timestamp::class.java      to Types.TIMESTAMP
+        java.sql.Timestamp::class.java      to Types.TIMESTAMP,
+        // Not sure how exact this is, but dialect.getTypeName(1111) returns 'uuid'
+        java.util.UUID::class.java          to Types.OTHER
     )
 
     // dialect.getTypeName() defines how JDBC types are mapped to actual DB types
@@ -400,6 +402,7 @@ class HasuraActionGenerator(
                 || type == String::class.java
                 || type == Date::class.java
                 || type == Timestamp::class.java
+                || type == UUID::class.java
                 || Number::class.java.isAssignableFrom(type)
         )
     }
