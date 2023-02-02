@@ -1,5 +1,7 @@
 package com.beepsoft.hasuraconf
 
+import com.beepsoft.hasuraconf.model.BaseObject
+import com.beepsoft.hasuraconf.model2.Comment1
 import io.hasura.metadata.v3.metadataJson
 import org.apache.commons.lang3.SystemUtils
 import org.junit.jupiter.api.DisplayName
@@ -7,6 +9,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.skyscreamer.jsonassert.JSONAssert
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.autoconfigure.domain.EntityScan
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.util.TestPropertyValues
 import org.springframework.context.ApplicationContextInitializer
@@ -40,6 +43,7 @@ import org.testcontainers.junit.jupiter.Testcontainers
 		classes = [CustomRootFieldNameProviderTest.MyTestConfiguration::class])
 @Testcontainers
 @ExtendWith(SpringExtension::class)
+@EntityScan(basePackageClasses=[BaseObject::class]) // Don't pick up Comment1 or Comment2
 class CustomRootFieldNameProviderTest {
 
 	@Configuration

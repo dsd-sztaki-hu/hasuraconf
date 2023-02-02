@@ -9,7 +9,7 @@
         }
       },
       "customization": {
-        "naming_convention": "hasura-default"
+        "naming_convention": "graphql-default"
       },
       "kind": "postgres",
       "name": "default",

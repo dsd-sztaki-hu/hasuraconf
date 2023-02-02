@@ -401,6 +401,9 @@
           "use_prepared_statements": false
         }
       },
+      "customization": {
+        "naming_convention": "hasura-default"
+      },
       "kind": "postgres",
       "name": "default",
       "tables": [

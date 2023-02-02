@@ -9,7 +9,22 @@
         }
       },
       "customization": {
-        "naming_convention": "hasura-default"
+        "naming_convention": "hasura-default",
+        "root_fields": {
+          "delete": "doDelete",
+          "delete_by_pk": "doDeleteOne",
+          "insert": "doInsert",
+          "insert_one": "doInsertOne",
+          "select": "doSelect",
+          "select_aggregate": "doSelectAggregate",
+          "select_by_pk": "doSelectOne",
+          "update": "doUpdate",
+          "update_by_pk": "doUpdateOne"
+        },
+        "type_names": {
+          "prefix": "TypePrefix",
+          "suffix": "TypeSuffix"
+        }
       },
       "kind": "postgres",
       "name": "default",
@@ -470,6 +485,33 @@
           },
           "table": {
             "name": "calendar_user",
+            "schema": "public"
+          }
+        },
+        {
+          "configuration": {
+            "column_config": {
+              "created_at": {
+                "custom_name": "createdAt"
+              },
+              "updated_at": {
+                "custom_name": "updatedAt"
+              }
+            },
+            "custom_root_fields": {
+              "delete": "deleteComment1s",
+              "delete_by_pk": "deleteComment1",
+              "insert": "createComment1s",
+              "insert_one": "createComment1",
+              "select": "comment1s",
+              "select_aggregate": "comment1Aggregate",
+              "select_by_pk": "comment1",
+              "update": "updateComment1s",
+              "update_by_pk": "updateComment1"
+            }
+          },
+          "table": {
+            "name": "comment1",
             "schema": "public"
           }
         },

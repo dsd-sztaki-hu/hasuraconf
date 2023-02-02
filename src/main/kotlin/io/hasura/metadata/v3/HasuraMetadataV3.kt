@@ -2443,15 +2443,14 @@ data class Source (
 
 @Serializable
 data class SourceCustomization (
+    @SerialName("naming_convention")
+    var namingConvention: String,
 
     @SerialName("root_fields")
-    var rootFields: CustomRootFields,
+    var rootFields: CustomRootFields? = null,
 
     @SerialName("type_names")
-    var typeName: SourceTypeCustomization,
-
-    @SerialName("naming_convention")
-    var namingConvention: String
+    var typeName: SourceTypeCustomization? = null
 )
 
 @Serializable

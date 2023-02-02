@@ -1,7 +1,7 @@
 package com.beepsoft.hasuraconf
 
 import com.beepsoft.hasura.actions.HasuraActionController
-import com.beepsoft.hasura.actions.HasuraActionFilter
+import io.hasura.metadata.v3.SourceCustomization
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean
@@ -26,7 +26,8 @@ class AutoConfiguration
             @Value("\${hasuraconf.jsonSchema.customPropsFieldName:hasura}") customPropsFieldName: String,
             @Value("\${hasuraconf.jsonSchema.ignore:false}") ignoreJsonSchema: Boolean,
             @Value("\${hasuraconf.actionRoots:#{null}}") actionRoots: String?,
-            rootFieldNameProvider: RootFieldNameProvider
+            rootFieldNameProvider: RootFieldNameProvider,
+            sourceCustomization: SourceCustomization
     ): HasuraConfigurator {
         return HasuraConfigurator(
                 entityManagerFactory,
@@ -34,11 +35,13 @@ class AutoConfiguration
                 hasuraSchemaEndpoint,
                 hasuraMetadataEndpoint,
                 hasuraAdminSecret,
+                actionRoots?.split(",\\s*".toRegex()),
+                sourceCustomization,
+                rootFieldNameProvider,
+
                 schemaVersion,
                 customPropsFieldName,
                 ignoreJsonSchema,
-                actionRoots?.split(",\\s*".toRegex()),
-                rootFieldNameProvider
         )
     }
 
@@ -49,6 +52,20 @@ class AutoConfiguration
     @ConditionalOnMissingBean
     fun rootFieldNameProvider(): RootFieldNameProvider {
         return DefaultRootFieldNameProvider()
+    }
+
+    /**
+     * Provide default SourceCustomization using hasuraconf.namingConvention config value for
+     * naming convention.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    fun sourceCustomization(
+        @Value("\${hasuraconf.namingConvention:hasura-default}") namingConvention: String,
+    ): SourceCustomization {
+        return SourceCustomization(
+            namingConvention
+        )
     }
 
 

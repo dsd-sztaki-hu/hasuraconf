@@ -118,11 +118,13 @@ class HasuraConfigurator(
     var hasuraSchemaEndpoint: String,
     var hasuraMetadataEndpoint: String,
     var hasuraAdminSecret: String?,
-    var schemaVersion: String,
-    var customPropsFieldName: String,
-    var ignoreJsonSchema: Boolean = false,
     var actionRoots: List<String>? = null,
-    var rootFieldNameProvider: RootFieldNameProvider = DefaultRootFieldNameProvider()
+    var sourceCustomization: SourceCustomization? = null,
+    var rootFieldNameProvider: RootFieldNameProvider = DefaultRootFieldNameProvider(),
+
+    var jsonSchemaVersion: String,
+    var customJsonSchemaPropsFieldName: String,
+    var ignoreJsonSchema: Boolean = false,
 ) {
 
     companion object {
@@ -187,6 +189,8 @@ class HasuraConfigurator(
     private lateinit var computedFieldConfigs: MutableList<ComputedFieldConfig>
     private lateinit var cascadeDeleteFieldConfigs: MutableSet<CascadeDeleteFieldConfig>
 
+    private lateinit var sourceCustomizationGenerator: HasuraSourceCustomizationGenerator
+
     // {
     //  "type": "bulk",
     //  "source": "default",
@@ -217,6 +221,7 @@ class HasuraConfigurator(
         sessionFactoryImpl = entityManagerFactory.unwrap(SessionFactoryImpl::class.java)
         metaModel = sessionFactoryImpl.metamodel as MetamodelImplementor
         permissionAnnotationProcessor = PermissionAnnotationProcessor(entityManagerFactory)
+        sourceCustomizationGenerator = HasuraSourceCustomizationGenerator()
     }
 
 
@@ -238,7 +243,7 @@ class HasuraConfigurator(
         ),
         backendKind: BackendKind = BackendKind.Postgres
     ): HasuraConfiguration {
-        jsonSchemaGenerator = HasuraJsonSchemaGenerator(schemaVersion, customPropsFieldName)
+        jsonSchemaGenerator = HasuraJsonSchemaGenerator(jsonSchemaVersion, customJsonSchemaPropsFieldName)
         actionGenerator = HasuraActionGenerator(metaModel)
         cascadeDeleteFieldConfigs = mutableSetOf<CascadeDeleteFieldConfig>()
         manyToManyEntities = mutableMapOf()
@@ -255,6 +260,12 @@ class HasuraConfigurator(
             Comparator { o1, o2 -> o1.name.compareTo(o2.name) },
             *metaModel.entities.toTypedArray()
         )
+
+        var actualSourceCustomization = sourceCustomization
+        var annotBasedCustomization = sourceCustomizationGenerator.generateSourceCustomization(entities)
+        if (annotBasedCustomization != null) {
+            actualSourceCustomization = annotBasedCustomization
+        }
 
 //        metadataAndSql = HasuraConfiguration(HasuraMetadataV3(), mutableListOf())
         val actionsAndTypes = if (actionRoots != null) actionGenerator.configureActions(actionRoots!!) else null
@@ -296,7 +307,7 @@ class HasuraConfigurator(
                             add(TableEntry(actualQualifiedTable(schemaName, tableName)))
                         }
                     },
-                    customization = null // TODO: add way to define source customization
+                    customization = actualSourceCustomization
                 ))
             },
             actions = if(actionsAndTypes != null) actionsAndTypes!!.actions else null,

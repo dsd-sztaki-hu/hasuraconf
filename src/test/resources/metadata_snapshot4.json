@@ -9,7 +9,21 @@
         }
       },
       "customization": {
-        "naming_convention": "hasura-default"
+        "naming_convention": "graphql-default",
+        "root_fields": {
+          "delete": "doDComment2elete",
+          "delete_by_pk": "doComment2DeleteOne",
+          "insert": "doComment2Insert",
+          "insert_one": "doComment2InsertOne",
+          "select": "doComment2Select",
+          "select_by_pk": "doComment2SelectOne",
+          "update": "doComment2Update",
+          "update_by_pk": "doComment2UpdateOne"
+        },
+        "type_names": {
+          "prefix": "",
+          "suffix": ""
+        }
       },
       "kind": "postgres",
       "name": "default",
@@ -470,6 +484,33 @@
           },
           "table": {
             "name": "calendar_user",
+            "schema": "public"
+          }
+        },
+        {
+          "configuration": {
+            "column_config": {
+              "created_at": {
+                "custom_name": "createdAt"
+              },
+              "updated_at": {
+                "custom_name": "updatedAt"
+              }
+            },
+            "custom_root_fields": {
+              "delete": "deleteComment2s",
+              "delete_by_pk": "deleteComment2",
+              "insert": "createComment2s",
+              "insert_one": "createComment2",
+              "select": "comment2s",
+              "select_aggregate": "comment2Aggregate",
+              "select_by_pk": "comment2",
+              "update": "updateComment2s",
+              "update_by_pk": "updateComment2"
+            }
+          },
+          "table": {
+            "name": "comment2",
             "schema": "public"
           }
         },
