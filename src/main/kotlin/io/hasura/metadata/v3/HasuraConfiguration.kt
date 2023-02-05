@@ -31,9 +31,15 @@ data class HasuraConfiguration(
     var cascadeDeleteFieldConfigs: List<CascadeDeleteFieldConfig>? = null,
 
     /**
+     * Postgresql CHECK constraints generated based on JSR validation annotations
+     */
+    var checkConstraintRunSqls: List<JsonObject>? = null,
+
+
+    /**
      * Optional JsonSchema of the tables we generate metadata for with hasura specific extensions
      */
-    var jsonSchema: String?
+    var jsonSchema: String? = null
 )
 
 data class ComputedFieldConfig (
@@ -76,6 +82,9 @@ val HasuraConfiguration.runSqls: List<JsonObject>?
         }
         if (cascadeDeleteFieldConfigs != null) {
             list.addAll(cascadeDeleteFieldConfigs!!.map { it.runSql })
+        }
+        if (checkConstraintRunSqls != null) {
+            list.addAll(checkConstraintRunSqls!!)
         }
         return if(list.isNotEmpty()) list else null
     }

@@ -26,6 +26,7 @@ class AutoConfiguration
             @Value("\${hasuraconf.jsonSchema.customPropsFieldName:hasura}") customPropsFieldName: String,
             @Value("\${hasuraconf.jsonSchema.ignore:false}") ignoreJsonSchema: Boolean,
             @Value("\${hasuraconf.actionRoots:#{null}}") actionRoots: String?,
+            @Value("\${hasuraconf.generateCheckConstraintsForJSRValidationAnnnotations:true}") generateCheckConstraintsForJSRValidationAnnnotations: Boolean,
             rootFieldNameProvider: RootFieldNameProvider,
             sourceCustomization: SourceCustomization
     ): HasuraConfigurator {
@@ -42,6 +43,8 @@ class AutoConfiguration
                 schemaVersion,
                 customPropsFieldName,
                 ignoreJsonSchema,
+                DefaultHasuraCheckConstraintGenerator(),
+                generateCheckConstraintsForJSRValidationAnnnotations
         )
     }
 

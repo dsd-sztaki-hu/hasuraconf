@@ -13,6 +13,7 @@ fun getLogger(forClass: Class<*>): Logger =
 object Utils {
     private val LOG = getLogger(Utils::class.java)
     private val declaredFields: MutableMap<String?, Field?> =  /*Collections.synchronizedMap(*/HashMap() /*)*/
+    private val declaredFieldsOfClass: MutableMap<Class<*>, List<Field>> =  /*Collections.synchronizedMap(*/HashMap() /*)*/
     private fun dfMapKey(baseClass: Class<*>?, fieldName: String): String? {
         return if (baseClass != null) baseClass.name + "---" + fieldName else null
     }
@@ -56,6 +57,24 @@ object Utils {
         }
         return null
     }
+
+    fun findDeclaredFields(baseClass: Class<*>): List<Field> {
+        if (declaredFieldsOfClass.containsKey(baseClass)) {
+            return declaredFieldsOfClass[baseClass!!]!!
+        }
+
+        var fieldList = mutableListOf<Field>()
+        var res: Class<*>? = baseClass
+        while (res != null) {
+            var fields = res.getDeclaredFields().asList()
+            fieldList.addAll(fields)
+            res = res.superclass
+        }
+
+        declaredFieldsOfClass.put(baseClass, fieldList)
+        return fieldList
+    }
+
 }
 
 fun actualSchemaAndName(schemaName: String, tableName: String) : Pair<String, String>

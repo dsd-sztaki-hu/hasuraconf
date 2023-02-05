@@ -1,0 +1,107 @@
+{
+  "type": "bulk",
+  "args": [
+    {
+      "hasuraconfComment": "Enum values for Availability",
+      "type": "run_sql",
+      "args": {
+        "source": "default",
+        "sql": "INSERT INTO public.calendar_availability (value, description) VALUES ('PRIVATE', 'Only users with explicit role have read/write access to the calendar') ON CONFLICT DO NOTHING;\nINSERT INTO public.calendar_availability (value, description) VALUES ('PUBLIC', 'Anyone has read access to the calendar') ON CONFLICT DO NOTHING;\n",
+        "cascade": false,
+        "read_only": false
+      }
+    },
+    {
+      "hasuraconfComment": "Enum values for RoleType",
+      "type": "run_sql",
+      "args": {
+        "source": "default",
+        "sql": "INSERT INTO public.calendar_role_type (value, description) VALUES ('OWNER', 'Main owner (creator) of the calendar with admin rights') ON CONFLICT DO NOTHING;\nINSERT INTO public.calendar_role_type (value, description) VALUES ('EDITOR', 'May edit the calendar') ON CONFLICT DO NOTHING;\nINSERT INTO public.calendar_role_type (value, description) VALUES ('VIEWER', 'May view the calendar') ON CONFLICT DO NOTHING;\n",
+        "cascade": false,
+        "read_only": false
+      }
+    },
+    {
+      "hasuraconfComment": "Computed field titleAndDescription SQL function",
+      "type": "run_sql",
+      "args": {
+        "source": "default",
+        "sql": "\n            CREATE OR REPLACE FUNCTION title_and_description(calendar_row calendar)\n            RETURNS TEXT as $$\n                SELECT calendar_row.title || '---' || calendar_row.description\n            $$ LANGUAGE sql STABLE;\n        ",
+        "cascade": false,
+        "read_only": false
+      }
+    },
+    {
+      "type": "run_sql",
+      "args": {
+        "sql": "DROP TRIGGER IF EXISTS public_calendar_next_version_id_cascade_delete_trigger ON public.calendar;; DROP FUNCTION  IF EXISTS public_calendar_next_version_id_cascade_delete(); CREATE FUNCTION public_calendar_next_version_id_cascade_delete() RETURNS trigger AS $body$ BEGIN     IF TG_WHEN <> 'AFTER' OR TG_OP <> 'DELETE' THEN         RAISE EXCEPTION 'public_calendar_next_version_id_cascade_delete may only run as a AFTER DELETE trigger';     END IF;      DELETE FROM calendar.calendar where id=OLD.next_version_id;     RETURN OLD; END; $body$ LANGUAGE plpgsql;; CREATE TRIGGER public_calendar_next_version_id_cascade_delete_trigger AFTER DELETE ON public.calendar     FOR EACH ROW EXECUTE PROCEDURE public_calendar_next_version_id_cascade_delete();;                       "
+      }
+    },
+    {
+      "type": "run_sql",
+      "args": {
+        "sql": "DROP TRIGGER IF EXISTS public_calendar_previous_version_id_cascade_delete_trigger ON public.calendar;; DROP FUNCTION  IF EXISTS public_calendar_previous_version_id_cascade_delete(); CREATE FUNCTION public_calendar_previous_version_id_cascade_delete() RETURNS trigger AS $body$ BEGIN     IF TG_WHEN <> 'AFTER' OR TG_OP <> 'DELETE' THEN         RAISE EXCEPTION 'public_calendar_previous_version_id_cascade_delete may only run as a AFTER DELETE trigger';     END IF;      DELETE FROM calendar.calendar where id=OLD.previous_version_id;     RETURN OLD; END; $body$ LANGUAGE plpgsql;; CREATE TRIGGER public_calendar_previous_version_id_cascade_delete_trigger AFTER DELETE ON public.calendar     FOR EACH ROW EXECUTE PROCEDURE public_calendar_previous_version_id_cascade_delete();;                       "
+      }
+    },
+    {
+      "hasuraconfComment": "Constraint for calendar.title",
+      "type": "run_sql",
+      "args": {
+        "source": "default",
+        "sql": "ALTER TABLE calendar DROP CONSTRAINT IF EXISTS calendar_title_size_check;\nALTER TABLE calendar ADD CONSTRAINT calendar_title_size_check \n    CHECK (length(title) >= 3 and length(title) <= 200);",
+        "cascade": false,
+        "read_only": false
+      }
+    },
+    {
+      "hasuraconfComment": "Constraint for constraint_test_model.age",
+      "type": "run_sql",
+      "args": {
+        "source": "default",
+        "sql": "ALTER TABLE constraint_test_model DROP CONSTRAINT IF EXISTS constraint_test_model_age_min_check;\nALTER TABLE constraint_test_model ADD CONSTRAINT constraint_test_model_age_min_check \n    CHECK (age >= 9               );",
+        "cascade": false,
+        "read_only": false
+      }
+    },
+    {
+      "hasuraconfComment": "Constraint for constraint_test_model.age",
+      "type": "run_sql",
+      "args": {
+        "source": "default",
+        "sql": "ALTER TABLE constraint_test_model DROP CONSTRAINT IF EXISTS constraint_test_model_age_max_check;\nALTER TABLE constraint_test_model ADD CONSTRAINT constraint_test_model_age_max_check \n    CHECK (age <= 99);",
+        "cascade": false,
+        "read_only": false
+      }
+    },
+    {
+      "hasuraconfComment": "Constraint for constraint_test_model.name",
+      "type": "run_sql",
+      "args": {
+        "source": "default",
+        "sql": "ALTER TABLE constraint_test_model DROP CONSTRAINT IF EXISTS constraint_test_model_name_size_check;\nALTER TABLE constraint_test_model ADD CONSTRAINT constraint_test_model_name_size_check \n    CHECK (length(name) >= 5 and length(name) <= 50);",
+        "cascade": false,
+        "read_only": false
+      }
+    },
+    {
+      "hasuraconfComment": "Constraint for constraint_test_model.email",
+      "type": "run_sql",
+      "args": {
+        "source": "default",
+        "sql": "ALTER TABLE constraint_test_model DROP CONSTRAINT IF EXISTS constraint_test_model_email_email_check;\nALTER TABLE constraint_test_model ADD CONSTRAINT constraint_test_model_email_email_check \n    CHECK (email ~* '^[A-Za-z0-9._+%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$');",
+        "cascade": false,
+        "read_only": false
+      }
+    },
+    {
+      "hasuraconfComment": "Constraint for constraint_test_model.url",
+      "type": "run_sql",
+      "args": {
+        "source": "default",
+        "sql": "ALTER TABLE constraint_test_model DROP CONSTRAINT IF EXISTS constraint_test_model_url_pattern_check;\nALTER TABLE constraint_test_model ADD CONSTRAINT constraint_test_model_url_pattern_check \n    CHECK ( url ~* '^(?!mailto:)(?:(?:http|https|ftp)://)(?:\\\\S+(?::\\\\S*)?@)?(?:(?:(?:[1-9]\\\\d?|1\\\\d\\\\d|2[01]\\\\d|22[0-3])(?:\\\\.(?:1?\\\\d{1,2}|2[0-4]\\\\d|25[0-5])){2}(?:\\\\.(?:[0-9]\\\\d?|1\\\\d\\\\d|2[0-4]\\\\d|25[0-4]))|(?:(?:[a-z\\\\u00a1-\\\\uffff0-9]+-?)*[a-z\\\\u00a1-\\\\uffff0-9]+)(?:\\\\.(?:[a-z\\\\u00a1-\\\\uffff0-9]+-?)*[a-z\\\\u00a1-\\\\uffff0-9]+)*(?:\\\\.(?:[a-z\\\\u00a1-\\\\uffff]{2,})))|localhost)(?::\\\\d{2,5})?(?:(/|\\\\?|#)[^\\\\s]*)?$');",
+        "cascade": false,
+        "read_only": false
+      }
+    }
+  ]
+}

@@ -125,6 +125,9 @@ class HasuraConfigurator(
     var jsonSchemaVersion: String,
     var customJsonSchemaPropsFieldName: String,
     var ignoreJsonSchema: Boolean = false,
+
+    var checkConstraintGenerator: HasuraCheckConstraintGenerator,
+    var generateCheckConstraintsForJSRValidationAnnnotations: Boolean = true,
 ) {
 
     companion object {
@@ -267,6 +270,8 @@ class HasuraConfigurator(
             actualSourceCustomization = annotBasedCustomization
         }
 
+        var checkConstraintRunSqls : MutableList<JsonObject>? = null
+
 //        metadataAndSql = HasuraConfiguration(HasuraMetadataV3(), mutableListOf())
         val actionsAndTypes = if (actionRoots != null) actionGenerator.configureActions(actionRoots!!) else null
         val meta = HasuraMetadataV3(
@@ -286,6 +291,17 @@ class HasuraConfigurator(
                             }
                             // Add TableEntry for entity
                             add(configureTableEntry(entity, entities, sourceName))
+
+                            // Generate CHECK constraints for fields
+                            if (generateCheckConstraintsForJSRValidationAnnnotations) {
+                                val runSqls = checkConstraintGenerator.generateCheckConstraints(metaModel, entity, sourceName)
+                                if (runSqls != null && runSqls.isNotEmpty()) {
+                                    if (checkConstraintRunSqls == null) {
+                                        checkConstraintRunSqls = mutableListOf()
+                                    }
+                                    checkConstraintRunSqls!!.addAll(runSqls)
+                                }
+                            }
                         }
                         // Add config for many-to-many join tables, which have no Java class representation but still
                         // want to have access to them
@@ -330,305 +346,10 @@ class HasuraConfigurator(
                 !ignoreJsonSchema -> jsonSchemaGenerator.generateSchema(*entityClasses.toTypedArray()).toString()
                     .reformatJson()
                 else -> null
-            }
+            },
+            checkConstraintRunSqls = checkConstraintRunSqls
         )
     }
-
-//    /**
-//     * Takes the metadataJson and creates a Metadata API Json
-//     */
-//    private fun createBulkConfJson()
-//    {
-//        val apiJson = buildJsonObject {
-//            put("type", "bulk")
-//            putJsonArray("args") {
-//                // {
-//                //    "type" : "clear_metadata",
-//                //    "args" : { }
-//                //  }
-//                add(buildJsonObject {
-//                    put("type", "clear_metadata")
-//                    put("args", buildJsonObject{})
-//                })
-//
-//                // track_table
-//                // set_table_is_enum
-//                (metadataJsonObject["tables"] as JsonArray).forEach { table ->
-//                    val tableObject = table as JsonObject
-//
-//                    // {
-//                    //    "type" : "track_table",
-//                    //    "args" : {
-//                    //      "schema" : "public",
-//                    //      "name" : "calendar_availability"
-//                    //    }
-//                    //  }
-//                    add(buildJsonObject {
-//                        put("type", "track_table")
-//                        put("args", tableObject["table"]!!.clone())
-//                    })
-//
-//                    // {
-//                    //    "type" : "set_table_is_enum",
-//                    //    "args" : {
-//                    //      "table" : {
-//                    //        "schema" : "public",
-//                    //        "name" : "calendar_availability"
-//                    //      },
-//                    //      "is_enum" : true
-//                    //    }
-//                    //  }
-//                    // If it is an enum table set_table_is_enum
-//                    if (table["is_enum"] != null && (table["is_enum"] as JsonPrimitive).boolean == true) {
-//                        add(buildJsonObject {
-//                            put("type", "set_table_is_enum")
-//                            put("args", buildJsonObject {
-//                                put("table", tableObject["table"]!!.clone())
-//                                put("is_enum", true)
-//                            })
-//                        })
-//                    }
-//                }
-//
-//                // set_table_custom_fields
-//                // create_object_relationship
-//                // create_array_relationship
-//                // create_insert_permission
-//                // create_select_permission
-//                // create_update_permission
-//                // create_delete_permission
-//                (metadataJsonObject["tables"] as JsonArray).forEach { table ->
-//                    // {
-//                    //    "type" : "set_table_custom_fields",
-//                    //    "version" : 2,
-//                    //    "args" : {
-//                    //      "table" : "book_series",
-//                    //      "schema" : "public",
-//                    //      "custom_root_fields" : {
-//                    //        "select" : "bookSeriesMulti",
-//                    //        "select_by_pk" : "bookSeries",
-//                    //        "select_aggregate" : "bookSeriesAggregate",
-//                    //        "insert" : "createBookSeriesMulti",
-//                    //        "insert_one" : "createBookSeries",
-//                    //        "update" : "updateBookSeriesMulti",
-//                    //        "update_by_pk" : "updateBookSeries",
-//                    //        "delete" : "deleteBookSeriesMulti",
-//                    //        "delete_by_pk" : "deleteBookSeries"
-//                    //      },
-//                    //      "custom_column_names" : {
-//                    //        "created_at" : "createdAt",
-//                    //        "updated_at" : "updatedAt"
-//                    //      }
-//                    //    }
-//                    //  }
-//                    val tableObject = table as JsonObject
-//
-//                    if (tableObject["configuration"] != null) {
-//                        add(buildJsonObject {
-//                            put("type", "set_table_custom_fields")
-//                            put("version", 2)
-//                            put("args", buildJsonObject {
-//                                val nameAndSchema = tableObject["table"]!! as JsonObject
-//                                put("table", nameAndSchema["name"]!!)
-//                                put("schema", nameAndSchema["schema"]!!)
-//
-//                                // Copy custom_root_fields and custom_column_names from configuration to the
-//                                // api operation
-//                                val rootFieldsAndColumNames = tableObject["configuration"]!!.clone() as JsonObject
-//                                rootFieldsAndColumNames.forEach { k, v ->
-//                                    this.put(k, v)
-//                                }
-//                            })
-//                        })
-//                    }
-//
-//                    // Same logic for:
-//                    // create_object_relationship
-//                    // create_array_relationship
-//                    // create_insert_permission
-//                    // create_select_permission
-//                    // create_update_permission
-//                    // create_delete_permission
-//                    fun addAllFromArray(metaJsonName: String, metaApiJsonName: String)
-//                    {
-//                        (tableObject[metaJsonName] as JsonArray?)?.let {elems ->
-//                            elems.forEach {elem ->
-//                                add(buildJsonObject {
-//                                    put("type", metaApiJsonName)
-//                                    put("args", buildJsonObject {
-//                                        put("table", (table as JsonObject)["table"]!!.clone())
-//                                        // add rrole, permission
-//                                        val elemClone = elem.clone() as JsonObject
-//                                        elemClone.forEach { k, v ->
-//                                            this.put(k, v)
-//                                        }
-//
-//                                    })
-//
-//                                })
-//                            }
-//                        }
-//                    }
-//
-//                    // {
-//                    //    "type" : "create_object_relationship",
-//                    //    "args" : {
-//                    //      "table" : {
-//                    //        "name" : "calendar",
-//                    //        "schema" : "public"
-//                    //      },
-//                    //      "name" : "availability",
-//                    //      "using" : {
-//                    //        "foreign_key_constraint_on" : "availability_value"
-//                    //      }
-//                    //    }
-//                    //  }
-//                    addAllFromArray("object_relationships", "create_object_relationship")
-//
-//                    addAllFromArray("computed_fields", "add_computed_field")
-//
-//
-//                    // {
-//                    //    "type" : "create_array_relationship",
-//                    //    "args" : {
-//                    //      "table" : {
-//                    //        "name" : "calendar",
-//                    //        "schema" : "public"
-//                    //      },
-//                    //      "name" : "children",
-//                    //      "using" : {
-//                    //        "foreign_key_constraint_on" : {
-//                    //          "table" : {
-//                    //            "name" : "calendar_parents",
-//                    //            "schema" : "public"
-//                    //          },
-//                    //          "column" : "parents_id"
-//                    //        }
-//                    //      }
-//                    //    }
-//                    //  }
-//                    addAllFromArray("array_relationships", "create_array_relationship")
-//
-//                    // {
-//                    //    "type" : "create_insert_permission",
-//                    //    "args" : {
-//                    //      "table" : {
-//                    //        "name" : "calendar",
-//                    //        "schema" : "public"
-//                    //      },
-//                    //      "role" : "USER",
-//                    //      "permission" : {
-//                    //        "set" : { },
-//                    //        "columns" : "*",
-//                    //        "allow_aggregations" : true,
-//                    //        "check" : { }
-//                    //      }
-//                    //    }
-//                    //  }
-//                    addAllFromArray("insert_permissions", "create_insert_permission")
-//
-//                    // {
-//                    //    "type" : "create_select_permission",
-//                    //    "args" : {
-//                    //      "table" : {
-//                    //        "name" : "calendar",
-//                    //        "schema" : "public"
-//                    //      },
-//                    //      "role" : "USER",
-//                    //      "permission" : {
-//                    //        "set" : { },
-//                    //        "columns" : "*",
-//                    //        "allow_aggregations" : true,
-//                    //        "filter" : {
-//                    //          "roles" : {
-//                    //            "user_id" : {
-//                    //              "_eq" : "X-Hasura-User-Id"
-//                    //            }
-//                    //          }
-//                    //        }
-//                    //      }
-//                    //    }
-//                    //  }
-//                    addAllFromArray("select_permissions", "create_select_permission")
-//
-//                    // {
-//                    //    "type" : "create_update_permission",
-//                    //    "args" : {
-//                    //      "table" : {
-//                    //        "name" : "calendar",
-//                    //        "schema" : "public"
-//                    //      },
-//                    //      "role" : "USER",
-//                    //      "permission" : {
-//                    //        "set" : { },
-//                    //        "columns" : "*",
-//                    //        "allow_aggregations" : true,
-//                    //        "filter" : {
-//                    //          "_and" : [ {
-//                    //            "roles" : {
-//                    //              "user_id" : {
-//                    //                "_eq" : "X-Hasura-User-Id"
-//                    //              }
-//                    //            }
-//                    //          }, {
-//                    //            "roles" : {
-//                    //              "role_value" : {
-//                    //                "_in" : [ "OWNER", "EDITOR" ]
-//                    //              }
-//                    //            }
-//                    //          } ]
-//                    //        }
-//                    //      }
-//                    //    }
-//                    //  }
-//                    addAllFromArray("update_permissions", "create_update_permission")
-//
-//                    // {
-//                    //    "type" : "create_delete_permission",
-//                    //    "args" : {
-//                    //      "table" : {
-//                    //        "name" : "calendar",
-//                    //        "schema" : "public"
-//                    //      },
-//                    //      "role" : "USER",
-//                    //      "permission" : {
-//                    //        "set" : { },
-//                    //        "columns" : [ "created_at", "updated_at", "availability_value", "id", "description", "locale_country", "next_version_id", "published", "theme_id", "theme_config", "title", "version" ],
-//                    //        "allow_aggregations" : true,
-//                    //        "filter" : {
-//                    //          "_and" : [ {
-//                    //            "roles" : {
-//                    //              "user_id" : {
-//                    //                "_eq" : "X-Hasura-User-Id"
-//                    //              }
-//                    //            }
-//                    //          }, {
-//                    //            "roles" : {
-//                    //              "role_value" : {
-//                    //                "_in" : [ "OWNER", "EDITOR" ]
-//                    //              }
-//                    //            }
-//                    //          } ]
-//                    //        }
-//                    //      }
-//                    //    }
-//                    //  }
-//                    addAllFromArray("delete_permissions", "create_delete_permission")
-//                }
-//
-//                // {
-//                //    "type" : "run_sql",
-//                //    "args" : {
-//                //      "sql" : "DROP TRIGGER IF EXISTS calendar_next_version_id_cascade_delete_trigger ON calendar;; DROP FUNCTION  IF EXISTS calendar_next_version_id_cascade_delete(); CREATE FUNCTION calendar_next_version_id_cascade_delete() RETURNS trigger AS $body$ BEGIN     IF TG_WHEN <> 'AFTER' OR TG_OP <> 'DELETE' THEN         RAISE EXCEPTION 'calendar_next_version_id_cascade_delete may only run as a AFTER DELETE trigger';     END IF;      DELETE FROM calendar where id=OLD.next_version_id;     RETURN OLD; END; $body$ LANGUAGE plpgsql;; CREATE TRIGGER calendar_next_version_id_cascade_delete_trigger AFTER DELETE ON calendar     FOR EACH ROW EXECUTE PROCEDURE calendar_next_version_id_cascade_delete();;                       "
-//                //    }
-//                //  }
-//                configureCascadeDeleteTriggers().forEach {
-//                    add(it)
-//                }
-//            }
-//        }
-//        confJson = Json.encodeToString(apiJson).reformatJson()
-//    }
 
     private fun JsonElement.clone(): JsonElement =
         Json.decodeFromString(Json.encodeToString(this))
@@ -784,7 +505,7 @@ class HasuraConfigurator(
                     ),
                     runSql = if (annot.functionDefinition.isNotEmpty())
                                 buildJsonObject {
-                                    put("hasuraconfComment", """Computed feld ${field.name} SQL function""")
+                                    put("hasuraconfComment", """Computed field ${field.name} SQL function""")
                                     put("type", "run_sql")
                                     putJsonObject("args") {
                                         put("source", sourceName)
