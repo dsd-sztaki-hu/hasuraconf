@@ -1,4 +1,3 @@
-
 {
   "$defs" : {
     "BookSeries" : {
@@ -721,7 +720,9 @@
           "type" : "string"
         },
         "title" : {
-          "type" : "string"
+          "type" : "string",
+          "minLength" : 3,
+          "maxLength" : 200
         },
         "updatedAt" : {
           "type" : "string",

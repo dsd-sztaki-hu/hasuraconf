@@ -4,6 +4,7 @@ import com.beepsoft.hasuraconf.annotation.*
 import org.hibernate.annotations.OnDelete
 import org.hibernate.annotations.OnDeleteAction
 import javax.persistence.*
+import javax.validation.constraints.Size
 import kotlin.jvm.Transient
 
 /**
@@ -57,6 +58,7 @@ class Calendar : BaseObject() {
     var roles: List<CalendarRole>? = null
 
     /** Title of the calendar  */
+    @Size(min = 3, max = 200)
     var title: String? = null
 
     /** Short description of the calendar  */
