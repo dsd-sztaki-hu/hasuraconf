@@ -19,6 +19,8 @@ I also use `HasuraConfigurator` in projects, which don't use Java/Kotlin at all,
 
 ## 1.0.0
 
+Complete rewrite. See [new readme](README.md).
+
 ## 0.9.x
 
 - Added support for default permission setting per entity

@@ -146,3 +146,7 @@ public class Vet extends Person {
 
 With the [@HasuraPermissions](src%2Fmain%2Fkotlin%2Fcom%2Fbeepsoft%2Fhasuraconf%2Fannotation%2FHasuraPermission.kt) and [@HasuraPermission](src%2Fmain%2Fkotlin%2Fcom%2Fbeepsoft%2Fhasuraconf%2Fannotation%2FHasuraPermission.kt) annotations you can do everything you can do on the [console](https://hasura.io/docs/latest/auth/authorization/permission-rules/).
 
+
+# TODO
+
+Document other feature of HasuraConf. In the meantime, most of the [old readme](README_OLD.md) about the use of the various @Hasura... annotations is still applicable
